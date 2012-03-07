@@ -13,7 +13,8 @@ common_libintelprov_files := \
 	flash_ifwi.c \
 
 common_libintelprov_includes := \
-	hardware/intel/PRIVATE/libcmfwdl/cmfwdl
+	hardware/intel/PRIVATE/libcmfwdl/cmfwdl \
+	bionic/libc/private
 
 
 # Plug-in library for AOSP updater
@@ -26,7 +27,6 @@ LOCAL_C_INCLUDES := bootable/recovery $(common_libintelprov_includes)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 include $(BUILD_STATIC_LIBRARY)
 
-ifeq ($(TARGET_USE_DROIDBOOT),true)
 # Plug-in libary for Droidboot
 include $(CLEAR_VARS)
 LOCAL_MODULE := libintel_droidboot
@@ -39,7 +39,6 @@ ifneq ($(DROIDBOOT_NO_GUI),true)
 LOCAL_CFLAGS += -DUSE_GUI
 endif
 include $(BUILD_STATIC_LIBRARY)
-endif # TARGET_USE_DROIDBOOT
 
 # a test flashtool for testing the intelprov library
 include $(CLEAR_VARS)
@@ -54,21 +53,12 @@ include $(BUILD_EXECUTABLE)
 
 # plugin for recovery_ui
 include $(CLEAR_VARS)
-LOCAL_SRC_FILES := recovery_ui.c
+LOCAL_SRC_FILES := recovery_ui.c bootloader.c
 LOCAL_MODULE_TAGS := optional
-LOCAL_C_INCLUDES := bootable/recovery
+LOCAL_C_INCLUDES := bootable/recovery bionic/libc/private
 LOCAL_MODULE := libintel_recovery_ui
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 include $(BUILD_STATIC_LIBRARY)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE := osip_reader
-LOCAL_SRC_FILES:= osip_reader.c util.c update_osip.c
-LOCAL_C_INCLUDES := $(common_libintelprov_includes)
-LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-LOCAL_STATIC_LIBRARIES := libdiskconfig_host liblog libcutils
-include $(BUILD_HOST_EXECUTABLE)
 
 # update_recovery: this binary is updating the recovery from MOS
 # because we dont want to update it from itself.

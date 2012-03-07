@@ -257,7 +257,7 @@ done:
     return ret;
 }
 
-void Register_libmedfield_recovery(void)
+void Register_libintel_updater(void)
 {
     RegisterFunction("flash_osip", FlashOsipFn);
     RegisterFunction("flash_ifwi", FlashIfwiFn);

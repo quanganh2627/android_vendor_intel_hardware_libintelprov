@@ -135,7 +135,7 @@ static int flash_ifwi(void *data, unsigned sz)
 	return 0;
 }
 
-void libmedfield_droidboot_init(void)
+void libintel_droidboot_init(void)
 {
 	int ret = 0;
 	struct OSIP_header osip;
@@ -163,36 +163,6 @@ void libmedfield_droidboot_init(void)
 	} else {
 		printf("Current FW versions: (CHAABI versions unreadable at runtime)\n");
 		dump_fw_versions(&cur_fw_rev);
-	}
-
-	/* Examine the OSIP and see if there are any filesystem declarations
-	 * in the last spot. If there is, that means this device was flashed with an
-	 * "installer" image and we should apply the SW update package on
-	 * the filesystem (which is put in the place for /cache).
-	 *
-	 * Purge the filesystem entry in the OSIP so that this only happens once;
-	 * if there is a problem with the OTA update we don't want the device to
-	 * try endlessly. The FS entry isn't actually needed in the OSIP, we only
-	 * put it there so that FSTK will write it to NAND. */
-	if (osip.desc[osip.num_pointers - 1].attribute == ATTR_FILESYSTEM) {
-		Volume *v;
-
-		/* Remove the OSIP entry, we only want to cross this path
-		 * once */
-		osip.num_pointers--;
-		if (write_OSIP(&osip)) {
-			pr_error("Failed to remove FS entry from OSIP!");
-			die();
-		}
-
-		pr_debug("Detected pre-staged cache partition");
-		v = volume_for_path(CACHE_VOLUME);
-		if (!v) {
-			pr_error("Coudln't look up " CACHE_VOLUME
-					" in recovery.fstab!");
-			die();
-		}
-		try_update_sw(v, 0);
 	}
 }
 

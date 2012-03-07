@@ -25,7 +25,6 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <strings.h>
-#include <diskconfig/diskconfig.h>
 
 #include "update_osip.h"
 #include "util.h"
