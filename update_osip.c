@@ -44,7 +44,7 @@
 
 #define ARRAY_SIZE(a)	(sizeof(a) / sizeof(a[0]))
 
-#define FW_START_OFFSET	1
+#define FW_START_OFFSET	50 /* give space for GPT */
 #define FW_MAX_LBA	2000
 const uint32_t fw_lba_slots[] = {
 	(FW_START_OFFSET + (FW_MAX_LBA * 0)),
@@ -58,7 +58,11 @@ const uint32_t os_lba_slots[] = {
 	(OS_START_OFFSET + (OS_MAX_LBA * 0)),
 	(OS_START_OFFSET + (OS_MAX_LBA * 1)),
 	(OS_START_OFFSET + (OS_MAX_LBA * 2)),
-	(OS_START_OFFSET + (OS_MAX_LBA * 3))
+	(OS_START_OFFSET + (OS_MAX_LBA * 3)),
+	(OS_START_OFFSET + (OS_MAX_LBA * 4)),
+	(OS_START_OFFSET + (OS_MAX_LBA * 5)),
+	(OS_START_OFFSET + (OS_MAX_LBA * 6)),
+	(OS_START_OFFSET + (OS_MAX_LBA * 7)),
 };
 #define OS_SLOTS	ARRAY_SIZE(os_lba_slots)
 
@@ -98,13 +102,17 @@ int verify_osip_sizes(struct OSIP_header *osip)
 		unsigned max_size_lba;
 		unsigned img_size = osip->desc[i].size_of_os_image;
 
-		switch (attr) {
+		switch (attr&(~1)) {
 		case ATTR_SIGNED_FW:
 		case ATTR_UNSIGNED_FW:
 			max_size_lba = FW_MAX_LBA;
 			break;
 		case ATTR_SIGNED_KERNEL:
 		case ATTR_UNSIGNED_KERNEL:
+                case ATTR_SIGNED_COS:
+                case ATTR_SIGNED_POS:
+                case ATTR_SIGNED_ROS:
+                case ATTR_SIGNED_COMB:
 			max_size_lba = OS_MAX_LBA;
 			break;
 		default:
@@ -131,13 +139,17 @@ int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba)
 		uint8_t attr = osip->desc[i].attribute;
 		int ret;
 
-		switch (attr) {
+		switch (attr&(~1)) {
 		case ATTR_SIGNED_FW:
 		case ATTR_UNSIGNED_FW:
 			ret = fixup_osii(&osip->desc[i], &fw_ctr,
 					FW_SLOTS, fw_lba_slots);
 			break;
 		case ATTR_SIGNED_KERNEL:
+		case ATTR_SIGNED_POS:
+		case ATTR_SIGNED_COS:
+		case ATTR_SIGNED_ROS:
+		case ATTR_SIGNED_COMB:
 		case ATTR_UNSIGNED_KERNEL:
 			ret = fixup_osii(&osip->desc[i], &os_ctr,
 					OS_SLOTS, os_lba_slots);
@@ -167,46 +179,48 @@ int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba)
 }
 
 
-static uint32_t get_free_lba(const uint32_t *slots, int num_slots,
-		struct OSIP_header *osip, uint8_t attr1, uint8_t attr2)
+static uint32_t get_free_lba(const uint32_t *slots, int num_slots, int slot_size,
+		struct OSIP_header *osip)
 {
-	/* Bitfield representing available slots */
-	int flagged = (1 << num_slots) - 1;
 	int freeslot;
 	int i, j;
+        /* this algorithm allows transition to droidboot
+           we allow the already flashed osip not to use the slots
+	   we still make sure we progressively only use the predefined slots
 
-	for (i = 0; i < osip->num_pointers; i++) {
-		uint8_t attr = osip->desc[i].attribute;
-		uint32_t lba;
-		if (attr != attr1 && attr != attr2)
-			continue;
-		lba = osip->desc[i].logical_start_block;
-		for (j = 0; j < num_slots; j++) {
-			if (lba == slots[j]) {
-				/* This one is used */
-				CLEAR_BIT(flagged, j);
+	   We try to find a slot that is not already at least partly used
+	   by already flashed image.
+	*/
+	for (j = 0; j < num_slots; j++) {
+		freeslot = 1;
+		for (i = 0; i < osip->num_pointers; i++) {
+			uint32_t lba = osip->desc[i].logical_start_block;
+			uint32_t endlba = lba + 1 + osip->desc[i].size_of_os_image;
+			if ((lba >= slots[j] && lba < (slots[j] + slot_size)) ||
+			    (endlba >= slots[j] && endlba < (slots[j] + slot_size))) {
+				freeslot = 0;
+                                fprintf(stderr, "slot %d used by osip %d\n", j,i);
 				break;
 			}
 		}
+		if (freeslot)
+			break;
 	}
-	freeslot = ffs(flagged) - 1;
-	if (freeslot < 0)
+	if (!freeslot)
 		return 0; /* All in use!! */
-	return slots[freeslot];
+	return slots[j];
 }
 
 
 static int get_free_fw_lba(struct OSIP_header *osip)
 {
-	return get_free_lba(fw_lba_slots, FW_SLOTS, osip,
-			ATTR_SIGNED_FW, ATTR_UNSIGNED_FW);
+	return get_free_lba(fw_lba_slots, FW_SLOTS, FW_MAX_LBA, osip);
 }
 
 
 static int get_free_os_lba(struct OSIP_header *osip)
 {
-	return get_free_lba(os_lba_slots, OS_SLOTS, osip,
-			ATTR_SIGNED_KERNEL, ATTR_UNSIGNED_KERNEL);
+	return get_free_lba(os_lba_slots, OS_SLOTS, OS_MAX_LBA, osip);
 }
 
 
@@ -365,8 +379,8 @@ int read_osimage_data(void **data, size_t * size, int osii_index)
 	file_osii = &file_osip.desc[0];
 	memcpy(file_osii, osii, sizeof(*osii));
 	file_osii->logical_start_block = 1;
-	if (file_osii->attribute == ATTR_SIGNED_KERNEL ||
-			file_osii->attribute == ATTR_UNSIGNED_KERNEL) {
+	if (file_osii->attribute != ATTR_SIGNED_FW &&
+			file_osii->attribute != ATTR_UNSIGNED_FW) {
 		/* The OS image might have been invalidated.
 		 * Restore the pointers */
 		file_osii->entry_point = ENTRY_POINT;
@@ -452,8 +466,12 @@ int write_stitch_image(void *data, size_t size, int osii_index)
 	 * the empty slot, and the OSIP is only updated once the data
 	 * is completely written out. That way we don't brick the device
 	 * if we cut the power in the middle of writing an OS image */
-	switch (osii->attribute) {
+	switch (osii->attribute&(~1)) {
 	case ATTR_SIGNED_KERNEL:
+        case ATTR_SIGNED_POS:
+        case ATTR_SIGNED_COS:
+        case ATTR_SIGNED_ROS:
+        case ATTR_SIGNED_COMB:
 	case ATTR_UNSIGNED_KERNEL:
 		osii->logical_start_block = get_free_os_lba(&osip);
 		max_size_lba = OS_MAX_LBA;
@@ -478,6 +496,10 @@ int write_stitch_image(void *data, size_t size, int osii_index)
 				max_size_lba);
 		return -1;
 	}
+        if (osii->logical_start_block == 0) {
+		fprintf(stderr, "unable to find free slot in emmc for osimage!\n");
+                return -1;
+        }
 	if (osii_index >= osip.num_pointers) {
 		osip.num_pointers = osii_index + 1;
 		osip.header_size = (osip.num_pointers * 0x18) + 0x20;

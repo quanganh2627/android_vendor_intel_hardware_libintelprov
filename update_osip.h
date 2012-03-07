@@ -25,7 +25,7 @@
 #define RECOVERY_OS_NAME    "recovery"
 #define FASTBOOT_OS_NAME    "fastboot"
 #define UEFI_FW_NAME        "uefi"
-
+#define MAX_OSIP_DESC 	    7
 /* mfld-structures section 2.7.1 mfld-fas v0.8*/
 
 struct OSII {			//os image identifier
@@ -54,7 +54,7 @@ struct OSIP_header {		// os image profile
 	uint16_t header_size;	//was security_features;
 	uint32_t reserved[5];
 
-	struct OSII desc[7];
+	struct OSII desc[MAX_OSIP_DESC];
 };
 
 int write_OSIP(struct OSIP_header *osip);
@@ -70,9 +70,14 @@ int verify_osip_sizes(struct OSIP_header *osip);
 
 #define ATTR_SIGNED_KERNEL      0
 #define ATTR_UNSIGNED_KERNEL    1
+#define ATTR_SIGNED_COS		0x0A
+#define ATTR_SIGNED_POS		0x0E
+#define ATTR_SIGNED_ROS		0x0C
+#define ATTR_SIGNED_COMB	0x10
 #define ATTR_SIGNED_FW          8
 #define ATTR_UNSIGNED_FW        9
 #define ATTR_FILESYSTEM		3
+#define ATTR_NOTUSED		(0xff)
 
 #define LBA_SIZE	512
 #define MMC_DEV_POS "/dev/block/mmcblk0"
