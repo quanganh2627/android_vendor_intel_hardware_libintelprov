@@ -52,4 +52,7 @@ void dump_fw_versions(struct firmware_versions *v);
  * greater than, or equal to v2, respectively */
 int fw_vercmp(struct firmware_versions *v1, struct firmware_versions *v2);
 
+/* Crack ifwi firmware file */
+int crack_update_fw(const char *fw_file, struct fw_version *ifwi_version);
+
 #endif

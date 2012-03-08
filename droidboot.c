@@ -115,10 +115,28 @@ static int flash_modem(void *data, unsigned sz)
 	return ret;
 }
 
+#define BIN_DNX  "/tmp/__dnx.bin"
+#define BIN_IFWI "/tmp/__ifwi.bin"
+
+static int flash_dnx(void *data, unsigned sz)
+{
+	if (file_write(BIN_DNX, data, sz)) {
+		pr_error("Couldn't write dnx file to %s\n", BIN_DNX);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int flash_ifwi(void *data, unsigned sz)
 {
 	struct firmware_versions img_fw_rev;
 
+
+	if (access(BIN_DNX, F_OK)) {
+		pr_error("dnx binary must be flashed to board first\n");
+		return -1;
+	}
 
 	if (get_image_fw_rev(data, sz, &img_fw_rev)) {
 		pr_error("Coudn't extract FW version data from image");
@@ -128,7 +146,12 @@ static int flash_ifwi(void *data, unsigned sz)
 	printf("Image FW versions:\n");
 	dump_fw_versions(&img_fw_rev);
 
-	if (update_ifwi_image(data, sz, 0)) {
+	if (file_write(BIN_IFWI, data, sz)) {
+		pr_error("Couldn't write ifwi file to %s\n", BIN_IFWI);
+		return -1;
+	}
+
+	if (update_ifwi_file(BIN_DNX, BIN_IFWI)) {
 		pr_error("IFWI flashing failed!");
 		return -1;
 	}
@@ -145,7 +168,8 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd(RECOVERY_OS_NAME, flash_recovery_kernel);
 	ret |= aboot_register_flash_cmd(FASTBOOT_OS_NAME, flash_fastboot_kernel);
 	ret |= aboot_register_flash_cmd(UEFI_FW_NAME, flash_uefi_firmware);
-	ret |= aboot_register_flash_cmd("modem", flash_modem);
+	ret |= aboot_register_flash_cmd("radio", flash_modem);
+	ret |= aboot_register_flash_cmd("dnx", flash_dnx);
 	ret |= aboot_register_flash_cmd("ifwi", flash_ifwi);
 
 	if (ret)

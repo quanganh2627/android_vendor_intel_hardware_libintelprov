@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 
+int update_ifwi_file(const char *dnx, const char *ifwi);
 int update_ifwi_image(void *data, size_t size, unsigned reset_flag);
 
 #endif

@@ -198,3 +198,43 @@ int get_image_fw_rev(void *data, unsigned sz, struct firmware_versions *v)
 
 	return 0;
 }
+
+int crack_update_fw(const char *fw_file, struct fw_version *ifwi_version){
+	struct FIP_header fip;
+	FILE *fd;
+	int tmp = 0;
+	int location;
+
+	memset((void *)&fip, 0, sizeof(fip));
+
+	if ((fd = fopen(fw_file, "rb")) == NULL) {
+		fprintf(stderr, "fopen error: Unable to open file\n");
+		return -1;
+	}
+
+	while (tmp != FIP_PATTERN) {
+		int cur;
+		fread(&tmp, sizeof(int), 1, fd);
+		if (ferror(fd) || feof(fd)) {
+			fprintf(stderr, "find FIP_pattern failed\n");
+			fclose(fd);
+			return -1;
+		}
+		cur = ftell(fd) - sizeof(int);
+		fseek(fd, cur + sizeof(char), SEEK_SET);
+	}
+	location = ftell(fd) - sizeof(char);
+
+	fseek(fd, location, SEEK_SET);
+	fread((void *)&fip, sizeof(fip), 1, fd);
+	if (ferror(fd) || feof(fd)) {
+		fprintf(stderr, "read of FIP_header failed\n");
+		fclose(fd);
+		return -1;
+	}
+	fclose(fd);
+
+	ifwi_version->major = fip.ifwi_rev.major;
+	ifwi_version->minor = fip.ifwi_rev.minor;
+	return 0;
+}
