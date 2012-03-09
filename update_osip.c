@@ -572,6 +572,8 @@ int get_named_osii_index(char *destination)
 		index = RECOVERY_OS_NUM;
 	} else if (!strcmp(destination, FASTBOOT_OS_NAME)) {
 		index = FASTBOOT_OS_NUM;
+	} else if (!strcmp(destination, DROIDBOOT_OS_NAME)) {
+		index = FASTBOOT_OS_NUM;
 	} else {
 		fprintf(stderr, "unknown destination %s\n", destination);
 		return -1;

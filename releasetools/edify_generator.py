@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import os, sys
 import re
 
 import common
@@ -26,6 +26,7 @@ class EdifyGenerator(object):
     self.mounts = set()
     self.version = version
     self.info = info
+    self.cur_progress = 0
 
   def MakeTemporary(self):
     """Make a temporary script object whose commands can latter be
@@ -103,6 +104,9 @@ class EdifyGenerator(object):
     """Update the progress bar, advancing it over 'frac' over the next
     'dur' seconds.  'dur' may be zero to advance it via SetProgress
     commands instead of by time."""
+    self.cur_progress += frac
+    if self.cur_progress > 1:
+      raise Exception( "Error: progress bar will be larger than 1")
     self.script.append("show_progress(%f, %d);" % (frac, int(dur)))
 
   def SetProgress(self, frac):
@@ -285,4 +289,4 @@ class EdifyGenerator(object):
 
   def FlashIfwi(self, filename):
     self.Print("Updating IFWI image...\n");
-    self.script.append('flash_ifwi("%s");' % (filename,))
+    self.script.append('flash_ifwi("/tmp/%s");' % (filename,))

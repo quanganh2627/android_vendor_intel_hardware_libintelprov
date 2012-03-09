@@ -56,6 +56,7 @@ int flash_modem_fw(char *firmware_filename, modem_progress_callback cb)
 	struct cmfwdl *h;
 	int ret = -1;
 	struct cmfwdl_buffer fw_buffer, boot_buffer;
+	return 0; /* disable for now */
 
 	h = cmfwdl_create_instance();
 	if (!h)

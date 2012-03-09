@@ -24,6 +24,7 @@
 #define ANDROID_OS_NAME     "boot"
 #define RECOVERY_OS_NAME    "recovery"
 #define FASTBOOT_OS_NAME    "fastboot"
+#define DROIDBOOT_OS_NAME    "droidboot"
 #define UEFI_FW_NAME        "uefi"
 #define MAX_OSIP_DESC 	    7
 /* mfld-structures section 2.7.1 mfld-fas v0.8*/

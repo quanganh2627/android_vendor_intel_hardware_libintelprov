@@ -87,6 +87,7 @@ OPTIONS.omit_prereq = False
 OPTIONS.extra_script = None
 OPTIONS.aslr_mode = True
 OPTIONS.worker_threads = 3
+OPTIONS.intel_ota = False
 
 # Following is a hack for release scripts to be able to create OTA packages
 # using the ABS targets, and not rely on invoking this script separately. This
@@ -395,7 +396,6 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   script.FormatPartition("/system")
   script.Mount("/system")
-  script.UnpackPackageDir("recovery", "/system")
   script.UnpackPackageDir("system", "/system")
 
   (symlinks, retouch_files) = CopySystemFiles(input_zip, output_zip)
@@ -405,37 +405,26 @@ def WriteFullOTAPackage(input_zip, output_zip):
   else:
     script.UndoRetouchBinaries(retouch_files)
 
-  images = {}
-  for name in ["boot", "recovery", "fastboot", "uefi"]:
-    filename = name + ".img"
-    if name != "uefi":
-      img = common.GetBootableImage(filename, filename,
-              OPTIONS.input_tmp, name.upper())
-    else:
-      img = common.GetStitchedImage(filename, OPTIONS.input_tmp,
-              "MFLD_IMAGES/uefi.fv")
-    if img:
-      images[name] = img
+  images = ["BOOT/boot.bin", "RECOVERY/recovery.img", "RECOVERY/droidboot.img",
+            "FIRMWARE/ifwi.zip"]
 
-  progress_increment = 0.3 / len(images)
-  for name, img in images.iteritems():
-    if name == "recovery":
-      MakeRecoveryPatch(output_zip, img, images["boot"])
-      continue
-    common.CheckSize(img.data, img.name, OPTIONS.info_dict)
-    common.ZipWriteStr(output_zip, img.name, img.data)
-    script.ShowProgress(progress_increment, 0)
-    script.PackageExtract(img.name)
-    script.FlashOsip(name)
-    script.DeleteTmpImage(img.name)
+  for name in images:
+    img = input_zip.read(name)
+    bname =  os.path.basename(name)
+    if name.startswith("BOOT"):
+      bname = bname.split(".")[0]+".img"
+    common.ZipWriteStr(output_zip, bname, img)
+    script.PackageExtract(bname)
+    script.ShowProgress(0.3/len(images), 3)
+    if bname.endswith(".img"):
+      script.FlashOsip(bname.split(".")[0])
+    elif bname.startswith("ifwi"):
+      script.FlashIfwi(bname)
 
   Item.GetMetadata(input_zip)
   Item.Get("system").SetPermissions(script)
 
-  script.ShowProgress(0.1, 0)
-  script.FlashIfwi("/system/etc/firmware/ifwi.bin")
-
-  script.ShowProgress(0.1, 0)
+  script.ShowProgress(0.2, 0)
   device_specific.FullOTA_InstallEnd()
 
   if OPTIONS.extra_script is not None:
@@ -444,7 +433,10 @@ def WriteFullOTAPackage(input_zip, output_zip):
   script.UnmountAll()
   script.AddToZip(input_zip, output_zip)
   WriteMetadata(metadata, output_zip)
-
+  if script.cur_progress < .9:
+    raise Exception("Error: progress bar will not finish at 100%!: %f"%(script.cur_progress*100))
+  else:
+    print "good.. End progress is: %.2f"%(script.cur_progress*100)
 
 def WriteMetadata(metadata, output_zip):
   common.ZipWriteStr(output_zip, "META-INF/com/android/metadata",
@@ -789,6 +781,8 @@ def main(argv):
         OPTIONS.aslr_mode = False
     elif o in ("--worker_threads"):
       OPTIONS.worker_threads = int(a)
+    elif o in ("--intel_ota"):
+      OPTIONS.intel_ota = True
     else:
       return False
     return True
@@ -803,6 +797,7 @@ def main(argv):
                                               "extra_script=",
                                               "worker_threads=",
                                               "aslr_mode=",
+                                              "intel_ota",
                                               ],
                              extra_option_handler=option_handler)
 
