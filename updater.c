@@ -16,8 +16,12 @@
 
 
 #include <stdio.h>
-
+#include <stdlib.h>
+#include <fcntl.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <edify/expr.h>
+#include <updater/updater.h>
 
 #include "update_osip.h"
 #include "util.h"
@@ -128,13 +132,19 @@ done:
     return ret;
 }
 
+#define DNX_BIN_PATH	"/tmp/dnx.bin"
+#define IFWI_BIN_PATH	"/tmp/ifwi.bin"
+#define IFWI_NAME	"ifwi"
+#define DNX_NAME	"dnx"
+#define FILEMODE  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
+
 Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
     char *filename = NULL;
-    struct firmware_versions cur_fw_rev;
-    struct firmware_versions img_fw_rev;
-    void *data = NULL;
-    size_t size;
+    int err, ifwi_bin_fd, dnx_bin_fd, i, num;
+    char ifwi_name[128], dnx_name[128];
+    ZipArchive ifwi_za;
+    const ZipEntry *dnx_entry, *ifwi_entry;
 
     if (ReadArgs(state, argv, 1, &filename) < 0) {
         return NULL;
@@ -145,41 +155,57 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
         goto done;
     }
 
-    if (get_current_fw_rev(&cur_fw_rev)) {
-        ErrorAbort(state,"Can't query kernel for current FW version");
+    err = mzOpenZipArchive(filename, &ifwi_za);
+    if (err) {
+        ErrorAbort(state, "Failed to open zip archive %s\n", filename);
         goto done;
     }
 
-    if (file_read(filename, &data, &size)) {
-        ErrorAbort(state, "Couldn't read firmware image!");
-        goto done;
-    }
-
-    if (get_image_fw_rev(data, size, &img_fw_rev)) {
-        ErrorAbort(state, "Coudn't extract FW version data from image");
-        goto done;
-    }
-
-    printf("Current FW versions:\n");
-    dump_fw_versions(&cur_fw_rev);
-
-    if (fw_vercmp(&cur_fw_rev, &img_fw_rev)) {
-        /* Apply the update, versions are different */
-        printf("Image FW versions:\n");
-        dump_fw_versions(&img_fw_rev);
-        if (update_ifwi_image(data, size, 0)) {
-            ErrorAbort(state, "IFWI update failed!");
+    num = mzZipEntryCount(&ifwi_za);
+    for (i = 0; i < num; i++) {
+        ifwi_entry = mzGetZipEntryAt(&ifwi_za, i);
+        if (ifwi_entry->fileNameLen < sizeof(ifwi_name)){
+            strncpy(ifwi_name, ifwi_entry->fileName, ifwi_entry->fileNameLen);
+            ifwi_name[ifwi_entry->fileNameLen] = '\0';
+        } else {
+            ErrorAbort(state, "ifwi file name is too big size max :%d.\n", sizeof(ifwi_name));
             goto done;
         }
-    } else
-        printf("Firmware versions are identical, skipping\n");
+        if (strncmp(ifwi_name, IFWI_NAME, strlen(IFWI_NAME)))
+            continue;
+
+        if ((ifwi_bin_fd = open(IFWI_BIN_PATH, O_RDWR | O_TRUNC | O_CREAT, FILEMODE)) < 0) {
+            ErrorAbort(state, "unable to creat Extracted file:%s.\n", IFWI_BIN_PATH);
+            goto done;
+        }
+        if ((dnx_bin_fd = open(DNX_BIN_PATH, O_RDWR | O_TRUNC | O_CREAT, FILEMODE)) < 0) {
+            ErrorAbort(state, "unable to creat Extracted file:%s.\n", IFWI_BIN_PATH);
+            goto done;
+        }
+        strcpy(dnx_name, "dnx");
+        strncat(dnx_name, &(ifwi_name[strlen(IFWI_NAME)]), sizeof(dnx_name) - strlen("dnx") -1);
+        dnx_entry = mzFindZipEntry(&ifwi_za, dnx_name);
+
+        err = mzExtractZipEntryToFile(&ifwi_za, dnx_entry, dnx_bin_fd);
+        if (!err) {
+            ErrorAbort(state, "Failed to unzip %s\n", DNX_BIN_PATH);
+            goto done;
+        }
+        close(dnx_bin_fd);
+        err = mzExtractZipEntryToFile(&ifwi_za, ifwi_entry, ifwi_bin_fd);
+        if (!err) {
+            ErrorAbort(state, "Failed to unzip %s\n", DNX_BIN_PATH);
+            goto done;
+        }
+        close(ifwi_bin_fd);
+        update_ifwi_file(DNX_BIN_PATH, IFWI_BIN_PATH);
+    }
+    mzCloseZipArchive(&ifwi_za);
 
     ret = StringValue(strdup(""));
 done:
     if (filename)
         free(filename);
-    if (data)
-        free(data);
 
     return ret;
 }
