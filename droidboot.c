@@ -51,7 +51,7 @@ static void progress_callback(enum cmfwdl_status_type type, int value,
 		last_update_progress = -1;
 		break;
 	case cmfwdl_status_msg_detail:
-		pr_info("modem: %s", msg);
+		pr_info("modem: <msg> %s", msg);
 		last_update_progress = -1;
 		break;
 	case cmfwdl_status_error_detail:
@@ -59,10 +59,8 @@ static void progress_callback(enum cmfwdl_status_type type, int value,
 		last_update_progress = -1;
 		break;
 	case cmfwdl_status_progress:
-		if (value / 10 == last_update_progress)
-			break;
-		last_update_progress = value / 10;
-		pr_info("modem: update progress %d%%", last_update_progress);
+		pr_info("    <Progress> %d%%", value);
+		last_update_progress = value;
 		break;
 	case cmfwdl_status_version:
 		pr_info("modem: Version: %s", msg);

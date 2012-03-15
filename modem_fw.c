@@ -28,7 +28,7 @@
 #define TTY_NODE	"/dev/ttyMFD1"
 #define IFX_NODE	"/dev/ttyIFX0"
 #define HSU_PM_SYSFS	"/sys/devices/pci0000:00/0000:00:05.1/power/control"
-#define S0_PM_SYSFS	"/sys/module/mid_pmu/parameters/s0ix"
+#define S0_PM_SYSFS	"/sys/module/mfld_pmu/parameters/s0ix"
 #define TRACE_FILE	"/modemtrace.log"
 
 #define FFL_TTY_MAGIC	0x77
@@ -60,7 +60,6 @@ int flash_modem_fw(char *firmware_filename, modem_progress_callback cb)
 	struct cmfwdl *h;
 	int ret = -1;
 	struct cmfwdl_buffer fw_buffer, boot_buffer;
-	return 0; /* disable for now */
 
 	h = cmfwdl_create_instance();
 	if (!h)
@@ -102,9 +101,6 @@ int flash_modem_fw(char *firmware_filename, modem_progress_callback cb)
 out:
 	enable_pm();
 	cmfwdl_destroy_instance(h);
-	printf("trace file contents --------------\n");
-	dump_trace_file(TRACE_FILE);
-	printf("----------------------------------\n");
 	return ret;
 }
 
