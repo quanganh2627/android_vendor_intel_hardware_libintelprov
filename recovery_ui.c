@@ -29,6 +29,7 @@
 #define POWER_ON_KEY_TIME       (2 * MSEC_PER_SEC)
 #define UNPLUGGED_SHUTDOWN_TIME (30 * MSEC_PER_SEC)
 #define CAPACITY_POLL_INTERVAL  (30 * MSEC_PER_SEC)
+#define MODE_NON_CHARGER        0
 
 char* MENU_HEADERS[] = { "Android system recovery utility",
                          "Use volume down to navigate, volume up to select",
@@ -54,7 +55,7 @@ void device_ui_init(UIParameters* ui_parameters) {
     gr_init();
     klog_set_level(8);
 
-    switch (charger_run(MIN_BATTERY_LEVEL, POWER_ON_KEY_TIME,
+    switch (charger_run(MIN_BATTERY_LEVEL, MODE_NON_CHARGER, POWER_ON_KEY_TIME,
                             BATTERY_UNKNOWN_TIME,
                             UNPLUGGED_SHUTDOWN_TIME,
                             CAPACITY_POLL_INTERVAL)) {
