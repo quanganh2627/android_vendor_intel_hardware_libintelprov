@@ -33,7 +33,7 @@ LOCAL_MODULE := libintel_droidboot
 LOCAL_SRC_FILES := droidboot.c $(common_libintelprov_files)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-LOCAL_C_INCLUDES := bootable/droidboot $(common_libintelprov_includes)
+LOCAL_C_INCLUDES := bootable/droidboot bootable/recovery $(common_libintelprov_includes)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifneq ($(DROIDBOOT_NO_GUI),true)
 LOCAL_CFLAGS += -DUSE_GUI

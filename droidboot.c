@@ -16,7 +16,6 @@
 #include <cmfwdl.h>
 #include <droidboot.h>
 #include <droidboot_plugin.h>
-#include <droidboot_fstab.h>
 #include <droidboot_util.h>
 #include <fcntl.h>
 #include <stdio.h>
