@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
 #include <cmfwdl.h>
 
@@ -29,6 +30,9 @@
 #define HSU_PM_SYSFS	"/sys/devices/pci0000:00/0000:00:05.1/power/control"
 #define S0_PM_SYSFS	"/sys/module/mid_pmu/parameters/s0ix"
 #define TRACE_FILE	"/modemtrace.log"
+
+#define FFL_TTY_MAGIC	0x77
+#define FFL_TTY_MODEM_RESET	_IO(FFL_TTY_MAGIC, 4)
 
 static int disable_pm(void)
 {
@@ -102,4 +106,19 @@ out:
 	dump_trace_file(TRACE_FILE);
 	printf("----------------------------------\n");
 	return ret;
+}
+
+int reset_modem()
+{
+	int fd;
+	int retval = 1;
+
+	fd = open(IFX_NODE, O_RDWR);
+	if ( ioctl(fd, FFL_TTY_MODEM_RESET) < 0 )
+	{
+		printf("Could not reset modem\n");
+		retval = -1;
+	}
+	close(fd);
+	return retval;
 }

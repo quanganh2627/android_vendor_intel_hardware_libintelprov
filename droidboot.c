@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <cutils/properties.h>
 
 #include "update_osip.h"
 #include "util.h"
@@ -157,6 +158,61 @@ static int flash_ifwi(void *data, unsigned sz)
 	return 0;
 }
 
+#define PROXY_SERVICE_NAME		"proxy"
+#define PROXY_PROP		"service.proxy.enable"
+#define PROXY_START		"1"
+#define PROXY_STOP		"0"
+#define HSI_PORT	"/sys/bus/hsi/devices/port0"
+static int oem_manage_service_proxy(int argc, char **argv)
+{
+	int retval = 0;
+
+	if ((argc < 2) || (strcmp(argv[0], PROXY_SERVICE_NAME))) {
+		/* Should not pass here ! */
+		pr_error("oem_manage_service called with wrong parameter!\n");
+		retval = -1;
+		return retval;
+	}
+
+	if (!strcmp(argv[1], "start")) {
+		/* Check if HSI node was created, */
+		/* indicating that the HSI bus is enabled.*/
+		if (-1 != access(HSI_PORT, F_OK))
+		{
+			/* WORKAROUND */
+			/* Check number of cpus => identify CTP (Clovertrail) */
+			/* No modem reset for CTP, not supported */
+			int fd;
+			fd = open("/sys/class/cpuid/cpu3/dev", O_RDONLY);
+
+			if (fd == -1)
+			{
+				/* Reset the modem */
+				pr_info("Reset modem\n");
+				reset_modem();
+			}
+			close(fd);
+
+			/* Start proxy service (at-proxy). */
+			property_set(PROXY_PROP, PROXY_START);
+
+		} else {
+			pr_error("Fails to find HSI node: %s\n", HSI_PORT);
+			retval = -1;
+		}
+
+	} else if (!strcmp(argv[1], "stop")) {
+		/* Stop proxy service (at-proxy). */
+		property_set(PROXY_PROP, PROXY_STOP);
+
+	} else {
+		pr_error("Unknown command. Use %s [start/stop].\n", PROXY_SERVICE_NAME);
+		retval = -1;
+	}
+
+	return retval;
+}
+
 void libintel_droidboot_init(void)
 {
 	int ret = 0;
@@ -170,6 +226,8 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("radio", flash_modem);
 	ret |= aboot_register_flash_cmd("dnx", flash_dnx);
 	ret |= aboot_register_flash_cmd("ifwi", flash_ifwi);
+
+	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
 
 	if (ret)
 		die();
@@ -188,4 +246,3 @@ void libintel_droidboot_init(void)
 		dump_fw_versions(&cur_fw_rev);
 	}
 }
-
