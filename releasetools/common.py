@@ -27,6 +27,7 @@ import tempfile
 import threading
 import time
 import zipfile
+import StringIO
 import mfld_osimage
 import lfstk_wrapper
 
@@ -265,6 +266,21 @@ def BuildBootableImage(sourcedir):
   os_img.close()
   return ret
 
+def TryHardToFindImage(name, unpack_dir, prebuilt_name):
+  """ in order to support backward compatibility with old targetfiles
+  we try to search several path for each image we want to get from target files"""
+  known_paths = {
+    "boot.img": [ "BOOT/boot.bin" ],
+    "recovery.img": ["RECOVERY/recovery.img"],
+    "fastboot.img": ["RECOVERY/fastboot.img", "RECOVERY/droidboot.img"],
+    "ifwi.zip":     ["FIRMWARE/ifwi.zip"]
+    }[prebuilt_name]
+  for p in known_paths:
+    prebuilt_path = os.path.join(unpack_dir, p)
+    if os.path.exists(prebuilt_path):
+      print "using prebuilt %s..." % (prebuilt_name,)
+      return File.FromLocalFile(name, prebuilt_path)
+  return None
 
 def GetBootableImage(name, prebuilt_name, unpack_dir, tree_subdir):
   """Return a File object (with name 'name') with the desired bootable
@@ -273,7 +289,11 @@ def GetBootableImage(name, prebuilt_name, unpack_dir, tree_subdir):
   'unpack_dir'/'tree_subdir'."""
 
   prebuilt_path = os.path.join(unpack_dir, "BOOTABLE_IMAGES", prebuilt_name)
-  if os.path.exists(prebuilt_path):
+  print "looking for bootable image",prebuilt_name
+  ret = TryHardToFindImage(name, unpack_dir,prebuilt_name)
+  if ret:
+    return ret
+  elif os.path.exists(prebuilt_path):
     print "using prebuilt %s..." % (prebuilt_name,)
     return File.FromLocalFile(name, prebuilt_path)
   else:
@@ -284,6 +304,13 @@ def GetBootableImage(name, prebuilt_name, unpack_dir, tree_subdir):
       return None
     return File(name, img)
 
+def ZipCRCs(src):
+  """ return the set of CRCs of files in the zip blob """
+  src = zipfile.ZipFile(StringIO.StringIO(src.data))
+  return set([i.CRC for i in src.infolist()])
+
+def IfwiDiffers(src, dst):
+  return ZipCRCs(src) != ZipCRCs(dst)
 
 def UnzipTemp(filename, pattern=None):
   """Unzip the given archive into a temporary directory and return the name.
@@ -405,6 +432,8 @@ def CheckSize(data, target, info_dict):
 
   if info_dict["fstab"]:
     if mount_point == "/userdata": mount_point = "/data"
+    if not mount_point in info_dict["fstab"]:
+      return
     p = info_dict["fstab"][mount_point]
     fs_type = p.fs_type
     limit = info_dict.get(p.device + "_size", None)

@@ -396,6 +396,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   script.FormatPartition("/system")
   script.Mount("/system")
+  script.UnpackPackageDir("recovery", "/system")
   script.UnpackPackageDir("system", "/system")
 
   (symlinks, retouch_files) = CopySystemFiles(input_zip, output_zip)
@@ -405,21 +406,35 @@ def WriteFullOTAPackage(input_zip, output_zip):
   else:
     script.UndoRetouchBinaries(retouch_files)
 
-  images = ["BOOT/boot.bin", "RECOVERY/recovery.img", "RECOVERY/droidboot.img",
-            "FIRMWARE/ifwi.zip"]
+  images = {}
+  for name in ["boot", "recovery", "fastboot", "uefi", "ifwi"]:
+    if name == "ifwi":
+      filename = name + ".zip"
+    else:
+      filename = name + ".img"
+    if name != "uefi":
+      img = common.GetBootableImage(filename, filename,
+              OPTIONS.input_tmp, name.upper())
+    else:
+      img = common.GetStitchedImage(filename, OPTIONS.input_tmp,
+              "MFLD_IMAGES/uefi.fv")
+    if img:
+      images[name] = img
 
-  for name in images:
-    img = input_zip.read(name)
-    bname =  os.path.basename(name)
-    if name.startswith("BOOT"):
-      bname = bname.split(".")[0]+".img"
-    common.ZipWriteStr(output_zip, bname, img)
-    script.PackageExtract(bname)
-    script.ShowProgress(0.3/len(images), 3)
-    if bname.endswith(".img"):
-      script.FlashOsip(bname.split(".")[0])
-    elif bname.startswith("ifwi"):
-      script.FlashIfwi(bname)
+  progress_increment = 0.4 / len(images)
+  for name, img in images.iteritems():
+    if name == "recovery":
+      MakeRecoveryPatch(output_zip, img, images["boot"])
+      continue
+    common.CheckSize(img.data, img.name, OPTIONS.info_dict)
+    common.ZipWriteStr(output_zip, img.name, img.data)
+    script.ShowProgress(progress_increment, 0)
+    script.PackageExtract(img.name)
+    if name == "ifwi":
+      script.FlashIfwi("ifwi.zip")
+    else:
+      script.FlashOsip(name)
+    script.DeleteTmpImage(img.name)
 
   Item.GetMetadata(input_zip)
   Item.Get("system").SetPermissions(script)
@@ -434,7 +449,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
   script.AddToZip(input_zip, output_zip)
   WriteMetadata(metadata, output_zip)
   if script.cur_progress < .9:
-    raise Exception("Error: progress bar will not finish at 100%!: %f"%(script.cur_progress*100))
+    raise Exception(u"Error: progress bar will not finish at 100%%!: %f"%(script.cur_progress*100))
   else:
     print "good.. End progress is: %.2f"%(script.cur_progress*100)
 
@@ -552,8 +567,11 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   # Get the set of images we need to patch in the OSIP
   all_images = {} # Set of all images (source, target)
   images = {} # Set of images to update (source, target)
-  for name in ["boot", "recovery", "fastboot", "uefi"]:
-    filename = name + ".img"
+  for name in ["boot", "recovery", "fastboot", "uefi", "ifwi"]:
+    if name == "ifwi":
+      filename = name + ".zip"
+    else:
+      filename = name + ".img"
     if name != "uefi":
       src_img = common.GetBootableImage(filename, filename, OPTIONS.source_tmp,
               name.upper())
@@ -568,15 +586,20 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
     if not tgt_img:
       print "%s OSIP image not present, skipping" % name
       continue
-    if tgt_img.data == src_img.data:
+    if src_img and tgt_img.data == src_img.data:
       print "%s OSIP image unchanged, skipping" % name
       continue
     if name == "recovery":
       # recovery console is a special case
       updating_recovery = True
       continue
+    if name == "ifwi":
+      # skip the ifwi flashing if it is the same as src targetfiles
+      if not common.IfwiDiffers(src_img, tgt_img):
+        continue
     images[name] = (src_img, tgt_img)
-    largest_source_size = max(largest_source_size, src_img.size)
+    if src_img:
+      largest_source_size = max(largest_source_size, src_img.size)
 
   # Here's how we divide up the progress bar:
   #  0.1 for verifying the start state (PatchCheck calls)
@@ -593,6 +616,8 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   total_verify_size = float(sum([i[2].size for i in patch_list]) + 1)
   so_far = 0
   for osip_target in images.keys():
+    if osip_target == "ifwi":
+      continue
     src_img, tgt_img = images[osip_target]
     total_verify_size += src_img.size
 
@@ -603,6 +628,10 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   for osip_target in images.keys():
     src_img, tgt_img = images[osip_target]
+    if osip_target == "ifwi":
+      common.ZipWriteStr(output_zip, tgt_img.name, tgt_img.data)
+      script.PackageExtract(tgt_img.name)
+      continue
     script.Print("Verifying %s image...\n" % (osip_target,))
     d = common.Difference(tgt_img, src_img)
     _, _, d = d.ComputePatch()
@@ -655,6 +684,9 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   script.Print("Patching OS images...")
   for osip_target in images.keys():
+    if osip_target == "ifwi":
+      script.FlashIfwi("ifwi.zip")
+      continue
     src_img, tgt_img = images[osip_target]
     script.ApplyPatch("/tmp/%s.img" % osip_target, "-", tgt_img.size, tgt_img.sha1,
             src_img.sha1, "patch/%s.img.p" % osip_target)
@@ -737,9 +769,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   # Now that the symlinks are created, we can set all the
   # permissions.
   script.AppendScript(temp_script)
-
-  script.FlashIfwi("/system/etc/firmware/ifwi.bin")
-
+ 
   # Do device-specific installation (eg, write radio image).
   device_specific.IncrementalOTA_InstallEnd()
 
