@@ -22,7 +22,8 @@
 typedef void (*modem_progress_callback)(enum cmfwdl_status_type type, int value,
 		const char *msg, void *data);
 
-int flash_modem_fw(char *firmware_filename, modem_progress_callback cb);
+int flash_modem_fw(char *bootloader_name, char *firmware_filename,
+		int argc, char **argv, modem_progress_callback cb);
 
 int reset_modem(void);
 

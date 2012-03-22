@@ -55,23 +55,55 @@ static int enable_pm(void)
 		goto out; \
 	}
 
-int flash_modem_fw(char *firmware_filename, modem_progress_callback cb)
+int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, char **argv, modem_progress_callback cb)
 {
 	struct cmfwdl *h;
 	int ret = -1;
-	struct cmfwdl_buffer fw_buffer, boot_buffer;
+	struct cmfwdl_buffer fw_buffer, boot_buffer, rd_certif_buffer;
+
+	struct cmfwdl_buffer *p_buffer_read_rd_certif;
+	struct cmfwdl_buffer *p_buffer_hw_id;
+	int b_read_rd_certif = 0;
+	int b_rd_certif = 0;
+	int read_hw_id = 0;
+	int b_erase_rd_certif = 0;
+	int arg;
 
 	h = cmfwdl_create_instance();
 	if (!h)
 		return -1;
 
-	fw_buffer.name = firmware_filename;
-	fw_buffer.size = 0;
-	fw_buffer.data = NULL;
+	for (arg = 0; arg < argc; arg++) {
+		if (!strcmp(argv[arg], "f")) {
+			if (cmfwdl_file_exist(firmware_filename))  {
+				fw_buffer.name = firmware_filename;
+				fw_buffer.size = 0;
+				fw_buffer.data = NULL;
+				if (cmfwdl_queue_file_download(h, &fw_buffer, 1) != 0) {
+					printf("Unkown error when parse param.\n");
+					goto out;
+				}
+			} else if ( !(cmfwdl_file_exist(firmware_filename) )) {
+				printf("Image file doesn't exists. (%s)\n", firmware_filename);
+				goto out;
+			}
+		} else if (!strcmp(argv[arg], "r")) {
+			if (cmfwdl_file_exist(firmware_filename))  {
+				rd_certif_buffer.name = firmware_filename;
+				rd_certif_buffer.size = 0;
+				rd_certif_buffer.data = NULL;
+				b_rd_certif = 1;
+			}
+		} else if (!strcmp(argv[arg], "g")) {
+			b_read_rd_certif = 1;
+		} else if (!strcmp(argv[arg], "y")) {
+			b_erase_rd_certif = 1;
+		} else if (!strcmp(argv[arg], "h")) {
+			read_hw_id = 1;
+		}
+	}
 
-	check(cmfwdl_queue_file_download(h, &fw_buffer, 1));
-
-	boot_buffer.name = firmware_filename;
+	boot_buffer.name = bootloader_name;
 	boot_buffer.size = 0;
 	boot_buffer.data = NULL;
 
@@ -96,7 +128,64 @@ int flash_modem_fw(char *firmware_filename, modem_progress_callback cb)
 		printf("WARNING: Unable to disable all power management."
 				" Proceeding anyway.\n");
 	check(cmfwdl_boot_modem(h, &boot_buffer, cb, NULL));
+
+	/* Get modem HWID (print out in stdout) */
+	if (read_hw_id == 1) {
+		check(cmfwdl_queue_fetch_hardware_id(h));
+	}
+
+	/* Flash RND Cert */
+	if (b_rd_certif == 1) {
+		check(cmfwdl_queue_certificate_action(h, cmfwdl_certificate_RDC, cmfwdl_certificate_write, &rd_certif_buffer))
+		check(cmfwdl_queue_certificate_action(h, cmfwdl_certificate_RDC, cmfwdl_certificate_read, NULL))
+	}
+
+	/* Erase RND Cert */
+	if (b_erase_rd_certif == 1) {
+		check(cmfwdl_queue_certificate_action(h, cmfwdl_certificate_RDC, cmfwdl_certificate_erase, NULL))
+	}
+
+	/* Get RND Cert (print out in stdout) */
+	if (b_read_rd_certif == 1){
+		check(cmfwdl_queue_certificate_action(h, cmfwdl_certificate_RDC, cmfwdl_certificate_read, NULL))
+	}
+
 	check(cmfwdl_execute(h, cb, NULL));
+
+	if (read_hw_id == 1) {
+		p_buffer_hw_id = cmfwdl_get_hardware_id(h);
+
+		if (p_buffer_hw_id != NULL) {
+			unsigned int cnt_bytes = 0;
+			for (cnt_bytes = 0; cnt_bytes < p_buffer_hw_id->size; cnt_bytes++)
+			{
+				if (cnt_bytes%16 == 0)
+					printf("\n");
+				printf ("%02x", p_buffer_hw_id->data[cnt_bytes]);
+			}
+			printf("\n");
+			cmfwdl_free_buffer(h, p_buffer_hw_id);
+		}
+	}
+
+	if (b_read_rd_certif == 1) {
+		p_buffer_read_rd_certif = cmfwdl_get_certificate(h, cmfwdl_certificate_RDC);
+
+		if (p_buffer_read_rd_certif != NULL) {
+			unsigned int cnt_bytes = 0;
+			for (cnt_bytes = 0; cnt_bytes < p_buffer_read_rd_certif->size; cnt_bytes++)
+			{
+				if (cnt_bytes%16 == 0)
+					printf("\n");
+				printf ("%02x ", p_buffer_read_rd_certif->data[cnt_bytes]);
+			}
+			printf("\n");
+			cmfwdl_free_buffer(h, p_buffer_read_rd_certif);
+		}
+		else
+		printf("R&D CERTIFICATE NOT PRESENT !!\n");
+	}
+
 	ret = 0;
 out:
 	enable_pm();

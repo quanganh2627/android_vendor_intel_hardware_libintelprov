@@ -30,7 +30,8 @@
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
 
-#define MODEM_TEMP_FILE		"/modemfw.bin"
+#define IMG_RADIO "/radio.img"
+#define IMG_RADIO_RND "/radio_rnd.img"
 
 static void progress_callback(enum cmfwdl_status_type type, int value,
 		const char *msg, void *data)
@@ -103,13 +104,102 @@ static int flash_uefi_firmware(void *data, unsigned sz)
 static int flash_modem(void *data, unsigned sz)
 {
 	int ret;
+	int argc = 1;
+	char *argv[1];
 
-	if (file_write(MODEM_TEMP_FILE, data, sz)) {
-		pr_error("Couldn't write modem fw to %s", MODEM_TEMP_FILE);
+	if (file_write(IMG_RADIO, data, sz)) {
+		pr_error("Couldn't write radio image to %s", IMG_RADIO);
 		return -1;
 	}
-	ret = flash_modem_fw(MODEM_TEMP_FILE, progress_callback);
-	unlink(MODEM_TEMP_FILE);
+	argv[0] = "f";
+	/* Update modem SW. */
+	ret = flash_modem_fw(IMG_RADIO, IMG_RADIO, argc, argv, progress_callback);
+	unlink(IMG_RADIO);
+	return ret;
+}
+
+static int flash_modem_store_fw(void *data, unsigned sz)
+{
+	/* Save locally modem SW (to be called first before flashing RND Cert) */
+	if (file_write(IMG_RADIO, data, sz)) {
+		pr_error("Couldn't write radio image to %s", IMG_RADIO);
+		return -1;
+	}
+	printf("Radio Image Saved\n");
+	return 0;
+}
+
+static int flash_modem_read_rnd(void *data, unsigned sz)
+{
+	int ret;
+	int argc = 1;
+	char *argv[1];
+
+	if (file_write(IMG_RADIO, data, sz)) {
+		pr_error("Couldn't write modem fw to %s", IMG_RADIO);
+		return -1;
+	}
+	argv[0] = "g";
+	/* Get RND Cert (print out in stdout) */
+	ret = flash_modem_fw(IMG_RADIO, NULL, argc, argv, progress_callback);
+	unlink(IMG_RADIO);
+	return ret;
+}
+
+static int flash_modem_write_rnd(void *data, unsigned sz)
+{
+	int ret;
+	int argc = 1;
+	char *argv[1];
+
+	if (access(IMG_RADIO, F_OK)) {
+		pr_error("Radio Image %s Not Found!!\nCall flash radio_img first", IMG_RADIO);
+		return -1;
+	}
+	if (file_write(IMG_RADIO_RND, data, sz)) {
+		pr_error("Couldn't write radio_rnd image to %s", IMG_RADIO_RND);
+		return -1;
+	}
+	argv[0] = "r";
+	/* Flash RND Cert */
+	ret = flash_modem_fw(IMG_RADIO, IMG_RADIO_RND, argc, argv, progress_callback);
+	unlink(IMG_RADIO);
+	unlink(IMG_RADIO_RND);
+	return ret;
+}
+
+static int flash_modem_erase_rnd(void *data, unsigned sz)
+{
+	int ret;
+	int argc = 1;
+	char *argv[1];
+
+	if (file_write(IMG_RADIO, data, sz)) {
+		pr_error("Couldn't write radio image to %s", IMG_RADIO);
+		return -1;
+	}
+	argv[0] = "y";
+	/* Erase RND Cert */
+	ret = flash_modem_fw(IMG_RADIO, NULL, argc, argv, progress_callback);
+	unlink(IMG_RADIO);
+	return ret;
+}
+
+static int flash_modem_get_hw_id(void *data, unsigned sz)
+{
+	int ret;
+	int argc = 1;
+	char *argv[1];
+
+	if (file_write(IMG_RADIO, data, sz)) {
+		pr_error("Couldn't write radio image to %s", IMG_RADIO);
+		return -1;
+	}
+	printf("Getting radio HWID...\n");
+	argv[0] = "h";
+	/* Get modem HWID (print out in stdout) */
+	ret = flash_modem_fw(IMG_RADIO, NULL, argc, argv, progress_callback);
+	unlink(IMG_RADIO);
 	return ret;
 }
 
@@ -161,6 +251,7 @@ static int flash_ifwi(void *data, unsigned sz)
 #define PROXY_START		"1"
 #define PROXY_STOP		"0"
 #define HSI_PORT	"/sys/bus/hsi/devices/port0"
+
 static int oem_manage_service_proxy(int argc, char **argv)
 {
 	int retval = 0;
@@ -224,6 +315,12 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("radio", flash_modem);
 	ret |= aboot_register_flash_cmd("dnx", flash_dnx);
 	ret |= aboot_register_flash_cmd("ifwi", flash_ifwi);
+
+	ret |= aboot_register_flash_cmd("radio_img", flash_modem_store_fw);
+	ret |= aboot_register_flash_cmd("rnd_read", flash_modem_read_rnd);
+	ret |= aboot_register_flash_cmd("rnd_write", flash_modem_write_rnd);
+	ret |= aboot_register_flash_cmd("rnd_erase", flash_modem_erase_rnd);
+	ret |= aboot_register_flash_cmd("radio_hwid", flash_modem_get_hw_id);
 
 	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
 
