@@ -433,6 +433,32 @@ out_error:
 	return -1;
 }
 
+#define OSIP_BACKUP_OFFSET 0xE0
+
+int destroy_the_osip_backup(void)
+{
+	int fd;
+	uint32_t sig;
+	fd = open(MMC_DEV_POS, O_RDWR);
+	if (fd < 0) {
+		printf("destroy_the_osip_backup: can't open file %s: %s\n",
+				MMC_DEV_POS, strerror(errno));
+		return -1;
+	}
+	lseek(fd, OSIP_BACKUP_OFFSET, SEEK_SET);
+	if (safe_read(fd, &sig, sizeof(sig))) {
+		close(fd);
+		return -1;
+	}
+	if (sig == OSIP_SIG) {
+		lseek(fd, OSIP_BACKUP_OFFSET, SEEK_SET);
+		sig = (uint32_t)(~0x0);
+		write(fd, &sig, sizeof(sig));
+	}
+	close(fd);
+	return 0;
+}
+
 int write_stitch_image(void *data, size_t size, int osii_index)
 {
 	struct OSIP_header osip;
@@ -460,6 +486,7 @@ int write_stitch_image(void *data, size_t size, int osii_index)
 		fprintf(stderr, "read_OSIP fails\n");
 		return -1;
 	}
+	destroy_the_osip_backup();
 
 	/* We have a set of designated LBAs to write images whose size
 	 * is the number of images + 1. The new data gets written to
