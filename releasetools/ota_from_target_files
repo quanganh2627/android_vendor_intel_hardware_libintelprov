@@ -501,6 +501,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   metadata = {"pre-device": GetBuildProp("ro.product.device", source_zip),
               "post-timestamp": GetBuildProp("ro.build.date.utc", target_zip),
+              "fromgb": GetBuildProp("ro.build.id", source_zip)=="GINGERBREAD",
               }
 
   device_specific = common.DeviceSpecificParams(
@@ -567,6 +568,8 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   # Get the set of images we need to patch in the OSIP
   all_images = {} # Set of all images (source, target)
   images = {} # Set of images to update (source, target)
+  full_images = {} # Set of images to create (target) (no source)
+
   for name in ["boot", "recovery", "fastboot", "uefi", "ifwi"]:
     if name == "ifwi":
       filename = name + ".zip"
@@ -597,9 +600,15 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
       # skip the ifwi flashing if it is the same as src targetfiles
       if not common.IfwiDiffers(src_img, tgt_img):
         continue
-    images[name] = (src_img, tgt_img)
+    if name == "ifwi" or metadata["fromgb"]:
+      # we dont make incremental images from GB
+      full_images[name] = tgt_img
+      continue
     if src_img:
+      images[name] = (src_img, tgt_img)
       largest_source_size = max(largest_source_size, src_img.size)
+    else:
+      full_images[name] = tgt_img
 
   # Here's how we divide up the progress bar:
   #  0.1 for verifying the start state (PatchCheck calls)
@@ -616,8 +625,6 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   total_verify_size = float(sum([i[2].size for i in patch_list]) + 1)
   so_far = 0
   for osip_target in images.keys():
-    if osip_target == "ifwi":
-      continue
     src_img, tgt_img = images[osip_target]
     total_verify_size += src_img.size
 
@@ -628,10 +635,6 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   for osip_target in images.keys():
     src_img, tgt_img = images[osip_target]
-    if osip_target == "ifwi":
-      common.ZipWriteStr(output_zip, tgt_img.name, tgt_img.data)
-      script.PackageExtract(tgt_img.name)
-      continue
     script.Print("Verifying %s image...\n" % (osip_target,))
     d = common.Difference(tgt_img, src_img)
     _, _, d = d.ComputePatch()
@@ -669,7 +672,22 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   for osip_target in images.keys():
     src_img, tgt_img = images[osip_target]
     total_patch_size += tgt_img.size
+  for tgt_img in full_images.values():
+    total_patch_size += tgt_img.size
   so_far = 0
+
+  script.Print("Creating new OS images...")
+  for name, img in full_images.iteritems():
+    common.CheckSize(img.data, img.name, OPTIONS.info_dict)
+    common.ZipWriteStr(output_zip, img.name, img.data)
+    script.PackageExtract(img.name)
+    if name == "ifwi":
+      script.FlashIfwi("ifwi.zip")
+    else:
+      script.FlashOsip(name)
+    script.DeleteTmpImage(img.name)
+    so_far += tgt_img.size
+    script.SetProgress(so_far / total_patch_size)
 
   script.Print("Patching system files...")
   deferred_patch_list = []
@@ -684,9 +702,6 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   script.Print("Patching OS images...")
   for osip_target in images.keys():
-    if osip_target == "ifwi":
-      script.FlashIfwi("ifwi.zip")
-      continue
     src_img, tgt_img = images[osip_target]
     script.ApplyPatch("/tmp/%s.img" % osip_target, "-", tgt_img.size, tgt_img.sha1,
             src_img.sha1, "patch/%s.img.p" % osip_target)
