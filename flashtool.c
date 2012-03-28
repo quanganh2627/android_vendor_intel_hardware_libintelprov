@@ -203,7 +203,8 @@ static void progress_callback(enum cmfwdl_status_type type, int value,
 
 void cmd_flash_modem_fw(char *filename)
 {
-	if (flash_modem_fw(filename, progress_callback)) {
+	char *argv[] = {"f"};
+	if (flash_modem_fw(filename, filename, 1, argv, progress_callback)) {
 		fprintf(stderr, "Failed flashing modem FW!\n");
 		exit(1);
 	}

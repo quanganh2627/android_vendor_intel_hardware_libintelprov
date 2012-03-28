@@ -210,7 +210,6 @@ done:
     return ret;
 }
 
-#if 0
 static void progress_callback(enum cmfwdl_status_type type, int value,
         const char *msg, void *data)
 {
@@ -251,11 +250,11 @@ static void progress_callback(enum cmfwdl_status_type type, int value,
         break;
     }
 }
-#endif
 
 Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
     char *filename = NULL;
+    char *argvmodem[] = {"f"};
 
     if (ReadArgs(state, argv, 1, &filename) < 0) {
         return NULL;
@@ -266,14 +265,9 @@ Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
         goto done;
     }
 
-#if 0
-    if (flash_modem_fw(filename, progress_callback)) {
-        ErrorAbort(state, "Failed to flash 3G firmware!");
-        goto done;
+    if (flash_modem_fw(filename, filename, 1, argvmodem, progress_callback)) {
+	    printf("error during 3G Modem flashing!\n");
     }
-#else
-    printf("3G Modem flashing STUB!\n");
-#endif
 
     ret = StringValue(strdup(""));
 done:
