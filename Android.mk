@@ -58,6 +58,9 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_C_INCLUDES := bootable/recovery bionic/libc/private
 LOCAL_MODULE := libintel_recovery_ui
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
+ifneq (, $(filter $(TARGET_PRODUCT), mfld_cdk mfld_pr1 mfld_pr2))
+LOCAL_CFLAGS += -DMFLD_PRX_KEY_LAYOUT
+endif
 include $(BUILD_STATIC_LIBRARY)
 
 # update_recovery: this binary is updating the recovery from MOS

@@ -75,8 +75,39 @@ int device_recovery_start() {
     return 0;
 }
 
+#ifdef MFLD_PRX_KEY_LAYOUT
 int device_toggle_display(volatile char* key_pressed, int key_code) {
-    return key_code == KEY_POWER;
+    return key_pressed[KEY_POWER] && key_code == KEY_VOLUMEUP;
+}
+
+int device_reboot_now(volatile char* key_pressed, int key_code) {
+    return key_pressed[KEY_POWER] && key_code == KEY_VOLUMEDOWN;
+}
+
+int device_handle_key(int key_code, int visible) {
+    /* a key press will ensure screen state to 1 */
+    if (visible) {
+        switch (key_code) {
+            case KEY_DOWN:
+            case KEY_VOLUMEDOWN:
+                return HIGHLIGHT_DOWN;
+
+            case KEY_UP:
+            case KEY_VOLUMEUP:
+                return HIGHLIGHT_UP;
+
+            case KEY_ENTER:
+            case KEY_CAMERA:
+            case BTN_MOUSE:              // trackball button
+                return SELECT_ITEM;
+        }
+    }
+
+    return NO_ACTION;
+}
+#else
+int device_toggle_display(volatile char* key_pressed, int key_code) {
+    return key_pressed[KEY_VOLUMEDOWN] && key_code == KEY_VOLUMEUP;
 }
 
 int device_reboot_now(volatile char* key_pressed, int key_code) {
@@ -90,11 +121,15 @@ int device_handle_key(int key_code, int visible) {
                 return HIGHLIGHT_DOWN;
 
             case KEY_VOLUMEUP:
+                return HIGHLIGHT_UP;
+
+            case KEY_POWER:
                 return SELECT_ITEM;
         }
     }
     return NO_ACTION;
 }
+#endif
 
 int device_perform_action(int which) {
     return which;
