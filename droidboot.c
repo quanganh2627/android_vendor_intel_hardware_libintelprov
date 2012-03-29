@@ -19,6 +19,7 @@
 #include <droidboot_util.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -301,6 +302,84 @@ static int oem_manage_service_proxy(int argc, char **argv)
 
 	return retval;
 }
+#ifdef USE_GUI
+#define PROP_FILE					"/default.prop"
+#define SERIAL_NUM_FILE			"/sys/class/android_usb/android0/iSerial"
+#define PRODUCT_NAME_ATTR		"ro.product.name"
+#define MAX_NAME_SIZE			128
+#define BUF_SIZE					256
+
+static char* strupr(char *str)
+{
+	char *p = str;
+	while (*p != '\0') {
+		*p = toupper(*p);
+		p++;
+	}
+	return str;
+}
+
+static int read_from_file(char* file, char *attr, char *value)
+{
+	char *p;
+	char buf[BUF_SIZE];
+	FILE *f;
+
+	if ((f = fopen(file, "r")) == NULL) {
+		LOGE("open %s error!\n", file);
+		return -1;
+	}
+	while(fgets(buf, BUF_SIZE, f)) {
+		if ((p = strstr(buf, attr)) != NULL) {
+			p += strlen(attr)+1;
+			strncpy(value, p, MAX_NAME_SIZE);
+			value[MAX_NAME_SIZE-1] = '\0';
+			strupr(value);
+			break;
+		}
+	}
+
+	fclose(f);
+	return 0;
+}
+
+static int get_system_info(int type, char *info, unsigned sz)
+{
+	int ret = -1;
+	char pro_name[MAX_NAME_SIZE];
+	FILE *f;
+	struct firmware_versions v;
+
+	switch (type) {
+		case IFWI_VERSION:
+			if ((ret = get_current_fw_rev(&v)) < 0)
+				break;
+			snprintf(info, sz, "%2x.%2x", v.ifwi.major, v.ifwi.minor);
+			ret = 0;
+			break;
+		case PRODUCT_NAME:
+			if ((ret = read_from_file(PROP_FILE, PRODUCT_NAME_ATTR, pro_name)) < 0)
+				break;
+			snprintf(info, sz, "%s", pro_name);
+			ret = 0;
+			break;
+		case SERIAL_NUM:
+			if ((f = fopen(SERIAL_NUM_FILE, "r")) == NULL)
+				break;
+			if (fgets(info, sz, f) == NULL) {
+				fclose(f);
+				break;
+			}
+			fclose(f);
+			ret = 0;
+			break;
+		default:
+			break;
+	}
+
+	return ret;
+}
+#endif
 
 void libintel_droidboot_init(void)
 {
@@ -323,6 +402,10 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("radio_hwid", flash_modem_get_hw_id);
 
 	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
+
+#ifdef USE_GUI
+	ret |= aboot_register_ui_cmd(UI_GET_SYSTEM_INFO, get_system_info);
+#endif
 
 	if (ret)
 		die();
