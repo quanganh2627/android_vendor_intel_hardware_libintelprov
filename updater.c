@@ -165,7 +165,7 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
     for (i = 0; i < num; i++) {
         ifwi_entry = mzGetZipEntryAt(&ifwi_za, i);
         if (ifwi_entry->fileNameLen < sizeof(ifwi_name)){
-            strncpy(ifwi_name, ifwi_entry->fileName, 128);
+            strncpy(ifwi_name, ifwi_entry->fileName, ifwi_entry->fileNameLen);
             ifwi_name[ifwi_entry->fileNameLen] = '\0';
         } else {
             ErrorAbort(state, "ifwi file name is too big size max :%d.\n", sizeof(ifwi_name));
