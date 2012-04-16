@@ -30,7 +30,7 @@ def FullOTA_Assertions(dso, **kwargs):
     pass
 
 def FullOTA_InstallEnd(dso, **kwargs):
-    FlashModem(dso, "/system/etc/firmware/modem/SUNRISE_6260_IMC_MODEM_FIRMWARE_HSI.fls");
+    FlashModem(dso, "/system/etc/firmware/modem/radio_firmware.bin");
 
 def IncrementalOTA_Assertions(dso, **kwargs):
     pass
@@ -39,6 +39,6 @@ def IncrementalOTA_VerifyEnd(dso, **kwargs):
     pass
 
 def IncrementalOTA_InstallEnd(dso, **kwargs):
-    FlashModem(dso, "/system/etc/firmware/modem.bin");
+    FlashModem(dso, "/system/etc/firmware/modem/radio_firmware.bin");
 
 
