@@ -24,9 +24,8 @@
 #include "flash_ifwi.h"
 #include "fw_version_check.h"
 
-#define DNX_SYSFS_INT	 "/sys/devices/pci0000:00/0000:00:01.7/DnX"
-#define IFWI_SYSFS_INT	 "/sys/devices/pci0000:00/0000:00:01.7/ifwi"
-#define PREP_SYSFS_INT	 "/sys/devices/pci0000:00/0000:00:01.7/scu_ipc/medfw_prepare"
+#define DNX_SYSFS_INT	 "/sys/devices/ipc/intel_fw_update.0/dnx"
+#define IFWI_SYSFS_INT	 "/sys/devices/ipc/intel_fw_update.0/ifwi"
 
 #define BUF_SIZ	4096
 
@@ -44,11 +43,10 @@ struct update_info{
 
 int update_ifwi_file(const char *dnx, const char *ifwi)
 {
-	int fupd_hdr_len, fsize, dnx_size, ret = 0;
+	int ret = 0;
 	size_t cont;
 	char buff[BUF_SIZ];
 	FILE *f_src, *f_dst;
-	struct stat sb_ifwi, sb_dnx;
 	struct fw_version img_ifwi_rev;
 	struct firmware_versions dev_fw_rev;
 
@@ -78,11 +76,6 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 		ret = -1;
 		goto end;
 	}
-	if (fstat(fileno(f_src), &sb_dnx) == -1) {
-		fprintf(stderr, "get %s fstat failed\n", dnx);
-		ret = -1;
-		goto err;
-	}
 
 	f_dst = fopen(DNX_SYSFS_INT, "wb");
 	if (f_dst == NULL) {
@@ -101,11 +94,6 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 		ret = -1;
 		goto end;
 	}
-	if (fstat(fileno(f_src), &sb_ifwi) == -1) {
-		fprintf(stderr, "get %s fstat failed\n", ifwi);
-		ret = -1;
-		goto err;
-	}
 	f_dst = fopen(IFWI_SYSFS_INT, "wb");
 	if (f_dst == NULL) {
 		fprintf(stderr, "open %s failed\n", IFWI_SYSFS_INT);
@@ -117,23 +105,6 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 	fclose(f_src);
 	fclose(f_dst);
 
-	f_src = fopen(PREP_SYSFS_INT, "r");
-	if (f_src == NULL) {
-		fprintf(stderr, "open %s failed\n", PREP_SYSFS_INT);
-		ret = -1;
-		goto end;
-	}
-	cont = fread(buff, 1, sizeof(buff), f_src);
-	buff[cont] = '\0';
-	printf("%s\n", buff);
-	sscanf(buff, "fupd_hdr_len=%d, fsize=%d, dnx_size=%d",
-		&fupd_hdr_len, &fsize, &dnx_size);
-	if ((sb_dnx.st_size == dnx_size) && (sb_ifwi.st_size == fsize))
-		fprintf(stderr, "IFWI update prepare successed\n");
-	else {
-		fprintf(stderr, "IFWI update prepare failed\n");
-		ret = -1;
-	}
 
 err:
 	fclose(f_src);

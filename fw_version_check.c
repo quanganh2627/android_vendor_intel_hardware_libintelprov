@@ -27,10 +27,9 @@
 
 #include "fw_version_check.h"
 
-#define DEVICE_NAME			"/dev/mid_ipc"
-#define INTE_SCU_IPC_FW_REVISION_GET	0xB0
+#define DEVICE_NAME			"/sys/devices/ipc/intel_fw_update.0/fw_info/fw_version"
 #define FIP_PATTERN			0x50494624
-#define IFWI_OFFSET			36
+#define SCU_IPC_VERSION_LEN 16
 
 struct fip_version_block {
 	uint8_t reserved;
@@ -63,11 +62,6 @@ struct FIP_header {
 	struct IFWI_rev ifwi_rev;
 };
 
-struct scu_ipc_version {
-	uint32_t count;  /* length of version info */
-	uint8_t data[16]; /* version data */
-};
-
 #define print_perror(x)	fprintf(stderr, "%s: %s failed: %s\n", \
 		__func__, x, strerror(errno))
 
@@ -91,34 +85,33 @@ struct scu_ipc_version {
  */
 int get_current_fw_rev(struct firmware_versions *v)
 {
-	int devfd, ret;
-	struct scu_ipc_version fw_revision;
+	int i;
+	FILE *fw_info;
+	unsigned int fw_revision[SCU_IPC_VERSION_LEN];
 
-	devfd = open(DEVICE_NAME, O_RDWR);
-	if (devfd < 0) {
-		print_perror("open");
+	fw_info = fopen(DEVICE_NAME, "r");
+	if (fw_info == NULL) {
+		print_perror("fopen");
 		return -1;
 	}
 
-	fw_revision.count = 16;
-	ret = ioctl(devfd, INTE_SCU_IPC_FW_REVISION_GET, &fw_revision);
-	close(devfd);
-	if (ret < 0) {
-		print_perror("INTE_SCU_IPC_FW_REVISION_GET");
-		return -1;
-	}
-	v->ifwi.major = fw_revision.data[15];
-	v->ifwi.minor = fw_revision.data[14];
-	v->scu.major = fw_revision.data[1];
-	v->scu.minor = fw_revision.data[0];
-	v->oem.major = fw_revision.data[11];
-	v->oem.minor = fw_revision.data[10];
-	v->punit.major = fw_revision.data[5];
-	v->punit.minor = fw_revision.data[4];
-	v->ia32.major = fw_revision.data[7];
-	v->ia32.minor = fw_revision.data[6];
-	v->supp_ia32.major = fw_revision.data[9];
-	v->supp_ia32.minor = fw_revision.data[8];
+	memset(fw_revision, 0, SCU_IPC_VERSION_LEN);
+	for (i = 0; i < SCU_IPC_VERSION_LEN; i++)
+		fscanf(fw_info, "%x", &fw_revision[i]);
+	fclose(fw_info);
+
+	v->ifwi.major = fw_revision[15];
+	v->ifwi.minor = fw_revision[14];
+	v->scu.major = fw_revision[1];
+	v->scu.minor = fw_revision[0];
+	v->oem.major = fw_revision[11];
+	v->oem.minor = fw_revision[10];
+	v->punit.major = fw_revision[5];
+	v->punit.minor = fw_revision[4];
+	v->ia32.major = fw_revision[7];
+	v->ia32.minor = fw_revision[6];
+	v->supp_ia32.major = fw_revision[9];
+	v->supp_ia32.minor = fw_revision[8];
 	/* Can't read these from the SCU >:( */
 	v->chaabi_icache.major = 0;
 	v->chaabi_icache.minor = 0;
