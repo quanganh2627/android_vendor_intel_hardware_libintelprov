@@ -28,7 +28,7 @@
 #define TTY_NODE	"/dev/ttyMFD1"
 #define IFX_NODE	"/dev/ttyIFX0"
 #define HSU_PM_SYSFS	"/sys/devices/pci0000:00/0000:00:05.1/power/control"
-#define S0_PM_SYSFS	"/sys/module/mfld_pmu/parameters/s0ix"
+#define S0_PM_SYSFS	"/sys/module/intel_soc_pmu/parameters/s0ix"
 #define TRACE_FILE	"/modemtrace.log"
 
 #define FFL_TTY_MAGIC	0x77
