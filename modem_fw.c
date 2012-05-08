@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <cmfwdl.h>
 
 #include "util.h"
@@ -30,6 +31,8 @@
 #define HSU_PM_SYSFS	"/sys/devices/pci0000:00/0000:00:05.1/power/control"
 #define S0_PM_SYSFS	"/sys/module/intel_soc_pmu/parameters/s0ix"
 #define TRACE_FILE	"/modemtrace.log"
+#define RND_CERTIFICATE_FILE	"/logs/modem_rnd_certif.bin"
+#define HW_ID_FILE	"/logs/modem_hw_id.hwd"
 
 #define FFL_TTY_MAGIC	0x77
 #define FFL_TTY_MODEM_RESET	_IO(FFL_TTY_MAGIC, 4)
@@ -50,10 +53,56 @@ static int enable_pm(void)
 	return ret;
 }
 
-#define check(val) if (0 != (val)) { \
-		printf("flash_modem_fw: '%s' failed\n", #val); \
-		goto out; \
+/*
+ * store_data_to_file.
+ *
+ * Helper to store data got to modem into file.
+ * Use for instance to store HWID or RnD cert read from modem.
+ * @param buffer struct buffer holding data to be stored and
+ * filename, including path.
+ * @return store status (0 = ok, otherwise ko)
+ */
+static int store_data_to_file(struct cmfwdl_buffer *buffer)
+{
+
+	FILE *file;
+	size_t count = 0;
+
+	if(buffer == NULL || buffer->name == NULL) {
+		fprintf(stderr,"Unexpected NULL buffer pointer\n");
+		return -1;
 	}
+
+	size_t len = strlen(buffer->name);
+
+	if(len >= PATH_MAX) {
+		fprintf(stderr,"File name too long !!\n");
+		return -1;
+	}
+
+	file = fopen(buffer->name, "wb+");
+
+	if (file == NULL) {
+		fprintf(stderr,"Create file fail !\n");
+		return -1;
+	}
+
+	count = fwrite( buffer->data, 1, buffer->size, file );
+
+	if (count != buffer->size) {
+		fprintf(stderr,"store data to file fail !\n");
+		fclose(file);
+		return -1;
+	}
+
+	fclose(file);
+	return 0;
+}
+
+#define check(val) if (0 != (val)) { \
+	printf("flash_modem_fw: '%s' failed\n", #val); \
+	goto out; \
+}
 
 int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, char **argv, modem_progress_callback cb)
 {
@@ -61,8 +110,8 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 	int ret = -1;
 	struct cmfwdl_buffer fw_buffer, boot_buffer, rd_certif_buffer;
 
-	struct cmfwdl_buffer *p_buffer_read_rd_certif;
-	struct cmfwdl_buffer *p_buffer_hw_id;
+	struct cmfwdl_buffer *p_buffer_read_rd_certif = NULL;
+	struct cmfwdl_buffer *p_buffer_hw_id = NULL;
 	int b_read_rd_certif = 0;
 	int b_rd_certif = 0;
 	int read_hw_id = 0;
@@ -156,15 +205,13 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 		p_buffer_hw_id = cmfwdl_get_hardware_id(h);
 
 		if (p_buffer_hw_id != NULL) {
-			unsigned int cnt_bytes = 0;
-			for (cnt_bytes = 0; cnt_bytes < p_buffer_hw_id->size; cnt_bytes++)
-			{
-				if (cnt_bytes%16 == 0)
-					printf("\n");
-				printf ("%02x", p_buffer_hw_id->data[cnt_bytes]);
-			}
-			printf("\n");
+			p_buffer_hw_id->name = HW_ID_FILE;
+			check(store_data_to_file(p_buffer_hw_id));
+			printf("\nStoring HWID success: %s\n", p_buffer_hw_id->name);
 			cmfwdl_free_buffer(h, p_buffer_hw_id);
+		} else {
+			printf("\nCAN GET HARDWARE ID !!\n");
+			goto out;
 		}
 	}
 
@@ -172,18 +219,14 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 		p_buffer_read_rd_certif = cmfwdl_get_certificate(h, cmfwdl_certificate_RDC);
 
 		if (p_buffer_read_rd_certif != NULL) {
-			unsigned int cnt_bytes = 0;
-			for (cnt_bytes = 0; cnt_bytes < p_buffer_read_rd_certif->size; cnt_bytes++)
-			{
-				if (cnt_bytes%16 == 0)
-					printf("\n");
-				printf ("%02x ", p_buffer_read_rd_certif->data[cnt_bytes]);
-			}
-			printf("\n");
+			p_buffer_read_rd_certif->name = RND_CERTIFICATE_FILE;
+			check(store_data_to_file(p_buffer_read_rd_certif));
+			printf("\nStoring RnD cert success: %s\n", p_buffer_read_rd_certif->name);
 			cmfwdl_free_buffer(h, p_buffer_read_rd_certif);
+		} else {
+			printf("\nR&D CERTIFICATE NOT PRESENT !!\n");
+			goto out;
 		}
-		else
-		printf("R&D CERTIFICATE NOT PRESENT !!\n");
 	}
 
 	ret = 0;
