@@ -66,7 +66,7 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 		goto end;
 	}
 
-	if (img_ifwi_rev.minor <= dev_fw_rev.ifwi.minor) {
+	if (img_ifwi_rev.minor < dev_fw_rev.ifwi.minor) {
 		fprintf(stderr, "IFWI FW is not new than board's existing version (file=%02X current=%02X), Update abort.\n",
 				img_ifwi_rev.minor, dev_fw_rev.ifwi.minor);
 		goto end;
