@@ -11,6 +11,7 @@ common_libintelprov_files := \
 	fw_version_check.c \
 	util.c \
 	flash_ifwi.c \
+	modem_nvm.c
 
 common_libintelprov_includes := \
 	hardware/intel/PRIVATE/libcmfwdl/cmfwdl \

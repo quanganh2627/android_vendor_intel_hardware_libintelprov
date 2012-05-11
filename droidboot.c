@@ -30,6 +30,7 @@
 #include "update_osip.h"
 #include "util.h"
 #include "modem_fw.h"
+#include "modem_nvm.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
 #include "fastboot.h"
@@ -306,6 +307,33 @@ static int oem_manage_service_proxy(int argc, char **argv)
 
 	return retval;
 }
+
+static int oem_nvm_cmd_handler(int argc, char **argv)
+{
+	int retval = 0;
+	char *nvm_path = NULL;
+
+	if ((argc < 3) || (strcmp(argv[0], "nvm"))) {
+		/* Should not pass here ! */
+		pr_error("oem_nvm_cmd_handler called with wrong parameter!\n");
+		retval = -1;
+		return retval;
+	}
+
+	if (!strcmp(argv[1], "apply")) {
+
+		nvm_path = argv[2];
+
+		retval = flash_modem_nvm(nvm_path, progress_callback);
+	}
+	else {
+		pr_error("Unknown command. Use %s [apply].\n", "nvm");
+		retval = -1;
+	}
+
+	return retval;
+}
+
 #ifdef USE_GUI
 #define PROP_FILE					"/default.prop"
 #define SERIAL_NUM_FILE			"/sys/class/android_usb/android0/iSerial"
@@ -418,6 +446,8 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("radio_hwid", flash_modem_get_hw_id);
 
 	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
+
+	ret |= aboot_register_oem_cmd("nvm", oem_nvm_cmd_handler);
 
 	fastboot_register("continue", cmd_intel_reboot);
 	fastboot_register("reboot", cmd_intel_reboot);

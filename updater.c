@@ -26,6 +26,7 @@
 #include "update_osip.h"
 #include "util.h"
 #include "modem_fw.h"
+#include "modem_nvm.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
 
@@ -277,10 +278,36 @@ done:
     return ret;
 }
 
+Value *FlashNvmFn(const char *name, State *state, int argc, Expr *argv[]) {
+    Value *ret = NULL;
+    char *filename = NULL;
+
+    if (ReadArgs(state, argv, 1, &filename) < 0) {
+        return NULL;
+    }
+
+    if (strlen(filename) == 0) {
+        ErrorAbort(state, "filename argument to %s can't be empty", name);
+        goto done;
+    }
+
+    if (flash_modem_nvm(filename, progress_callback) != 0) {
+        printf("error during 3G Modem NVM config!\n");
+    }
+
+    ret = StringValue(strdup(""));
+done:
+    if (filename)
+        free(filename);
+
+    return ret;
+}
+
 void Register_libintel_updater(void)
 {
     RegisterFunction("flash_osip", FlashOsipFn);
     RegisterFunction("flash_ifwi", FlashIfwiFn);
     RegisterFunction("flash_modem", FlashModemFn);
+    RegisterFunction("flash_nvm", FlashNvmFn);
     RegisterFunction("extract_osip", ExtractOsipFn);
 }
