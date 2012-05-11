@@ -24,12 +24,16 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <cutils/properties.h>
+#include <cutils/android_reboot.h>
+#include <unistd.h>
 
 #include "update_osip.h"
 #include "util.h"
 #include "modem_fw.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
+#include "fastboot.h"
+#include "droidboot_ui.h"
 
 #define IMG_RADIO "/radio.img"
 #define IMG_RADIO_RND "/radio_rnd.img"
@@ -381,6 +385,18 @@ static int get_system_info(int type, char *info, unsigned sz)
 }
 #endif
 
+static void cmd_intel_reboot(const char *arg, void *data, unsigned sz)
+{
+	fastboot_okay("");
+	// This will cause a property trigger in init.rc to cold boot
+	property_set("sys.forcecoldboot", "yes");
+	sync();
+	ui_print("REBOOT...\n");
+	pr_info("Rebooting!\n");
+	android_reboot(ANDROID_RB_RESTART2, 0, "android");
+	pr_error("Reboot failed");
+}
+
 void libintel_droidboot_init(void)
 {
 	int ret = 0;
@@ -402,6 +418,9 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("radio_hwid", flash_modem_get_hw_id);
 
 	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
+
+	fastboot_register("continue", cmd_intel_reboot);
+	fastboot_register("reboot", cmd_intel_reboot);
 
 #ifdef USE_GUI
 	ret |= aboot_register_ui_cmd(UI_GET_SYSTEM_INFO, get_system_info);
