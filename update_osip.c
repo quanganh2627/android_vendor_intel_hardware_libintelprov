@@ -52,7 +52,7 @@ const uint32_t fw_lba_slots[] = {
 };
 #define FW_SLOTS	ARRAY_SIZE(fw_lba_slots)
 
-#define OS_MAX_LBA	22000
+#define OS_MAX_LBA	40000
 #define OS_START_OFFSET	(FW_START_OFFSET + (FW_MAX_LBA * FW_SLOTS))
 const uint32_t os_lba_slots[] = {
 	(OS_START_OFFSET + (OS_MAX_LBA * 0)),
