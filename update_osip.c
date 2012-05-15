@@ -538,7 +538,22 @@ int write_stitch_image(void *data, size_t size, int osii_index)
 			osii->entry_point = osip.desc[osii_index].entry_point;
 		}
 	}
-	memcpy(&(osip.desc[osii_index]), osii, sizeof(struct OSII));
+	switch (osip.desc[osii_index].attribute&(~1)) {
+	case ATTR_SIGNED_KERNEL:
+	case ATTR_SIGNED_POS:
+	case ATTR_SIGNED_COS:
+	case ATTR_SIGNED_ROS:
+	case ATTR_SIGNED_COMB:
+	case ATTR_UNSIGNED_KERNEL:
+	case ATTR_NOTUSED&(~1):
+		memcpy(&(osip.desc[osii_index]), osii, sizeof(struct OSII));
+		break;
+	default:
+		memcpy(&(osip.desc[osip.num_pointers]), &(osip.desc[osii_index]), sizeof(struct OSII));
+		memcpy(&(osip.desc[osii_index]), osii, sizeof(struct OSII));
+		osip.num_pointers++;
+		osip.header_size = (osip.num_pointers * 0x18) + 0x20;
+	}
 
 	/* Write the blob of data out to the disk */
 	fd = open(MMC_DEV_POS, O_RDWR);
