@@ -499,6 +499,7 @@ int write_stitch_image(void *data, size_t size, int osii_index)
         case ATTR_SIGNED_COS:
         case ATTR_SIGNED_ROS:
         case ATTR_SIGNED_COMB:
+        case ATTR_SIGNED_SPLASHSCREEN:
 	case ATTR_UNSIGNED_KERNEL:
 		osii->logical_start_block = get_free_os_lba(&osip);
 		max_size_lba = OS_MAX_LBA;
@@ -549,10 +550,15 @@ int write_stitch_image(void *data, size_t size, int osii_index)
 		memcpy(&(osip.desc[osii_index]), osii, sizeof(struct OSII));
 		break;
 	default:
-		memcpy(&(osip.desc[osip.num_pointers]), &(osip.desc[osii_index]), sizeof(struct OSII));
-		memcpy(&(osip.desc[osii_index]), osii, sizeof(struct OSII));
-		osip.num_pointers++;
-		osip.header_size = (osip.num_pointers * 0x18) + 0x20;
+		if ((osip.desc[osii_index].attribute&(~1)) == (osii->attribute&(~1))) {
+			//if the attribute is the same, then overwrite it.
+			memcpy(&(osip.desc[osii_index]), osii, sizeof(struct OSII));
+		} else {
+			memcpy(&(osip.desc[osip.num_pointers]), &(osip.desc[osii_index]), sizeof(struct OSII));
+			memcpy(&(osip.desc[osii_index]), osii, sizeof(struct OSII));
+			osip.num_pointers++;
+			osip.header_size = (osip.num_pointers * 0x18) + 0x20;
+		}
 	}
 
 	/* Write the blob of data out to the disk */
@@ -621,4 +627,19 @@ int get_named_osii_index(char *destination)
 		return -1;
 	}
 	return index + offset;
+}
+
+int get_attribute_osii_index(int attr)
+{
+	int i;
+	struct OSIP_header osip;
+
+	if (read_OSIP(&osip)) {
+		fprintf(stderr, "Can't read OSIP!\n");
+		return -1;
+	}
+	for (i = 0; i < osip.num_pointers; i++)
+		if ((osip.desc[i].attribute&(~1)) == attr)
+			return i;
+	return osip.num_pointers;
 }

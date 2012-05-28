@@ -102,6 +102,11 @@ static int flash_fastboot_kernel(void *data, unsigned sz)
 	return flash_image(data, sz, get_named_osii_index(FASTBOOT_OS_NAME));
 }
 
+static int flash_splashscreen_image(void *data, unsigned sz)
+{
+	return flash_image(data, sz, get_attribute_osii_index(ATTR_SIGNED_SPLASHSCREEN));
+}
+
 static int flash_uefi_firmware(void *data, unsigned sz)
 {
 	return flash_image(data, sz, get_named_osii_index(UEFI_FW_NAME));
@@ -435,6 +440,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd(RECOVERY_OS_NAME, flash_recovery_kernel);
 	ret |= aboot_register_flash_cmd(FASTBOOT_OS_NAME, flash_fastboot_kernel);
 	ret |= aboot_register_flash_cmd(UEFI_FW_NAME, flash_uefi_firmware);
+	ret |= aboot_register_flash_cmd("splashscreen", flash_splashscreen_image);
 	ret |= aboot_register_flash_cmd("radio", flash_modem);
 	ret |= aboot_register_flash_cmd("dnx", flash_dnx);
 	ret |= aboot_register_flash_cmd("ifwi", flash_ifwi);
