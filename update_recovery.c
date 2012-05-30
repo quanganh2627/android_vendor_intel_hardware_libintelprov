@@ -280,23 +280,40 @@ int main(int argc, char **argv)
 		/* We can't do any quick checks if unsigned images
 		 * are used. Examine the whole image */
 		LOGI("Detected unsigned kernel images in use");
-		if (check_recovery_image(tgt_sha1, &needs_patching)) {
-			LOGE("Can't examine current recovery console SHA1");
-			exit(EXIT_FAILURE);
-		}
-	} else if (check_recovery_header(check_sha1, &needs_patching)) {
-		LOGE("Can't compare recovery console SHA1 sums");
-		exit(EXIT_FAILURE);
-	}
-
-	if (needs_patching) {
-		LOGI("Installing new recovery image");
-		if (patch_recovery(src_sha1, tgt_sha1, tgt_size, patch_file)) {
-			LOGE("Coudln't patch recovery image");
+		if (tgt_sha1 != NULL){
+			if (check_recovery_image(tgt_sha1, &needs_patching)) {
+				LOGE("Can't examine current recovery console SHA1");
+				exit(EXIT_FAILURE);
+			}
+		}else{
+			LOGE("SHA1 option was not detected correctly");
 			exit(EXIT_FAILURE);
 		}
 	} else {
-		LOGI("Recovery image already installed");
+		if (check_sha1 != NULL){
+			if (check_recovery_header(check_sha1, &needs_patching)) {
+				LOGE("Can't compare recovery console SHA1 sums");
+				exit(EXIT_FAILURE);
+			}
+		}else{
+			LOGE("check SHA1 option was not detected correctly");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	if ((src_sha1 != NULL) && (tgt_sha1 != NULL) && (patch_file != NULL) && (tgt_size!= 0))
+	{
+		if (needs_patching) {
+			LOGI("Installing new recovery image");
+			if (patch_recovery(src_sha1, tgt_sha1, tgt_size, patch_file)) {
+				LOGE("Couldn't patch recovery image");
+				exit(EXIT_FAILURE);
+			}
+		} else {
+			LOGI("Recovery image already installed");
+		}
+	}else{
+		LOGI("Update options were not successfully detected");
 	}
 	return 0;
 }
