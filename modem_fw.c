@@ -27,7 +27,8 @@
 #include "modem_fw.h"
 
 #define TTY_NODE	"/dev/ttyMFD1"
-#define IFX_NODE	"/dev/ttyIFX0"
+#define IFX_NODE0	"/dev/ttyIFX0"
+#define IFX_NODE1	"/dev/ttyIFX1"
 #define HSU_PM_SYSFS	"/sys/devices/pci0000:00/0000:00:05.1/power/control"
 #define S0_PM_SYSFS	"/sys/module/intel_soc_pmu/parameters/s0ix"
 #define TRACE_FILE	"/modemtrace.log"
@@ -158,13 +159,17 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 
 	/* Set up various properties */
 	cmfwdl_set_modemname(h, ifx6260);
-	check(cmfwdl_set_ports(h, TTY_NODE, IFX_NODE));
+#ifdef CLVT
+	check(cmfwdl_set_ports(h, NULL, IFX_NODE1));
+#else
+	check(cmfwdl_set_ports(h, TTY_NODE, IFX_NODE0));
+#endif
 	check(cmfwdl_set_trace_file(h, 1, TRACE_FILE));
 	check(cmfwdl_set_property(h, cmfwdl_property_allow_hw_channel_switch,
 			1));
 	check(cmfwdl_set_property(h, cmfwdl_property_boot_process_timeout,
-			30000));
-	check(cmfwdl_set_property(h, cmfwdl_property_comm_timeout, 30000));
+			10000));
+	check(cmfwdl_set_property(h, cmfwdl_property_comm_timeout, 10000));
 	check(cmfwdl_set_property(h, cmfwdl_property_faster_crc_method, 1));
 	check(cmfwdl_set_property(h, cmfwdl_property_skip_empty_blocks, 0));
 	check(cmfwdl_set_property(h, cmfwdl_property_use_pre_erase, 1));
@@ -176,6 +181,8 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 	if (disable_pm())
 		printf("WARNING: Unable to disable all power management."
 				" Proceeding anyway.\n");
+
+	check(cmfwdl_enable_flashing(IFX_NODE0)); /* Switch to Flashing mode */
 	check(cmfwdl_boot_modem(h, &boot_buffer, cb, NULL));
 
 	/* Get modem HWID (print out in stdout) */
@@ -231,6 +238,7 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 
 	ret = 0;
 out:
+	cmfwdl_disable_flashing(IFX_NODE0); /* Switch back to IPC mode */
 	enable_pm();
 	cmfwdl_destroy_instance(h);
 	return ret;
@@ -241,7 +249,7 @@ int reset_modem()
 	int fd;
 	int retval = 1;
 
-	fd = open(IFX_NODE, O_RDWR);
+	fd = open(IFX_NODE0, O_RDWR);
 	if ( ioctl(fd, FFL_TTY_MODEM_RESET) < 0 )
 	{
 		printf("Could not reset modem\n");
