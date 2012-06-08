@@ -342,7 +342,7 @@ static int oem_dnx_timeout(int argc, char **argv)
 
 	if (!strcmp(timeout, DNX_TIMEOUT_SHOW)) {
 		count = read(fd, check, TIMEOUT_SIZE);
-		if (count < 0) {
+		if (count <= 0) {
 			fastboot_fail("Failed to read");
 			goto end1;
 		}
