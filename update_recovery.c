@@ -35,6 +35,8 @@
 
 #define LOGPERROR(x)	LOGE("%s failed: %s", x, strerror(errno))
 
+#define TGT_SIZE_MAX    (LBA_SIZE * OS_MAX_LBA)
+
 static struct OSIP_header osip;
 static int recovery_index;
 
@@ -119,8 +121,9 @@ static ssize_t MemorySink(unsigned char* data, ssize_t len, void* token) {
 	return len;
 }
 
+
 static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
-		unsigned tgt_size, const char *patchfile)
+		unsigned int tgt_size, const char *patchfile)
 {
 	MemorySinkInfo msi;
 	void *src_data;
@@ -166,6 +169,10 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 	}
 
 	msi.pos = 0;
+        if (tgt_size > TGT_SIZE_MAX){
+                LOGE("tgt_size is too big!");
+                goto out;
+	}
 	msi.size = tgt_size;
 	msi.buffer = malloc(tgt_size);
 	if (!msi.buffer) {
@@ -231,7 +238,7 @@ int main(int argc, char **argv)
 	char *tgt_sha1 = NULL;
 	char *check_sha1 = NULL;
 	char *patch_file = NULL;
-	unsigned tgt_size = 0;
+	unsigned int tgt_size = 0;
 	int needs_patching;
 
 	while (1) {
