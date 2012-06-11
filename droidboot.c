@@ -313,6 +313,60 @@ static int oem_manage_service_proxy(int argc, char **argv)
 	return retval;
 }
 
+#define DNX_TIMEOUT_CHANGE		"dnx_timeout"
+#define DNX_TIMEOUT_SHOW		"show"
+#define SYS_CURRENT_TIMEOUT	"/sys/devices/platform/intel_mid_umip/current_timeout"
+#define TIMEOUT_SIZE			20
+
+static int oem_dnx_timeout(int argc, char **argv)
+{
+	int retval = -1;
+	int count;
+	int fd;
+	char timeout[TIMEOUT_SIZE] = "";
+	char check[TIMEOUT_SIZE] = "";
+
+	if ((argc < 2) || (strcmp(argv[0], DNX_TIMEOUT_CHANGE))) {
+		/* Should not pass here ! */
+		pr_error("oem %s called with wrong parameter!\n", DNX_TIMEOUT_CHANGE);
+		goto end2;
+	}
+
+	snprintf(timeout, TIMEOUT_SIZE, "%s", argv[1]);
+
+	fd = open(SYS_CURRENT_TIMEOUT, O_RDWR);
+	if (fd == -1) {
+		pr_error("Can't open %s\n", SYS_CURRENT_TIMEOUT);
+		goto end2;
+	}
+
+	if (!strcmp(timeout, DNX_TIMEOUT_SHOW)) {
+		count = read(fd, check, TIMEOUT_SIZE);
+		if (count < 0) {
+			fastboot_fail("Failed to read");
+			goto end1;
+		}
+		fastboot_info(check);
+
+	} else {
+		count = write(fd, timeout, TIMEOUT_SIZE);
+		lseek(fd, 0, SEEK_SET);
+		count = read(fd, check, count);
+		if (strcmp(timeout, check)) {
+			fastboot_fail("oem dnx_timeout called with wrong parameter");
+			goto end1;
+		}
+	}
+
+	retval = 0;
+	fastboot_okay("");
+
+end1:
+	close(fd);
+end2:
+	return retval;
+}
+
 static int oem_nvm_cmd_handler(int argc, char **argv)
 {
 	int retval = 0;
@@ -452,6 +506,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("radio_hwid", flash_modem_get_hw_id);
 
 	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
+	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);
 
 	ret |= aboot_register_oem_cmd("nvm", oem_nvm_cmd_handler);
 
