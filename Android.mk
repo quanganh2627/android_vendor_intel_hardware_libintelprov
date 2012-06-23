@@ -1,8 +1,9 @@
+LOCAL_PATH := $(call my-dir)
+
 # if DROIDBOOT is not used, we dont want this...
 # allow to transition smoothly
 ifeq ($(TARGET_USE_DROIDBOOT),true)
 
-LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 common_libintelprov_files := \
@@ -92,3 +93,16 @@ LOCAL_STATIC_LIBRARIES := libmincrypt libapplypatch libbz
 include $(BUILD_EXECUTABLE)
 endif
 
+include $(CLEAR_VARS)
+LOCAL_MODULE := releasetools
+LOCAL_MODULE_TAGS := optional
+LOCAL_PREBUILT_EXECUTABLES := \
+    releasetools.py \
+    releasetools/ota_from_target_files \
+    releasetools/check_target_files_signatures \
+    releasetools/common.py \
+    releasetools/edify_generator.py \
+    releasetools/lfstk_wrapper.py \
+    releasetools/mfld_osimage.py \
+    releasetools/sign_target_files_apks
+include $(BUILD_HOST_PREBUILT)
