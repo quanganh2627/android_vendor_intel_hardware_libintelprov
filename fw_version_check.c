@@ -153,41 +153,52 @@ int get_image_fw_rev(void *data, unsigned sz, struct firmware_versions *v)
 {
 	struct FIP_header fip;
 	unsigned char *databytes = (unsigned char *)data;
+	int magic;
 
-	/* Scan for the FIP magic */
-	while (sz >= sizeof(fip)) {
-		int magic;
-		memcpy(&magic, databytes, sizeof(magic));
-		if (magic == FIP_PATTERN)
-			break;
-		databytes += sizeof(magic);
-		sz -= sizeof(magic);
+	v->ifwi.major=0;
+	v->ifwi.minor=0;
+
+	while ((v->ifwi.major == 0) && (v->ifwi.minor == 0)){
+
+		/* Scan for the FIP magic */
+		while (sz >= sizeof(fip)) {
+			memcpy(&magic, databytes, sizeof(magic));
+			if (magic == FIP_PATTERN)
+				break;
+			databytes += sizeof(magic);
+			sz -= sizeof(magic);
+		}
+
+		if (sz < sizeof(fip)) {
+			fprintf(stderr, "Couldn't find FIP magic in image!");
+			return -1;
+		}
+
+		memcpy(&fip, databytes, sizeof(fip));
+		v->ifwi.major = fip.ifwi_rev.major;
+		v->ifwi.minor = fip.ifwi_rev.minor;
+		v->scu.major = fip.scu_rev.major;
+		v->scu.minor = fip.scu_rev.minor;
+		v->oem.major = fip.oem_rev.major;
+		v->oem.minor = fip.oem_rev.minor;
+		v->punit.major = fip.punit_rev.major;
+		v->punit.minor = fip.punit_rev.minor;
+		v->ia32.major = fip.ia32_rev.major;
+		v->ia32.minor = fip.ia32_rev.minor;
+		v->supp_ia32.major = fip.suppia32_rev.major;
+		v->supp_ia32.minor = fip.suppia32_rev.minor;
+		v->chaabi_icache.major = fip.chaabi_rev.icache.major;
+		v->chaabi_icache.minor = fip.chaabi_rev.icache.minor;
+		v->chaabi_res.major = fip.chaabi_rev.resident.major;
+		v->chaabi_res.minor = fip.chaabi_rev.resident.minor;
+		v->chaabi_ext.major = fip.chaabi_rev.ext.major;
+		v->chaabi_ext.minor = fip.chaabi_rev.ext.minor;
+
+		if ((v->ifwi.major == 0) && (v->ifwi.minor == 0)){
+			databytes += sizeof(magic);
+			sz -= sizeof(magic);
+		}
 	}
-
-	if (sz < sizeof(fip)) {
-		fprintf(stderr, "Couldn't find FIP magic in image!");
-		return -1;
-	}
-
-	memcpy(&fip, databytes, sizeof(fip));
-	v->ifwi.major = fip.ifwi_rev.major;
-	v->ifwi.minor = fip.ifwi_rev.minor;
-	v->scu.major = fip.scu_rev.major;
-	v->scu.minor = fip.scu_rev.minor;
-	v->oem.major = fip.oem_rev.major;
-	v->oem.minor = fip.oem_rev.minor;
-	v->punit.major = fip.punit_rev.major;
-	v->punit.minor = fip.punit_rev.minor;
-	v->ia32.major = fip.ia32_rev.major;
-	v->ia32.minor = fip.ia32_rev.minor;
-	v->supp_ia32.major = fip.suppia32_rev.major;
-	v->supp_ia32.minor = fip.suppia32_rev.minor;
-	v->chaabi_icache.major = fip.chaabi_rev.icache.major;
-	v->chaabi_icache.minor = fip.chaabi_rev.icache.minor;
-	v->chaabi_res.major = fip.chaabi_rev.resident.major;
-	v->chaabi_res.minor = fip.chaabi_rev.resident.minor;
-	v->chaabi_ext.major = fip.chaabi_rev.ext.major;
-	v->chaabi_ext.minor = fip.chaabi_rev.ext.minor;
 
 	return 0;
 }
@@ -204,30 +215,37 @@ int crack_update_fw(const char *fw_file, struct fw_version *ifwi_version){
 		fprintf(stderr, "fopen error: Unable to open file\n");
 		return -1;
 	}
+	ifwi_version->major = 0;
+	ifwi_version->minor = 0;
 
-	while (tmp != FIP_PATTERN) {
-		int cur;
-		fread(&tmp, sizeof(int), 1, fd);
+	while ((ifwi_version->minor == 0) && (ifwi_version->major == 0)){
+
+		while (tmp != FIP_PATTERN) {
+			int cur;
+			fread(&tmp, sizeof(int), 1, fd);
+			if (ferror(fd) || feof(fd)) {
+				fprintf(stderr, "find FIP_pattern failed\n");
+				fclose(fd);
+				return -1;
+			}
+			cur = ftell(fd) - sizeof(int);
+			fseek(fd, cur + sizeof(char), SEEK_SET);
+		}
+		location = ftell(fd) - sizeof(char);
+
+		fseek(fd, location, SEEK_SET);
+		fread((void *)&fip, sizeof(fip), 1, fd);
 		if (ferror(fd) || feof(fd)) {
-			fprintf(stderr, "find FIP_pattern failed\n");
+			fprintf(stderr, "read of FIP_header failed\n");
 			fclose(fd);
 			return -1;
 		}
-		cur = ftell(fd) - sizeof(int);
-		fseek(fd, cur + sizeof(char), SEEK_SET);
-	}
-	location = ftell(fd) - sizeof(char);
+		ifwi_version->major = fip.ifwi_rev.major;
+		ifwi_version->minor = fip.ifwi_rev.minor;
+		tmp=0;
 
-	fseek(fd, location, SEEK_SET);
-	fread((void *)&fip, sizeof(fip), 1, fd);
-	if (ferror(fd) || feof(fd)) {
-		fprintf(stderr, "read of FIP_header failed\n");
-		fclose(fd);
-		return -1;
 	}
 	fclose(fd);
 
-	ifwi_version->major = fip.ifwi_rev.major;
-	ifwi_version->minor = fip.ifwi_rev.minor;
 	return 0;
 }
