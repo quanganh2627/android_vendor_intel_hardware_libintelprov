@@ -113,6 +113,8 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 
 	struct cmfwdl_buffer *p_buffer_read_rd_certif = NULL;
 	struct cmfwdl_buffer *p_buffer_hw_id = NULL;
+	int b_asked_reboot = CMFWDL_REBOOT;
+	int b_end_reboot = CMFWDL_REBOOT;
 	int b_read_rd_certif = 0;
 	int b_rd_certif = 0;
 	int read_hw_id = 0;
@@ -125,6 +127,21 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 
 	for (arg = 0; arg < argc; arg++) {
 		if (!strcmp(argv[arg], "f")) {
+			b_asked_reboot = CMFWDL_REBOOT;
+			if (cmfwdl_file_exist(firmware_filename))  {
+				fw_buffer.name = firmware_filename;
+				fw_buffer.size = 0;
+				fw_buffer.data = NULL;
+				if (cmfwdl_queue_file_download(h, &fw_buffer, 1) != 0) {
+					printf("Unkown error when parse param.\n");
+					goto out;
+				}
+			} else if ( !(cmfwdl_file_exist(firmware_filename) )) {
+				printf("Image file doesn't exists. (%s)\n", firmware_filename);
+				goto out;
+			}
+		} else if (!strcmp(argv[arg], "d")) {
+			b_asked_reboot = CMFWDL_NOREBOOT;
 			if (cmfwdl_file_exist(firmware_filename))  {
 				fw_buffer.name = firmware_filename;
 				fw_buffer.size = 0;
@@ -236,11 +253,12 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 		}
 	}
 
+	b_end_reboot = b_asked_reboot;
 	ret = 0;
 out:
 	cmfwdl_disable_flashing(IFX_NODE0); /* Switch back to IPC mode */
 	enable_pm();
-	cmfwdl_destroy_instance(h);
+	cmfwdl_destroy_instance(h, b_end_reboot);
 	return ret;
 }
 

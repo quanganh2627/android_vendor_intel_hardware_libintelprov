@@ -86,7 +86,7 @@ int flash_modem_nvm(const char *nvm_filename, modem_progress_callback cb)
 
 out:
 
-	cmfwdl_destroy_instance(h);
+	cmfwdl_destroy_instance(h, CMFWDL_REBOOT);
 
 	if (cb != NULL)
 	{

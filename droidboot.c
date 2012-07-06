@@ -129,6 +129,23 @@ static int flash_modem(void *data, unsigned sz)
 	return ret;
 }
 
+static int flash_modem_no_end_reboot(void *data, unsigned sz)
+{
+	int ret;
+	int argc = 1;
+	char *argv[1];
+
+	if (file_write(IMG_RADIO, data, sz)) {
+		pr_error("Couldn't write radio image to %s", IMG_RADIO);
+		return -1;
+	}
+	argv[0] = "d";
+	/* Update modem SW. */
+	ret = flash_modem_fw(IMG_RADIO, IMG_RADIO, argc, argv, progress_callback);
+	unlink(IMG_RADIO);
+	return ret;
+}
+
 static int flash_modem_store_fw(void *data, unsigned sz)
 {
 	/* Save locally modem SW (to be called first before flashing RND Cert) */
@@ -496,6 +513,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd(UEFI_FW_NAME, flash_uefi_firmware);
 	ret |= aboot_register_flash_cmd("splashscreen", flash_splashscreen_image);
 	ret |= aboot_register_flash_cmd("radio", flash_modem);
+	ret |= aboot_register_flash_cmd("radio_no_end_reboot", flash_modem_no_end_reboot);
 	ret |= aboot_register_flash_cmd("dnx", flash_dnx);
 	ret |= aboot_register_flash_cmd("ifwi", flash_ifwi);
 
