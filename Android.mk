@@ -70,7 +70,7 @@ include $(BUILD_EXECUTABLE)
 
 # plugin for recovery_ui
 include $(CLEAR_VARS)
-LOCAL_SRC_FILES := recovery_ui.c bootloader.c
+LOCAL_SRC_FILES := recovery_ui.cpp
 LOCAL_MODULE_TAGS := optional
 LOCAL_C_INCLUDES := bootable/recovery bionic/libc/private
 LOCAL_MODULE := libintel_recovery_ui
