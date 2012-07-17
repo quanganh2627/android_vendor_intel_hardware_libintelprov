@@ -252,9 +252,16 @@ static void progress_callback(enum cmfwdl_status_type type, int value,
     }
 }
 
+#define MODEM_PATH   "/tmp/radio_firmware.bin"
+#define MODEM_NAME   "radio_firmware"
+
 Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
     char *filename = NULL;
+    char modem_name[128];
+    int err, modem_fd,i,num;
+    ZipArchive modem_za;
+    const ZipEntry *modem_entry;
     char *argvmodem[] = {"f"};
 
     if (ReadArgs(state, argv, 1, &filename) < 0) {
@@ -266,9 +273,41 @@ Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
         goto done;
     }
 
-    if (flash_modem_fw(filename, filename, 1, argvmodem, progress_callback)) {
-	    printf("error during 3G Modem flashing!\n");
+    err = mzOpenZipArchive(filename, &modem_za);
+    if (err) {
+        ErrorAbort(state, "Failed to open modem zip archive %s\n", filename);
+        goto done;
     }
+
+    num = mzZipEntryCount(&modem_za);
+    for (i = 0; i < num; i++) {
+        modem_entry = mzGetZipEntryAt(&modem_za, i);
+        if ((modem_entry->fileNameLen + 1) < sizeof(modem_name)){
+            strncpy(modem_name, modem_entry->fileName, modem_entry->fileNameLen);
+            modem_name[modem_entry->fileNameLen] = '\0';
+        } else {
+            ErrorAbort(state, "modem file name is too big size max :%d.\n", sizeof(modem_name));
+            goto done;
+        }
+        if (strncmp(modem_name, MODEM_NAME, strlen(MODEM_NAME)))
+            continue;
+
+        if ((modem_fd = open(MODEM_PATH, O_RDWR | O_TRUNC | O_CREAT, FILEMODE)) < 0) {
+            ErrorAbort(state, "unable to creat Extracted file:%s.\n", MODEM_PATH);
+            goto done;
+        }
+        err = mzExtractZipEntryToFile(&modem_za, modem_entry, modem_fd);
+        if (!err) {
+            ErrorAbort(state, "Failed to unzip %s\n", MODEM_PATH);
+            goto done;
+        }
+        close(modem_fd);
+        if (flash_modem_fw(MODEM_PATH, MODEM_PATH, 1, argvmodem, progress_callback)) {
+            printf("error during 3G Modem flashing!\n");
+        }
+    }
+    mzCloseZipArchive(&modem_za);
+
 
     ret = StringValue(strdup(""));
 done:
