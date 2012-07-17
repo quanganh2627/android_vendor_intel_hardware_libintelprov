@@ -181,16 +181,22 @@ def LoadRecoveryFSTab(zip):
     p.fs_type = pieces[1]
     p.device = pieces[2]
     p.length = 0
-    p.size_hint = 0
-    p.device2 = pieces[3]
-    options = pieces[4]
+    options = None
+    if len(pieces) >= 4:
+      if pieces[3].startswith("/"):
+        p.device2 = pieces[3]
+        if len(pieces) >= 5:
+          options = pieces[4]
+      else:
+        p.device2 = None
+        options = pieces[3]
+    else:
+      p.device2 = None
 
     if options:
       options = options.split(",")
       for i in options:
-        if i.startswith("size_hint="):
-          p.size_hint = int(i[10:])
-        elif i.startswith("length="):
+        if i.startswith("length="):
           p.length = int(i[7:])
         else:
           print "%s: unknown option \"%s\"" % (p.mount_point, i)

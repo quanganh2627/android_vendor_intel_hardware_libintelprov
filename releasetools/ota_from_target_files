@@ -406,10 +406,10 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   (symlinks, retouch_files) = CopySystemFiles(input_zip, output_zip)
   script.MakeSymlinks(symlinks)
-  if OPTIONS.aslr_mode:
-    script.RetouchBinaries(retouch_files)
-  else:
-    script.UndoRetouchBinaries(retouch_files)
+  #if OPTIONS.aslr_mode:
+  #  script.RetouchBinaries(retouch_files)
+  #else:
+  #  script.UndoRetouchBinaries(retouch_files)
 
   images = {}
   for name in ["boot", "recovery", "fastboot", "uefi", "ifwi"]:
