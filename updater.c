@@ -254,6 +254,7 @@ static void progress_callback(enum cmfwdl_status_type type, int value,
 
 #define MODEM_PATH   "/tmp/radio_firmware.bin"
 #define MODEM_NAME   "radio_firmware"
+#define MODEM_ESCAPE_WA "7160"
 
 Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
@@ -290,6 +291,9 @@ Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
             goto done;
         }
         if (strncmp(modem_name, MODEM_NAME, strlen(MODEM_NAME)))
+            continue;
+
+	if (strstr(modem_name,MODEM_ESCAPE_WA))
             continue;
 
         if ((modem_fd = open(MODEM_PATH, O_RDWR | O_TRUNC | O_CREAT, FILEMODE)) < 0) {
