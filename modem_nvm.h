@@ -20,6 +20,14 @@
 #include <cmfwdl.h>
 #include "modem_fw.h"
 
-int flash_modem_nvm(const char *nvm_filename, modem_progress_callback cb);
+#define OUTPUT_DEBUG                1
+#define OUTPUT_FASTBOOT_INFO        2
+
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+
+typedef void (*modem_nvm_status_callback)(const char *msg, int output);
+
+int flash_modem_nvm(const char *nvm_filename, modem_nvm_status_callback cb);
+int read_modem_nvm_id(char* out_buffer, size_t max_out_size, modem_nvm_status_callback cb);
 
 #endif

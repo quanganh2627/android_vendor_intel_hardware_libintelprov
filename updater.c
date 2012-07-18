@@ -262,6 +262,10 @@ static void progress_callback(enum cmfwdl_status_type type, int value,
 #define MODEM_PATH   "/tmp/radio_firmware.bin"
 #define MODEM_NAME   "radio_firmware"
 #define MODEM_ESCAPE_WA "7160"
+static void nvm_output_callback(const char *msg, int output)
+{
+    printf("%s", msg);
+}
 
 Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
@@ -344,7 +348,7 @@ Value *FlashNvmFn(const char *name, State *state, int argc, Expr *argv[]) {
         goto done;
     }
 
-    if (flash_modem_nvm(filename, progress_callback) != 0) {
+    if (flash_modem_nvm(filename, nvm_output_callback) != 0) {
         printf("error during 3G Modem NVM config!\n");
     }
 
@@ -356,11 +360,34 @@ done:
     return ret;
 }
 
+Value *ReadModemNvmIdFn(const char *name, State *state, int argc, Expr *argv[]) {
+    Value *ret = NULL;
+
+    char* response_buffer = (char*)malloc(sizeof(char) * CMFWDL_NVM_MAX_RESPONSE_BUFFER_SIZE);
+
+    if (response_buffer != NULL) {
+      if (read_modem_nvm_id(response_buffer, CMFWDL_NVM_MAX_RESPONSE_BUFFER_SIZE, nvm_output_callback) != 0) {
+        printf("error while reading 3G Modem NVM config!\n");
+        ret = StringValue(strdup(""));
+      }
+      else {
+        ret = StringValue(strdup(response_buffer));
+      }
+      free(response_buffer);
+    }
+    else {
+      ret = StringValue(strdup(""));
+    }
+
+    return ret;
+}
+
 void Register_libintel_updater(void)
 {
     RegisterFunction("flash_osip", FlashOsipFn);
     RegisterFunction("flash_ifwi", FlashIfwiFn);
     RegisterFunction("flash_modem", FlashModemFn);
     RegisterFunction("flash_nvm", FlashNvmFn);
+    RegisterFunction("identify_nvm", ReadModemNvmIdFn);
     RegisterFunction("extract_osip", ExtractOsipFn);
 }

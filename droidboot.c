@@ -79,6 +79,16 @@ static void progress_callback(enum cmfwdl_status_type type, int value,
 	}
 }
 
+static void nvm_output_callback(const char *msg, int output)
+{
+	if (output & OUTPUT_DEBUG) {
+		pr_debug(msg);
+	}
+	if (output & OUTPUT_FASTBOOT_INFO) {
+		fastboot_info(msg);
+	}
+}
+
 static int flash_image(void *data, unsigned sz, int index)
 {
 	if (index < 0) {
@@ -413,18 +423,20 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 	int retval = 0;
 	char *nvm_path = NULL;
 
-	if ((argc < 3) || (strcmp(argv[0], "nvm"))) {
-		/* Should not pass here ! */
-		pr_error("oem_nvm_cmd_handler called with wrong parameter!\n");
-		retval = -1;
-		return retval;
-	}
-
 	if (!strcmp(argv[1], "apply")) {
-
+		pr_info("in apply");
+		if (argc < 3) {
+			pr_error("oem_nvm_cmd_handler called with wrong parameter!\n");
+			retval = -1;
+			return retval;
+		}
 		nvm_path = argv[2];
 
-		retval = flash_modem_nvm(nvm_path, progress_callback);
+		retval = flash_modem_nvm(nvm_path, nvm_output_callback);
+	}
+	else if (!strcmp(argv[1], "identify")) {
+		pr_info("in identify");
+		retval = read_modem_nvm_id(NULL, 0, nvm_output_callback);
 	}
 	else {
 		pr_error("Unknown command. Use %s [apply].\n", "nvm");

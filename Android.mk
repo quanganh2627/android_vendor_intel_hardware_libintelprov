@@ -10,7 +10,7 @@ common_libintelprov_files := \
 	modem_nvm.c
 
 common_libintelprov_includes := \
-	hardware/intel/PRIVATE/libcmfwdl/cmfwdl \
+	hardware/intel/PRIVATE/cmfwdl/lib/cmfwdl \
 	bionic/libc/private
 
 # Plug-in library for AOSP updater
