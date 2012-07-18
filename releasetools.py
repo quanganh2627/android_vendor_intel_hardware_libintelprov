@@ -30,7 +30,7 @@ def FullOTA_Assertions(dso, **kwargs):
     pass
 
 def FullOTA_InstallEnd(dso, **kwargs):
-    FlashModem(dso, "/system/etc/firmware/modem/radio_firmware.bin");
+    FlashModem(dso, "/system/etc/firmware/modem/modem.zip");
 
 def IncrementalOTA_Assertions(dso, **kwargs):
     pass
@@ -39,6 +39,6 @@ def IncrementalOTA_VerifyEnd(dso, **kwargs):
     pass
 
 def IncrementalOTA_InstallEnd(dso, **kwargs):
-    FlashModem(dso, "/system/etc/firmware/modem/radio_firmware.bin");
+    FlashModem(dso, "/system/etc/firmware/modem/modem.zip");
 
 
