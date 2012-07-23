@@ -1,9 +1,4 @@
 LOCAL_PATH := $(call my-dir)
-
-# if DROIDBOOT is not used, we dont want this...
-# allow to transition smoothly
-ifeq ($(TARGET_USE_DROIDBOOT),true)
-
 include $(CLEAR_VARS)
 
 common_libintelprov_files := \
@@ -17,7 +12,6 @@ common_libintelprov_files := \
 common_libintelprov_includes := \
 	hardware/intel/PRIVATE/libcmfwdl/cmfwdl \
 	bionic/libc/private
-
 
 # Plug-in library for AOSP updater
 include $(CLEAR_VARS)
@@ -33,6 +27,36 @@ else ifeq ($(TARGET_PRODUCT),ctp_pr1)
 LOCAL_CFLAGS += -DCLVT
 endif
 include $(BUILD_STATIC_LIBRARY)
+
+# plugin for recovery_ui
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES := recovery_ui.cpp
+LOCAL_MODULE_TAGS := optional
+LOCAL_C_INCLUDES := bootable/recovery bionic/libc/private
+LOCAL_MODULE := libintel_recovery_ui
+LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
+ifneq (, $(filter $(TARGET_PRODUCT), mfld_cdk mfld_pr1 mfld_pr2))
+LOCAL_CFLAGS += -DMFLD_PRX_KEY_LAYOUT
+endif
+include $(BUILD_STATIC_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := releasetools
+LOCAL_MODULE_TAGS := optional
+LOCAL_PREBUILT_EXECUTABLES := \
+    releasetools.py \
+    releasetools/ota_from_target_files \
+    releasetools/check_target_files_signatures \
+    releasetools/common.py \
+    releasetools/edify_generator.py \
+    releasetools/lfstk_wrapper.py \
+    releasetools/mfld_osimage.py \
+    releasetools/sign_target_files_apks
+include $(BUILD_HOST_PREBUILT)
+
+# if DROIDBOOT is not used, we dont want this...
+# allow to transition smoothly
+ifeq ($(TARGET_USE_DROIDBOOT),true)
 
 # Plug-in libary for Droidboot
 include $(CLEAR_VARS)
@@ -68,18 +92,6 @@ LOCAL_CFLAGS += -DCLVT
 endif
 include $(BUILD_EXECUTABLE)
 
-# plugin for recovery_ui
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES := recovery_ui.cpp
-LOCAL_MODULE_TAGS := optional
-LOCAL_C_INCLUDES := bootable/recovery bionic/libc/private
-LOCAL_MODULE := libintel_recovery_ui
-LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-ifneq (, $(filter $(TARGET_PRODUCT), mfld_cdk mfld_pr1 mfld_pr2))
-LOCAL_CFLAGS += -DMFLD_PRX_KEY_LAYOUT
-endif
-include $(BUILD_STATIC_LIBRARY)
-
 # update_recovery: this binary is updating the recovery from MOS
 # because we dont want to update it from itself.
 include $(CLEAR_VARS)
@@ -93,16 +105,3 @@ LOCAL_STATIC_LIBRARIES := libmincrypt libapplypatch libbz
 include $(BUILD_EXECUTABLE)
 endif
 
-include $(CLEAR_VARS)
-LOCAL_MODULE := releasetools
-LOCAL_MODULE_TAGS := optional
-LOCAL_PREBUILT_EXECUTABLES := \
-    releasetools.py \
-    releasetools/ota_from_target_files \
-    releasetools/check_target_files_signatures \
-    releasetools/common.py \
-    releasetools/edify_generator.py \
-    releasetools/lfstk_wrapper.py \
-    releasetools/mfld_osimage.py \
-    releasetools/sign_target_files_apks
-include $(BUILD_HOST_PREBUILT)
