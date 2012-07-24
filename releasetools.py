@@ -21,9 +21,11 @@ stubs defined in the DeviceSpecificParams class in common.py
 and called from the ota_from_target_package script."""
 
 # Edify generator Extensions
+# WA for BZ 47136: flash modem twice
 def FlashModem(dso, filename):
     dso.script.Print("Updating 3G Modem firmware image...\n");
-    dso.script.script.append('flash_modem("%s");' % (filename,))
+    dso.script.script.append('flash_modem("%s");' % (filename,));
+    dso.script.script.append('flash_modem("%s");' % (filename,));
 
 # Device-Specific function implementations
 def FullOTA_Assertions(dso, **kwargs):
