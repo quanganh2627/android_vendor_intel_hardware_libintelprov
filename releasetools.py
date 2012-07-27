@@ -27,12 +27,18 @@ def FlashModem(dso, filename):
     dso.script.script.append('flash_modem("%s");' % (filename,));
     dso.script.script.append('flash_modem("%s");' % (filename,));
 
+# Edify generator Extensions
+def FlashNvm(dso, filename):
+    dso.script.Print("Updating 3G Modem nvm...\n");
+    dso.script.script.append('flash_nvm("%s");' % (filename,))
+
 # Device-Specific function implementations
 def FullOTA_Assertions(dso, **kwargs):
     pass
 
 def FullOTA_InstallEnd(dso, **kwargs):
     FlashModem(dso, "/system/etc/firmware/modem/modem.zip");
+    FlashNvm(dso, "/system/etc/firmware/modem/radio_nvm.bin");
 
 def IncrementalOTA_Assertions(dso, **kwargs):
     pass
@@ -42,5 +48,5 @@ def IncrementalOTA_VerifyEnd(dso, **kwargs):
 
 def IncrementalOTA_InstallEnd(dso, **kwargs):
     FlashModem(dso, "/system/etc/firmware/modem/modem.zip");
-
+    FlashNvm(dso, "/system/etc/firmware/modem/radio_nvm.bin");
 
