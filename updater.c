@@ -169,19 +169,20 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
             strncpy(ifwi_name, ifwi_entry->fileName, ifwi_entry->fileNameLen);
             ifwi_name[ifwi_entry->fileNameLen] = '\0';
         } else {
-            ErrorAbort(state, "ifwi file name is too big size max :%d.\n", sizeof(ifwi_name));
-            goto done;
+            ErrorAbort(state, "ifwi file name is too big. Size max is:%d.\n", sizeof(ifwi_name));
+            goto error;
         }
         if (strncmp(ifwi_name, IFWI_NAME, strlen(IFWI_NAME)))
             continue;
 
         if ((ifwi_bin_fd = open(IFWI_BIN_PATH, O_RDWR | O_TRUNC | O_CREAT, FILEMODE)) < 0) {
-            ErrorAbort(state, "unable to creat Extracted file:%s.\n", IFWI_BIN_PATH);
-            goto done;
+            ErrorAbort(state, "unable to create Extracted file:%s.\n", IFWI_BIN_PATH);
+            goto error;
         }
         if ((dnx_bin_fd = open(DNX_BIN_PATH, O_RDWR | O_TRUNC | O_CREAT, FILEMODE)) < 0) {
-            ErrorAbort(state, "unable to creat Extracted file:%s.\n", IFWI_BIN_PATH);
-            goto done;
+            ErrorAbort(state, "unable to create Extracted file:%s.\n", IFWI_BIN_PATH);
+            close(ifwi_bin_fd);
+            goto error;
         }
         strcpy(dnx_name, "dnx");
         strncat(dnx_name, &(ifwi_name[strlen(IFWI_NAME)]), sizeof(dnx_name) - strlen("dnx") -1);
@@ -190,20 +191,26 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
         err = mzExtractZipEntryToFile(&ifwi_za, dnx_entry, dnx_bin_fd);
         if (!err) {
             ErrorAbort(state, "Failed to unzip %s\n", DNX_BIN_PATH);
-            goto done;
+            close(ifwi_bin_fd);
+            close(dnx_bin_fd);
+            goto error;
         }
         close(dnx_bin_fd);
         err = mzExtractZipEntryToFile(&ifwi_za, ifwi_entry, ifwi_bin_fd);
         if (!err) {
             ErrorAbort(state, "Failed to unzip %s\n", DNX_BIN_PATH);
-            goto done;
+            close(ifwi_bin_fd);
+            goto error;
         }
         close(ifwi_bin_fd);
         update_ifwi_file(DNX_BIN_PATH, IFWI_BIN_PATH);
     }
-    mzCloseZipArchive(&ifwi_za);
 
     ret = StringValue(strdup(""));
+
+error:
+    mzCloseZipArchive(&ifwi_za);
+
 done:
     if (filename)
         free(filename);
@@ -287,8 +294,8 @@ Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
             strncpy(modem_name, modem_entry->fileName, modem_entry->fileNameLen);
             modem_name[modem_entry->fileNameLen] = '\0';
         } else {
-            ErrorAbort(state, "modem file name is too big size max :%d.\n", sizeof(modem_name));
-            goto done;
+            ErrorAbort(state, "modem file name is too big. Size max is:%d.\n", sizeof(modem_name));
+            goto error;
         }
         if (strncmp(modem_name, MODEM_NAME, strlen(MODEM_NAME)))
             continue;
@@ -297,23 +304,26 @@ Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
             continue;
 
         if ((modem_fd = open(MODEM_PATH, O_RDWR | O_TRUNC | O_CREAT, FILEMODE)) < 0) {
-            ErrorAbort(state, "unable to creat Extracted file:%s.\n", MODEM_PATH);
-            goto done;
+            ErrorAbort(state, "unable to create Extracted file:%s.\n", MODEM_PATH);
+            goto error;
         }
         err = mzExtractZipEntryToFile(&modem_za, modem_entry, modem_fd);
         if (!err) {
             ErrorAbort(state, "Failed to unzip %s\n", MODEM_PATH);
-            goto done;
+            close(modem_fd);
+            goto error;
         }
         close(modem_fd);
         if (flash_modem_fw(MODEM_PATH, MODEM_PATH, 1, argvmodem, progress_callback)) {
             printf("error during 3G Modem flashing!\n");
         }
     }
-    mzCloseZipArchive(&modem_za);
-
 
     ret = StringValue(strdup(""));
+
+error:
+    mzCloseZipArchive(&modem_za);
+
 done:
     if (filename)
         free(filename);
