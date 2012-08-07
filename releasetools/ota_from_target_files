@@ -781,10 +781,10 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
       to_create.append((dest, link))
   script.DeleteFiles([i[1] for i in to_create])
   script.MakeSymlinks(to_create)
-  if OPTIONS.aslr_mode:
-    script.RetouchBinaries(target_retouch_files)
-  else:
-    script.UndoRetouchBinaries(target_retouch_files)
+  #if OPTIONS.aslr_mode:
+  #  script.RetouchBinaries(target_retouch_files)
+  #else:
+  #  script.UndoRetouchBinaries(target_retouch_files)
 
   # Now that the symlinks are created, we can set all the
   # permissions.
