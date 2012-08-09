@@ -61,7 +61,7 @@ ifeq ($(TARGET_USE_DROIDBOOT),true)
 # Plug-in libary for Droidboot
 include $(CLEAR_VARS)
 LOCAL_MODULE := libintel_droidboot
-LOCAL_SRC_FILES := droidboot.c $(common_libintelprov_files)
+LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_C_INCLUDES := bootable/droidboot bootable/recovery $(common_libintelprov_includes)

@@ -35,6 +35,7 @@
 #include "flash_ifwi.h"
 #include "fastboot.h"
 #include "droidboot_ui.h"
+#include "update_partition.h"
 
 #define IMG_RADIO "/radio.img"
 #define IMG_RADIO_RND "/radio_rnd.img"
@@ -338,18 +339,23 @@ static int oem_manage_service_proxy(int argc, char **argv)
 static int oem_dnx_timeout(int argc, char **argv)
 {
 	int retval = -1;
-	int count;
+	int count, offset, bytes, size;
 	int fd;
 	char timeout[TIMEOUT_SIZE] = "";
 	char check[TIMEOUT_SIZE] = "";
 
-	if ((argc < 2) || (strcmp(argv[0], DNX_TIMEOUT_CHANGE))) {
+	if (argc != 2) {
 		/* Should not pass here ! */
-		pr_error("oem %s called with wrong parameter!\n", DNX_TIMEOUT_CHANGE);
+		fastboot_fail("oem dnx_timeout requires one argument");
 		goto end2;
 	}
 
-	snprintf(timeout, TIMEOUT_SIZE, "%s", argv[1]);
+	size = snprintf(timeout, TIMEOUT_SIZE, "%s", argv[1]);
+
+	if (size == -1 || size > TIMEOUT_SIZE-1) {
+	    fastboot_fail("Parameter size exceeds limit");
+	    goto end2;
+	}
 
 	fd = open(SYS_CURRENT_TIMEOUT, O_RDWR);
 	if (fd == -1) {
@@ -366,10 +372,28 @@ static int oem_dnx_timeout(int argc, char **argv)
 		fastboot_info(check);
 
 	} else {
-		count = write(fd, timeout, TIMEOUT_SIZE);
-		lseek(fd, 0, SEEK_SET);
-		count = read(fd, check, count);
-		if (strcmp(timeout, check)) {
+		memset(check, 0, TIMEOUT_SIZE);
+
+		bytes = write(fd, timeout, size);
+		if (bytes == -1) {
+			fastboot_fail("oem dnx_timeout failed to write file");
+			goto end1;
+		}
+
+		offset = lseek(fd, 0, SEEK_SET);
+		if (offset == -1) {
+			fastboot_fail("oem dnx_timeout failed to set offset");
+			goto end1;
+		}
+
+		count = read(fd, check, TIMEOUT_SIZE);
+		if (count <= 0) {
+			fastboot_fail("Failed to check");
+			goto end1;
+		}
+		if (check[strlen(check)-1] == '\n')
+		    check[strlen(check)-1]= '\0';
+		if (strcmp(check, timeout)) {
 			fastboot_fail("oem dnx_timeout called with wrong parameter");
 			goto end1;
 		}
@@ -408,6 +432,65 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 	}
 
 	return retval;
+}
+
+#define ERASE_PARTITION     "erase"
+#define MOUNT_POINT_SIZE    50      /* /dev/<whatever> */
+#define BUFFER_SIZE         4000000 /* 4Mb */
+
+static int oem_erase_partition(int argc, char **argv)
+{
+	int retval = -1;
+	int size;
+	char mnt_point[MOUNT_POINT_SIZE] = "";
+
+	if ((argc != 2) || (strcmp(argv[0], ERASE_PARTITION))) {
+		/* Should not pass here ! */
+                fastboot_fail("oem erase called with wrong parameter!\n");
+		goto end;
+	}
+
+	if (argv[1][0] == '/') {
+		size = snprintf(mnt_point, MOUNT_POINT_SIZE, "%s", argv[1]);
+
+		if (size == -1 || size > MOUNT_POINT_SIZE-1) {
+		    fastboot_fail("Mount point parameter size exceeds limit");
+		    goto end;
+		}
+	} else {
+		if (!strcmp(argv[1], "userdata")) {
+		    strcpy(mnt_point, "/data");
+		} else {
+		    size = snprintf(mnt_point, MOUNT_POINT_SIZE, "/%s", argv[1]);
+
+		    if (size == -1 || size > MOUNT_POINT_SIZE-1) {
+			fastboot_fail("Mount point size exceeds limit");
+			goto end;
+		    }
+		}
+	}
+
+	pr_info("CMD '%s %s'...\n", ERASE_PARTITION, mnt_point);
+
+	ui_print("ERASE step 1/2...\n");
+	retval = nuke_volume(mnt_point, BUFFER_SIZE);
+	if (retval != 0) {
+		pr_error("format_volume failed: %s\n", mnt_point);
+		goto end;
+	} else {
+		pr_info("format_volume succeeds: %s\n", mnt_point);
+	}
+
+	ui_print("ERASE step 2/2...\n");
+	retval = format_volume(mnt_point);
+	if (retval != 0) {
+		pr_error("format_volume failed: %s\n", mnt_point);
+	} else {
+		pr_info("format_volume succeeds: %s\n", mnt_point);
+	}
+
+end:
+    return retval;
 }
 
 #ifdef USE_GUI
@@ -525,6 +608,7 @@ void libintel_droidboot_init(void)
 
 	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
 	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);
+	ret |= aboot_register_oem_cmd(ERASE_PARTITION, oem_erase_partition);
 
 	ret |= aboot_register_oem_cmd("nvm", oem_nvm_cmd_handler);
 
