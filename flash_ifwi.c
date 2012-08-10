@@ -41,6 +41,23 @@ struct update_info{
 	uint32_t reserved;
 };
 
+static int retry_write(char *buf, int cont, FILE *f)
+{
+	int w_bytes = 0, retry = 0;
+
+	while (w_bytes < cont && retry++ < 3) {
+		w_bytes += fwrite(buf + w_bytes, 1, cont - w_bytes, f);
+		if (w_bytes < cont)
+		    sleep(1);
+	}
+
+	if (w_bytes < cont) {
+		fprintf(stderr, "retry_write error!\n");
+		return -1;
+	}
+	return 0;
+}
+
 int update_ifwi_file(const char *dnx, const char *ifwi)
 {
 	int ret = 0;
@@ -83,8 +100,16 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 		ret = -1;
 		goto err;
 	}
-	while ((cont = fread(buff, 1, sizeof(buff), f_src)) && cont <= sizeof(buff))
-		fwrite(buff, 1, cont, f_dst);
+
+	while ((cont = fread(buff, 1, sizeof(buff), f_src)) > 0) {
+	    if(retry_write(buff, cont, f_dst) == -1) {
+		fprintf(stderr,"DNX write failed\n");
+		fclose(f_dst);
+		ret = -1;
+		goto err;
+	    }
+	}
+
 	fclose(f_src);
 	fclose(f_dst);
 
@@ -100,8 +125,16 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 		ret = -1;
 		goto err;
 	}
-	while ((cont = fread(buff, 1, sizeof(buff), f_src)) && cont <= sizeof(buff))
-		fwrite(buff, 1, cont, f_dst);
+
+	while ((cont = fread(buff, 1, sizeof(buff), f_src)) > 0) {
+	    if(retry_write(buff, cont, f_dst) == -1) {
+		fprintf(stderr,"IFWI write failed\n");
+		fclose(f_dst);
+		ret = -1;
+		goto err;
+	    }
+	}
+
 	fclose(f_src);
 	fclose(f_dst);
 
