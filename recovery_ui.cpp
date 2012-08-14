@@ -20,10 +20,17 @@
 #include "device.h"
 #include "screen_ui.h"
 
+#ifdef MFLD_PRX_KEY_LAYOUT
 static const char* HEADERS[] = { "Volume up/down to move highlight;",
-                                 "enter button to select.",
+                                 "camera button to select.",
                                  "",
                                  NULL };
+#else
+static const char* HEADERS[] = { "Volume up/down to move highlight;",
+                                 "power button to select.",
+                                 "",
+                                 NULL };
+#endif
 
 static const char* ITEMS[] =  {"reboot system now",
                                "apply update from ADB",
