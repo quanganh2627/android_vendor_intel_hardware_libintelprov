@@ -34,6 +34,8 @@
 #define TRACE_FILE	"/modemtrace.log"
 #define RND_CERTIFICATE_FILE	"/logs/modem_rnd_certif.bin"
 #define HW_ID_FILE	"/logs/modem_hw_id.hwd"
+#define FUSE_FILE	"/logs/modem_fuse.fus"
+#define CHIP_FUSE_SIZE 9  /* Number of chip fusing parameters */
 
 #define FFL_TTY_MAGIC	0x77
 #define FFL_TTY_MODEM_RESET	_IO(FFL_TTY_MAGIC, 4)
@@ -109,7 +111,7 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 {
 	struct cmfwdl *h;
 	int ret = -1;
-	struct cmfwdl_buffer fw_buffer, boot_buffer, rd_certif_buffer;
+	struct cmfwdl_buffer fw_buffer, boot_buffer, rd_certif_buffer, fuse_buffer;
 
 	struct cmfwdl_buffer *p_buffer_read_rd_certif = NULL;
 	struct cmfwdl_buffer *p_buffer_hw_id = NULL;
@@ -120,6 +122,11 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 	int read_hw_id = 0;
 	int b_erase_rd_certif = 0;
 	int arg;
+	int b_fw_download = 0;
+	int b_fuse = 0;
+	unsigned char fuse_data[CHIP_FUSE_SIZE];
+	char fuse_ascii[3*CHIP_FUSE_SIZE+1];
+	int i;
 
 	h = cmfwdl_create_instance();
 	if (!h)
@@ -128,32 +135,13 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 	for (arg = 0; arg < argc; arg++) {
 		if (!strcmp(argv[arg], "f")) {
 			b_asked_reboot = CMFWDL_REBOOT;
-			if (cmfwdl_file_exist(firmware_filename))  {
-				fw_buffer.name = firmware_filename;
-				fw_buffer.size = 0;
-				fw_buffer.data = NULL;
-				if (cmfwdl_queue_file_download(h, &fw_buffer, 1) != 0) {
-					printf("Unkown error when parse param.\n");
-					goto out;
-				}
-			} else if ( !(cmfwdl_file_exist(firmware_filename) )) {
-				printf("Image file doesn't exists. (%s)\n", firmware_filename);
-				goto out;
-			}
+			b_fw_download = 1;
 		} else if (!strcmp(argv[arg], "d")) {
 			b_asked_reboot = CMFWDL_NOREBOOT;
-			if (cmfwdl_file_exist(firmware_filename))  {
-				fw_buffer.name = firmware_filename;
-				fw_buffer.size = 0;
-				fw_buffer.data = NULL;
-				if (cmfwdl_queue_file_download(h, &fw_buffer, 1) != 0) {
-					printf("Unkown error when parse param.\n");
-					goto out;
-				}
-			} else if ( !(cmfwdl_file_exist(firmware_filename) )) {
-				printf("Image file doesn't exists. (%s)\n", firmware_filename);
-				goto out;
-			}
+			b_fw_download = 1;
+		} else if (!strcmp(argv[arg], "u")) {
+			b_fuse = 1;
+			b_fw_download = 1;
 		} else if (!strcmp(argv[arg], "r")) {
 			if (cmfwdl_file_exist(firmware_filename))  {
 				rd_certif_buffer.name = firmware_filename;
@@ -167,6 +155,22 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 			b_erase_rd_certif = 1;
 		} else if (!strcmp(argv[arg], "h")) {
 			read_hw_id = 1;
+		}
+		if (b_fw_download != 0)
+		{
+			if (cmfwdl_file_exist(firmware_filename))  {
+				fw_buffer.name = firmware_filename;
+				fw_buffer.size = 0;
+				fw_buffer.data = NULL;
+				if (cmfwdl_queue_file_download(h, &fw_buffer, 1) != 0) {
+					printf("Unkown error when parse param.\n");
+					goto out;
+				}
+			} else if ( !(cmfwdl_file_exist(firmware_filename) )) {
+				printf("Image file doesn't exists. (%s)\n", firmware_filename);
+				goto out;
+			}
+			b_fw_download = 0;
 		}
 	}
 
@@ -201,6 +205,31 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 
 	check(cmfwdl_enable_flashing(IFX_NODE0)); /* Switch to Flashing mode */
 	check(cmfwdl_boot_modem(h, &boot_buffer, cb, NULL));
+
+	/* Get chip fusing parameters (print out in stdout and in a file) */
+	if (b_fuse == 1)
+	{
+		if (cmfwdl_get_chip_response(h, fuse_data, CHIP_FUSE_SIZE) == 0)
+		{
+			for (i = 0; i < CHIP_FUSE_SIZE; ++i) {
+				snprintf(&fuse_ascii[3*i], 3+1, "%02x ", fuse_data[i]);
+			}
+			snprintf(&fuse_ascii[3*CHIP_FUSE_SIZE-1], 1+1, "\n");
+			fuse_buffer.size = 3*CHIP_FUSE_SIZE;
+			printf("Chip fusing parameters: %s", fuse_ascii);
+		}
+		else
+		{
+			snprintf(&fuse_ascii[0], 1+1, "\n");
+			fuse_buffer.size = 1;
+			printf("Getting chip fusing parameters failed\n");
+		}
+
+		fuse_buffer.name = FUSE_FILE;
+		fuse_buffer.data = (unsigned char *) fuse_ascii;
+		check(store_data_to_file(&fuse_buffer));
+		printf("Storing chip fusing parameters to file %s succeeded\n", fuse_buffer.name);
+	}
 
 	/* Get modem HWID (print out in stdout) */
 	if (read_hw_id == 1) {
