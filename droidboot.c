@@ -27,6 +27,7 @@
 #include <cutils/android_reboot.h>
 #include <unistd.h>
 
+#include "volumeutils/ufdisk.h"
 #include "update_osip.h"
 #include "util.h"
 #include "modem_fw.h"
@@ -505,6 +506,28 @@ end:
     return retval;
 }
 
+#define REPART_PARTITION	"repart"
+
+static int oem_repart_partition(int argc, char **argv)
+{
+	int retval = -1;
+
+	if (argc != 1) {
+		/* Should not pass here ! */
+		fastboot_fail("oem repart does not require argument");
+		goto end;
+	}
+
+	retval = ufdisk_create_partition();
+	if (retval != 0)
+		fastboot_fail("cannot write partition");
+	else
+		fastboot_okay("");
+
+end:
+	return retval;
+}
+
 #ifdef USE_GUI
 #define PROP_FILE					"/default.prop"
 #define SERIAL_NUM_FILE			"/sys/class/android_usb/android0/iSerial"
@@ -621,6 +644,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
 	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);
 	ret |= aboot_register_oem_cmd(ERASE_PARTITION, oem_erase_partition);
+	ret |= aboot_register_oem_cmd(REPART_PARTITION, oem_repart_partition);
 
 	ret |= aboot_register_oem_cmd("nvm", oem_nvm_cmd_handler);
 
