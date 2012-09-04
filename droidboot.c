@@ -419,6 +419,8 @@ static int oem_dnx_timeout(int argc, char **argv)
 			fastboot_fail("Failed to check");
 			goto end1;
 		}
+		// terminate string unconditionally to avoid buffer overflow
+		check[TIMEOUT_SIZE-1] = '\0';
 		if (check[strlen(check)-1] == '\n')
 		    check[strlen(check)-1]= '\0';
 		if (strcmp(check, timeout)) {
