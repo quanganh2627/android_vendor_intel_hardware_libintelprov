@@ -25,6 +25,8 @@ ifeq ($(TARGET_PRODUCT),ctp_pr0)
 LOCAL_CFLAGS += -DCLVT
 else ifeq ($(TARGET_PRODUCT),ctp_pr1)
 LOCAL_CFLAGS += -DCLVT
+else ifeq ($(TARGET_PRODUCT),ctp_nomodem)
+LOCAL_CFLAGS += -DCLVT
 endif
 include $(BUILD_STATIC_LIBRARY)
 
@@ -73,6 +75,8 @@ ifeq ($(TARGET_PRODUCT),ctp_pr0)
 LOCAL_CFLAGS += -DCLVT
 else ifeq ($(TARGET_PRODUCT),ctp_pr1)
 LOCAL_CFLAGS += -DCLVT
+else ifeq ($(TARGET_PRODUCT),ctp_nomodem)
+LOCAL_CFLAGS += -DCLVT
 endif
 include $(BUILD_STATIC_LIBRARY)
 
@@ -88,6 +92,8 @@ LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifeq ($(TARGET_PRODUCT),ctp_pr0)
 LOCAL_CFLAGS += -DCLVT
 else ifeq ($(TARGET_PRODUCT),ctp_pr1)
+LOCAL_CFLAGS += -DCLVT
+else ifeq ($(TARGET_PRODUCT),ctp_nomodem)
 LOCAL_CFLAGS += -DCLVT
 endif
 include $(BUILD_EXECUTABLE)
