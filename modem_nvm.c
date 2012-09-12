@@ -87,6 +87,8 @@ int flash_modem_nvm(const char *nvm_filename, modem_nvm_status_callback cb)
 
 out:
 
+	// we reboot in any case to make sure we leave the modem
+	// in correct state
 	cmfwdl_destroy_instance(h, CMFWDL_REBOOT);
 
 	return ret;
