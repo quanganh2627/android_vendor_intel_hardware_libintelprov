@@ -287,7 +287,8 @@ Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
 
     err = mzOpenZipArchive(filename, &modem_za);
     if (err) {
-        ErrorAbort(state, "Failed to open modem zip archive %s\n", filename);
+        printf("could not open archive %s\n",filename);
+        ret = StringValue(strdup(""));
         goto done;
     }
 
