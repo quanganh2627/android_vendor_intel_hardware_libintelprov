@@ -359,73 +359,101 @@ static int oem_manage_service_proxy(int argc, char **argv)
 	return retval;
 }
 
-#define DNX_TIMEOUT_CHANGE		"dnx_timeout"
-#define DNX_TIMEOUT_SHOW		"show"
-#define SYS_CURRENT_TIMEOUT	"/sys/devices/platform/intel_mid_umip/current_timeout"
-#define TIMEOUT_SIZE			20
+#define DNX_TIMEOUT_CHANGE  "dnx_timeout"
+#define DNX_TIMEOUT_GET	    "--get"
+#define DNX_TIMEOUT_SET	    "--set"
+#define SYS_CURRENT_TIMEOUT "/sys/devices/platform/intel_mid_umip/current_timeout"
+#define TIMEOUT_SIZE	    20
+#define OPTION_SIZE	    6
 
 static int oem_dnx_timeout(int argc, char **argv)
 {
 	int retval = -1;
 	int count, offset, bytes, size;
 	int fd;
+	char option[OPTION_SIZE] = "";
 	char timeout[TIMEOUT_SIZE] = "";
 	char check[TIMEOUT_SIZE] = "";
 
-	if (argc != 2) {
+	if (argc < 1 || argc > 3) {
 		/* Should not pass here ! */
-		fastboot_fail("oem dnx_timeout requires one argument");
+		fastboot_fail("oem dnx_timeout requires one or two arguments");
 		goto end2;
 	}
 
-	size = snprintf(timeout, TIMEOUT_SIZE, "%s", argv[1]);
+	size = snprintf(option, OPTION_SIZE, "%s", argv[1]);
 
-	if (size == -1 || size > TIMEOUT_SIZE-1) {
+	if (size == -1 || size > OPTION_SIZE-1) {
 	    fastboot_fail("Parameter size exceeds limit");
 	    goto end2;
 	}
 
 	fd = open(SYS_CURRENT_TIMEOUT, O_RDWR);
+
 	if (fd == -1) {
 		pr_error("Can't open %s\n", SYS_CURRENT_TIMEOUT);
 		goto end2;
 	}
 
-	if (!strcmp(timeout, DNX_TIMEOUT_SHOW)) {
+	if (!strcmp(option, DNX_TIMEOUT_GET)) {
+		/* Get current timeout */
 		count = read(fd, check, TIMEOUT_SIZE);
+
 		if (count <= 0) {
 			fastboot_fail("Failed to read");
 			goto end1;
 		}
+
 		fastboot_info(check);
 
-	} else {
-		memset(check, 0, TIMEOUT_SIZE);
+	} else { if (!strcmp(option, DNX_TIMEOUT_SET)) {
+		    /* Set new timeout */
 
-		bytes = write(fd, timeout, size);
-		if (bytes == -1) {
+		    if (argc != 3) {
+			/* Should not pass here ! */
+			fastboot_fail("oem dnx_timeout --set not enough arguments");
+			goto end1;
+		    }
+
+		    // Get timeout value to set
+		    size = snprintf(timeout, TIMEOUT_SIZE, "%s", argv[2]);
+
+		    if (size == -1 || size > TIMEOUT_SIZE-1) {
+			fastboot_fail("Timeout value size exceeds limit");
+			goto end1;
+		    }
+
+		    bytes = write(fd, timeout, size);
+		    if (bytes != size) {
 			fastboot_fail("oem dnx_timeout failed to write file");
 			goto end1;
-		}
+		    }
 
-		offset = lseek(fd, 0, SEEK_SET);
-		if (offset == -1) {
+		    offset = lseek(fd, 0, SEEK_SET);
+		    if (offset == -1) {
 			fastboot_fail("oem dnx_timeout failed to set offset");
 			goto end1;
-		}
+		    }
 
-		count = read(fd, check, TIMEOUT_SIZE);
-		if (count <= 0) {
+		    memset(check, 0, TIMEOUT_SIZE);
+
+		    count = read(fd, check, TIMEOUT_SIZE);
+		    if (count <= 0) {
 			fastboot_fail("Failed to check");
-			goto end1;
-		}
-		// terminate string unconditionally to avoid buffer overflow
-		check[TIMEOUT_SIZE-1] = '\0';
-		if (check[strlen(check)-1] == '\n')
-		    check[strlen(check)-1]= '\0';
-		if (strcmp(check, timeout)) {
+		    	goto end1;
+		    }
+
+		    // terminate string unconditionally to avoid buffer overflow
+		    check[TIMEOUT_SIZE-1] = '\0';
+		    if (check[strlen(check)-1] == '\n')
+		        check[strlen(check)-1]= '\0';
+		    if (strcmp(check, timeout)) {
 			fastboot_fail("oem dnx_timeout called with wrong parameter");
 			goto end1;
+		    }
+		} else {
+		    fastboot_fail("Unknown command. Use fastboot oem dnx_timeout [--get/--set] command\n");
+		    goto end1;
 		}
 	}
 
