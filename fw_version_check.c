@@ -27,8 +27,9 @@
 
 #include "fw_version_check.h"
 
-#define DEVICE_NAME			"/sys/devices/ipc/intel_fw_update.0/fw_info/fw_version"
-#define FIP_PATTERN			0x50494624
+#define DEVICE_NAME	"/sys/devices/ipc/intel_fw_update.0/fw_info/fw_version"
+#define DEVICE_NAME_ALT	"/sys/kernel/fw_update/fw_info/fw_version"
+#define FIP_PATTERN	0x50494624
 #define SCU_IPC_VERSION_LEN 16
 
 struct fip_version_block {
@@ -91,8 +92,11 @@ int get_current_fw_rev(struct firmware_versions *v)
 
 	fw_info = fopen(DEVICE_NAME, "r");
 	if (fw_info == NULL) {
-		print_perror("fopen");
-		return -1;
+		fw_info = fopen(DEVICE_NAME_ALT, "r");
+		if (fw_info == NULL) {
+			print_perror("fopen");
+			return -1;
+		}
 	}
 
 	memset(fw_revision, 0, SCU_IPC_VERSION_LEN);
