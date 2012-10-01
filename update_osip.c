@@ -313,10 +313,37 @@ out:
 
 int write_OSIP(struct OSIP_header *osip)
 {
+	int fd;
+	int ret;
+	const unsigned char *what = (const unsigned char *)osip;
+	int sz;
+
 	osip->header_checksum = 0;
 	osip->header_checksum = get_osip_crc(osip);
 
-	return file_write(MMC_DEV_POS, osip, sizeof(*osip));
+        sz=sizeof(*osip);
+
+        fd = open(MMC_DEV_POS, O_RDWR);
+        if (fd < 0) {
+                printf("write_OSIP: Can't open device %s: %s\n",
+                                MMC_DEV_POS, strerror(errno));
+                return -1;
+        }
+
+       while (sz) {
+                ret = write(fd, what, sz);
+                if (ret <= 0 && errno != EINTR) {
+                        printf("write_OSIP: Failed to write to %s: %s\n",
+                                        MMC_DEV_POS, strerror(errno));
+                        close(fd);
+                        return -1;
+                }
+                what += ret;
+                sz -= ret;
+        }
+        fsync(fd);
+        close(fd);
+        return 0;
 }
 
 static int crack_stitched_image(void *data, struct OSII **rec, uint8_t **blob)

@@ -70,7 +70,7 @@ int file_write(const char *filename, const void *data, size_t sz)
 	int ret;
 	const unsigned char *what = (const unsigned char *)data;
 
-	fd = open(filename, O_RDWR | O_CREAT);
+	fd = open(filename, O_RDWR | O_CREAT | O_TRUNC);
 	if (fd < 0) {
 		printf("file_write: Can't open file %s: %s\n",
 				filename, strerror(errno));
