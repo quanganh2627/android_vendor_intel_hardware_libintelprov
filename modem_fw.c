@@ -115,6 +115,7 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 
 	struct cmfwdl_buffer *p_buffer_read_rd_certif = NULL;
 	struct cmfwdl_buffer *p_buffer_hw_id = NULL;
+	int b_erase_all = 0;
 	int b_asked_reboot = CMFWDL_REBOOT;
 	int b_end_reboot = CMFWDL_REBOOT;
 	int b_read_rd_certif = 0;
@@ -133,7 +134,9 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 		return -1;
 
 	for (arg = 0; arg < argc; arg++) {
-		if (!strcmp(argv[arg], "f")) {
+		if (!strcmp(argv[arg], "e")) {
+			b_erase_all = 1;
+		} else if (!strcmp(argv[arg], "f")) {
 			b_asked_reboot = CMFWDL_REBOOT;
 			b_fw_download = 1;
 		} else if (!strcmp(argv[arg], "d")) {
@@ -186,6 +189,12 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 	check(cmfwdl_set_ports(h, TTY_NODE, IFX_NODE0));
 #endif
 	check(cmfwdl_set_trace_file(h, 1, TRACE_FILE));
+
+	/* If asked, set erase mode to erase all (code and calibration table) */
+	if (b_erase_all == 1) {
+		check(cmfwdl_set_property(h, cmfwdl_property_erase_mode, 1));
+	}
+
 	check(cmfwdl_set_property(h, cmfwdl_property_allow_hw_channel_switch,
 			1));
 	check(cmfwdl_set_property(h, cmfwdl_property_boot_process_timeout,
