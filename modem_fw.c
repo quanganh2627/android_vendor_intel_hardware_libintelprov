@@ -123,6 +123,7 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 	int read_hw_id = 0;
 	int b_erase_rd_certif = 0;
 	int arg;
+	int b_bootloader = 1;
 	int b_fw_download = 0;
 	int b_fuse = 0;
 	unsigned char fuse_data[CHIP_FUSE_SIZE];
@@ -144,7 +145,12 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 			b_fw_download = 1;
 		} else if (!strcmp(argv[arg], "u")) {
 			b_fuse = 1;
+			b_bootloader = 1;
 			b_fw_download = 1;
+		} else if (!strcmp(argv[arg], "v")) {
+			b_fuse = 1;
+			b_bootloader = 0;
+			b_fw_download = 0;
 		} else if (!strcmp(argv[arg], "r")) {
 			if (cmfwdl_file_exist(firmware_filename))  {
 				rd_certif_buffer.name = firmware_filename;
@@ -182,7 +188,13 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 	boot_buffer.data = NULL;
 
 	/* Set up various properties */
-	cmfwdl_set_modemname(h, ifx6260);
+	if (cmfwdl_file_exist(firmware_filename)) {
+	    cmfwdl_set_modemname(h, cmfwdl_get_modemname_from_file(firmware_filename));
+	}
+	if (cmfwdl_modemname(h) == no_modem) {
+	    cmfwdl_set_modemname(h, xmm6260);
+	}
+
 #ifdef CLVT
 	check(cmfwdl_set_ports(h, NULL, IFX_NODE1));
 #else
@@ -213,22 +225,20 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 				" Proceeding anyway.\n");
 
 	check(cmfwdl_enable_flashing(IFX_NODE0)); /* Switch to Flashing mode */
-	check(cmfwdl_boot_modem(h, &boot_buffer, cb, NULL));
+
+	/* First part of modem boot: initialization and open comm ports */
+	check(cmfwdl_pre_boot_modem(h, cb, NULL));
 
 	/* Get chip fusing parameters (print out in stdout and in a file) */
-	if (b_fuse == 1)
-	{
-		if (cmfwdl_get_chip_response(h, fuse_data, CHIP_FUSE_SIZE) == 0)
-		{
+	if (b_fuse == 1) {
+		if (cmfwdl_get_chip_response(h, fuse_data, CHIP_FUSE_SIZE) == 0) {
 			for (i = 0; i < CHIP_FUSE_SIZE; ++i) {
 				snprintf(&fuse_ascii[3*i], 3+1, "%02x ", fuse_data[i]);
 			}
 			snprintf(&fuse_ascii[3*CHIP_FUSE_SIZE-1], 1+1, "\n");
 			fuse_buffer.size = 3*CHIP_FUSE_SIZE;
 			printf("Chip fusing parameters: %s", fuse_ascii);
-		}
-		else
-		{
+		} else {
 			snprintf(&fuse_ascii[0], 1+1, "\n");
 			fuse_buffer.size = 1;
 			printf("Getting chip fusing parameters failed\n");
@@ -238,6 +248,11 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 		fuse_buffer.data = (unsigned char *) fuse_ascii;
 		check(store_data_to_file(&fuse_buffer));
 		printf("Storing chip fusing parameters to file %s succeeded\n", fuse_buffer.name);
+	}
+
+	/* Second part of modem boot: not called if only fusing parameters are wanted */
+	if ((b_bootloader == 1) || (b_fuse == 0)) {
+		check(cmfwdl_boot_modem(h, &boot_buffer));
 	}
 
 	/* Get modem HWID (print out in stdout) */
@@ -257,11 +272,13 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 	}
 
 	/* Get RND Cert (print out in stdout) */
-	if (b_read_rd_certif == 1){
+	if (b_read_rd_certif == 1) {
 		check(cmfwdl_queue_certificate_action(h, cmfwdl_certificate_RDC, cmfwdl_certificate_read, NULL))
 	}
 
-	check(cmfwdl_execute(h, cb, NULL));
+	if (b_bootloader == 1) {
+		check(cmfwdl_execute(h, cb, NULL));
+	}
 
 	if (read_hw_id == 1) {
 		p_buffer_hw_id = cmfwdl_get_hardware_id(h);
@@ -295,8 +312,8 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 	ret = 0;
 out:
 	cmfwdl_disable_flashing(IFX_NODE0); /* Switch back to IPC mode */
-	enable_pm();
 	cmfwdl_destroy_instance(h, b_end_reboot);
+	enable_pm();
 	return ret;
 }
 

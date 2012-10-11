@@ -51,7 +51,7 @@ int flash_modem_nvm(const char *nvm_filename, modem_nvm_status_callback cb)
 	}
 
 	/* Set up various properties */
-	cmfwdl_set_modemname(h, ifx6260);
+	cmfwdl_set_modemname(h, xmm6260);
 	check(cmfwdl_set_ports(h, TTY_NODE, IFX_NODE));
 
 	pbuffer_nvm_command = (struct cmfwdl_buffer*)malloc(sizeof(struct cmfwdl_buffer));
@@ -107,7 +107,7 @@ int read_modem_nvm_id(char* out_buffer, size_t max_out_size, modem_nvm_status_ca
 	}
 
 	/* Set up various properties */
-	cmfwdl_set_modemname(h, ifx6260);
+	cmfwdl_set_modemname(h, xmm6260);
 	check(cmfwdl_set_ports(h, TTY_NODE, IFX_NODE));
 
 	pbuffer_nvm_response = (struct cmfwdl_buffer*)malloc(sizeof(struct cmfwdl_buffer));
