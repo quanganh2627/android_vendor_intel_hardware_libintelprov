@@ -357,6 +357,31 @@ done:
     return ret;
 }
 
+Value *FlashSpidNvmFn(const char *name, State *state, int argc, Expr *argv[]) {
+    Value *ret = NULL;
+    char *filename = NULL;
+
+    if (ReadArgs(state, argv, 1, &filename) < 0) {
+        return NULL;
+    }
+
+    if (strlen(filename) == 0) {
+        ErrorAbort(state, "filename argument to %s can't be empty", name);
+        goto done;
+    }
+
+    if (flash_modem_nvm_spid(filename, nvm_output_callback) != 0) {
+        printf("error during 3G Modem NVM config!\n");
+    }
+
+    ret = StringValue(strdup(""));
+done:
+    if (filename)
+        free(filename);
+
+    return ret;
+}
+
 Value *ReadModemNvmIdFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
 
@@ -385,6 +410,7 @@ void Register_libintel_updater(void)
     RegisterFunction("flash_ifwi", FlashIfwiFn);
     RegisterFunction("flash_modem", FlashModemFn);
     RegisterFunction("flash_nvm", FlashNvmFn);
+    RegisterFunction("flash_nvm_spid", FlashSpidNvmFn);
     RegisterFunction("identify_nvm", ReadModemNvmIdFn);
     RegisterFunction("extract_osip", ExtractOsipFn);
 }

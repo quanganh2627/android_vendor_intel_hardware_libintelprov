@@ -33,7 +33,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_C_INCLUDES := bootable/recovery bionic/libc/private
 LOCAL_MODULE := libintel_recovery_ui
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-ifeq ($(TARGET_PRODUCT), mfld_pr2))
+ifeq ($(TARGET_PRODUCT), mfld_pr2)
 LOCAL_CFLAGS += -DMFLD_PRX_KEY_LAYOUT
 endif
 include $(BUILD_STATIC_LIBRARY)
@@ -78,7 +78,7 @@ LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE := flashtool
 LOCAL_SHARED_LIBRARIES := liblog libcutils
 LOCAL_STATIC_LIBRARIES := libcmfwdl
-LOCAL_C_INCLUDES := $(common_libintelprov_includes)
+LOCAL_C_INCLUDES := $(common_libintelprov_includes) bootable/recovery
 LOCAL_SRC_FILES:= flashtool.c $(common_libintelprov_files)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifneq (,$(findstring $(TARGET_PRODUCT),victoriabay ctp_pr1 ctp_nomodem))

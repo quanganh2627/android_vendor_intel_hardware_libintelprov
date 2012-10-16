@@ -28,6 +28,7 @@
 typedef void (*modem_nvm_status_callback)(const char *msg, int output);
 
 int flash_modem_nvm(const char *nvm_filename, modem_nvm_status_callback cb);
+int flash_modem_nvm_spid(const char *nvm_filename, modem_nvm_status_callback cb);
 int read_modem_nvm_id(char* out_buffer, size_t max_out_size, modem_nvm_status_callback cb);
 
 #endif

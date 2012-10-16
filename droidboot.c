@@ -516,7 +516,18 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 
 		retval = flash_modem_nvm(nvm_path, nvm_output_callback);
 	}
-	else if (!strcmp(argv[1], "identify")) {
+	else if (!strcmp(argv[1], "applyzip")) {
+		pr_info("in applyzip");
+		if (argc < 3) {
+			pr_error("oem_nvm_cmd_handler called with wrong parameter!\n");
+			retval = -1;
+			return retval;
+		}
+		nvm_path = argv[2];
+
+		retval = flash_modem_nvm_spid(nvm_path, nvm_output_callback);
+	}
+        else if (!strcmp(argv[1], "identify")) {
 		pr_info("in identify");
 		retval = read_modem_nvm_id(NULL, 0, nvm_output_callback);
 	}

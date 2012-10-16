@@ -314,6 +314,8 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 out:
 	cmfwdl_disable_flashing(IFX_NODE0); /* Switch back to IPC mode */
 	cmfwdl_destroy_instance(h, b_end_reboot);
+	// wait for modem to reboot
+	sleep(5);
 	enable_pm();
 	return ret;
 }
