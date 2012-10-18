@@ -32,6 +32,8 @@
 #define IPC_DEVICE_NAME		"/dev/mid_ipc"
 #define DEVICE_FW_UPGRADE	0xA4
 
+#define PTI_ENABLE_BIT		(1<<7)	/* For testing if PTI is enabled or disabled. */
+
 #define pr_perror(x)	fprintf(stderr, "update_ifwi_image: %s failed: %s\n", \
 		x, strerror(errno))
 
@@ -58,9 +60,29 @@ static int retry_write(char *buf, int cont, FILE *f)
 	return 0;
 }
 
+int ifwi_downgrade_allowed(const char *ifwi)
+{
+	uint8_t pti_field;
+
+	if (crack_update_fw_pti_field(ifwi, &pti_field)) {
+		fprintf(stderr, "Coudn't crack ifwi file to get PTI field!\n");
+		return -1;
+	}
+
+	/* The SMIP offset 0x30C bit 7 indicates if the PTI is enabled/disabled. */
+	/* If PTI is enabled, DEV/DBG IFWI: IFWI downgrade allowed.              */
+	/* If PTI is disabled, end user/PROD IFWI: IFWI downgrade not allowed.   */
+
+	if (pti_field & PTI_ENABLE_BIT)
+		return 1;
+
+	return 0;
+}
+
 int update_ifwi_file(const char *dnx, const char *ifwi)
 {
 	int ret = 0;
+	int ifwi_allowed;
 	size_t cont;
 	char buff[BUF_SIZ];
 	FILE *f_src, *f_dst;
@@ -75,15 +97,41 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 		fprintf(stderr, "Couldn't query existing IFWI version\n");
 		return -1;
 	}
+
+	/* Check if this IFWI file can be updated. */
+	ifwi_allowed = ifwi_downgrade_allowed(ifwi);
+
+	if (ifwi_allowed == -1) {
+		fprintf(stderr, "Couldn't get PTI information from ifwi file\n");
+		return -1;
+	}
+
 	if (img_ifwi_rev.major != dev_fw_rev.ifwi.major) {
 		fprintf(stderr, "IFWI FW Major version numbers (file=%02X current=%02X) don't match, Update abort.\n",
-				img_ifwi_rev.major, 	dev_fw_rev.ifwi.major);
+				img_ifwi_rev.major, dev_fw_rev.ifwi.major);
+
+		/* Not an error case. Let update continue to next IFWI versions. */
 		goto end;
 	}
 
-	if (img_ifwi_rev.minor == dev_fw_rev.ifwi.minor) {
-		fprintf(stderr, "IFWI FW is not new than board's existing version (file=%02X current=%02X), Update abort.\n",
+	if (img_ifwi_rev.minor < dev_fw_rev.ifwi.minor) {
+		if (!ifwi_allowed) {
+			fprintf(stderr, "IFWI FW Minor downgrade not allowed (file=%02X current=%02X). Update abort.\n",
 				img_ifwi_rev.minor, dev_fw_rev.ifwi.minor);
+
+			/* Not an error case. Let update continue to next IFWI versions. */
+			goto end;
+		} else {
+			fprintf(stderr, "IFWI FW Minor downgrade allowed (file=%02X current=%02X).\n",
+				img_ifwi_rev.minor, dev_fw_rev.ifwi.minor);
+		}
+	}
+
+	if (img_ifwi_rev.minor == dev_fw_rev.ifwi.minor) {
+		fprintf(stderr, "IFWI FW Minor is not new than board's existing version (file=%02X current=%02X), Update abort.\n",
+			img_ifwi_rev.minor, dev_fw_rev.ifwi.minor);
+
+		/* Not an error case. Let update continue to next IFWI versions. */
 		goto end;
 	}
 
@@ -135,9 +183,8 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 	    }
 	}
 
-	fclose(f_src);
-	fclose(f_dst);
 
+	fclose(f_dst);
 
 err:
 	fclose(f_src);

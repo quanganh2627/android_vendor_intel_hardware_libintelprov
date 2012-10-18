@@ -32,6 +32,9 @@
 #define FIP_PATTERN	0x50494624
 #define SCU_IPC_VERSION_LEN 16
 
+#define SMIP_PATTERN	    0x50494D53
+#define PTI_FIELD_OFFSET    0x030C
+
 struct fip_version_block {
 	uint8_t reserved;
 	uint8_t minor;
@@ -253,3 +256,59 @@ int crack_update_fw(const char *fw_file, struct fw_version *ifwi_version){
 
 	return 0;
 }
+
+int crack_update_fw_pti_field(const char *fw_file, uint8_t *pti_field){
+	FILE *fd;
+	int tmp = 0;
+	int location;
+	uint8_t smip_data;
+
+	if ((fd = fopen(fw_file, "rb")) == NULL) {
+		fprintf(stderr, "fopen error: Unable to open file\n");
+		return -1;
+	}
+
+	*pti_field = 0x00000000;
+
+	/* Search for SMIP area. */
+	while (tmp != SMIP_PATTERN) {
+		int cur;
+		fread(&tmp, sizeof(int), 1, fd);
+		if (ferror(fd) || feof(fd)) {
+			fprintf(stderr, "find SMIP_PATTERN failed\n");
+			fclose(fd);
+			return -1;
+		}
+		cur = ftell(fd) - sizeof(int);
+
+		fseek(fd, cur + sizeof(char), SEEK_SET);
+		if (ferror(fd) || feof(fd)) {
+			fprintf(stderr, "reposition to SMIP_PATTERN failed\n");
+			fclose(fd);
+			return -1;
+		}
+	}
+	location = ftell(fd) - sizeof(char);
+
+	/* Move to the offset where the PIT field is located. */
+	fseek(fd, location + PTI_FIELD_OFFSET, SEEK_SET);
+	if (ferror(fd) || feof(fd)) {
+		fprintf(stderr, "reposition to PTI field offset failed\n");
+		fclose(fd);
+		return -1;
+	}
+
+	fread(&smip_data, 1, 1, fd);
+	if (ferror(fd) || feof(fd)) {
+		fprintf(stderr, "read of FIP_header failed\n");
+		fclose(fd);
+		return -1;
+	}
+
+	/* Fill given param with found value. */
+	*pti_field = smip_data;
+
+	fclose(fd);
+	return 0;
+}
+
