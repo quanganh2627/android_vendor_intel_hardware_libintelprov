@@ -21,11 +21,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_C_INCLUDES := bootable/recovery $(common_libintelprov_includes)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-ifeq ($(TARGET_PRODUCT),ctp_pr0)
-LOCAL_CFLAGS += -DCLVT
-else ifeq ($(TARGET_PRODUCT),ctp_pr1)
-LOCAL_CFLAGS += -DCLVT
-else ifeq ($(TARGET_PRODUCT),ctp_nomodem)
+ifneq (,$(findstring $(TARGET_PRODUCT),victoriabay ctp_pr1 ctp_nomodem))
 LOCAL_CFLAGS += -DCLVT
 endif
 include $(BUILD_STATIC_LIBRARY)
@@ -37,7 +33,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_C_INCLUDES := bootable/recovery bionic/libc/private
 LOCAL_MODULE := libintel_recovery_ui
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-ifneq (, $(filter $(TARGET_PRODUCT), mfld_cdk mfld_pr1 mfld_pr2))
+ifeq ($(TARGET_PRODUCT), mfld_pr2))
 LOCAL_CFLAGS += -DMFLD_PRX_KEY_LAYOUT
 endif
 include $(BUILD_STATIC_LIBRARY)
@@ -71,11 +67,7 @@ LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter -Wno-unused-but-set-variable
 ifneq ($(DROIDBOOT_NO_GUI),true)
 LOCAL_CFLAGS += -DUSE_GUI
 endif
-ifeq ($(TARGET_PRODUCT),ctp_pr0)
-LOCAL_CFLAGS += -DCLVT
-else ifeq ($(TARGET_PRODUCT),ctp_pr1)
-LOCAL_CFLAGS += -DCLVT
-else ifeq ($(TARGET_PRODUCT),ctp_nomodem)
+ifneq (,$(findstring $(TARGET_PRODUCT),victoriabay ctp_pr1 ctp_nomodem))
 LOCAL_CFLAGS += -DCLVT
 endif
 include $(BUILD_STATIC_LIBRARY)
@@ -89,11 +81,7 @@ LOCAL_STATIC_LIBRARIES := libcmfwdl
 LOCAL_C_INCLUDES := $(common_libintelprov_includes)
 LOCAL_SRC_FILES:= flashtool.c $(common_libintelprov_files)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-ifeq ($(TARGET_PRODUCT),ctp_pr0)
-LOCAL_CFLAGS += -DCLVT
-else ifeq ($(TARGET_PRODUCT),ctp_pr1)
-LOCAL_CFLAGS += -DCLVT
-else ifeq ($(TARGET_PRODUCT),ctp_nomodem)
+ifneq (,$(findstring $(TARGET_PRODUCT),victoriabay ctp_pr1 ctp_nomodem))
 LOCAL_CFLAGS += -DCLVT
 endif
 include $(BUILD_EXECUTABLE)
