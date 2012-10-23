@@ -278,6 +278,7 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 
 	if (b_bootloader == 1) {
 		check(cmfwdl_execute(h, cb, NULL));
+		cmfwdl_reset_ttyifx_parameters_for_nonflashing(h);
 	}
 
 	if (read_hw_id == 1) {
