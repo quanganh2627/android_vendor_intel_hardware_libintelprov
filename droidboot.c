@@ -37,6 +37,7 @@
 #include "fastboot.h"
 #include "droidboot_ui.h"
 #include "update_partition.h"
+#include <cgpt.h>
 
 #define IMG_RADIO "/radio.img"
 #define IMG_RADIO_RND "/radio_rnd.img"
@@ -480,7 +481,7 @@ static int oem_dnx_timeout(int argc, char **argv)
 		    // terminate string unconditionally to avoid buffer overflow
 		    check[TIMEOUT_SIZE-1] = '\0';
 		    if (check[strlen(check)-1] == '\n')
-		        check[strlen(check)-1]= '\0';
+			check[strlen(check)-1]= '\0';
 		    if (strcmp(check, timeout)) {
 			fastboot_fail("oem dnx_timeout called with wrong parameter");
 			goto end1;
@@ -499,6 +500,10 @@ end1:
 end2:
 	return retval;
 }
+
+#define K_MAX_LINE_LEN 8192
+#define K_MAX_ARGS 256
+#define K_MAX_ARG_LEN 256
 
 static int oem_nvm_cmd_handler(int argc, char **argv)
 {
@@ -534,6 +539,166 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 	else {
 		pr_error("Unknown command. Use %s [apply].\n", "nvm");
 		retval = -1;
+	}
+
+	return retval;
+}
+
+static char **str_to_array(char *str, int *argc)
+{
+	char *str1, *token;
+	char *saveptr1;
+	int j;
+	int num_tokens;
+	char **tokens;
+
+	tokens=malloc(sizeof(char *) * K_MAX_ARGS);
+
+	if(tokens==NULL)
+	    return NULL;
+
+	num_tokens = 0;
+
+	for (j = 1, str1 = str; ; j++, str1 = NULL) {
+		token = strtok_r(str1, " ", &saveptr1);
+
+	if (token == NULL)
+		break;
+
+	tokens[num_tokens] = (char *) malloc(sizeof(char) * K_MAX_ARG_LEN+1);
+
+	if(tokens[num_tokens]==NULL)
+		break;
+
+	strncpy(tokens[num_tokens], token, K_MAX_ARG_LEN);
+	num_tokens++;
+
+	if (num_tokens == K_MAX_ARGS)
+		break;
+	}
+
+	*argc = num_tokens;
+	return tokens;
+}
+
+static int oem_partition_start_handler(int argc, char **argv)
+{
+	property_set("sys.partitioning", "1");
+	ui_print("Start partitioning\n");
+	ufdisk_umount_all();
+	return 0;
+}
+
+static int oem_partition_stop_handler(int argc, char **argv)
+{
+	property_set("sys.partitioning", "0");
+	ui_print("Stop partitioning\n");
+	return 0;
+}
+
+
+static int _oem_partition_gpt_sub_command(int argc, char **argv)
+{
+	unsigned int i;
+	char *command = argv[0];
+	static struct {
+		const char *name;
+		int (*fp)(int argc, char *argv[]);
+	} cmds[] = {
+		{"create", cmd_create },
+		{"add", cmd_add},
+		{"dump", cmd_show},
+		{"repair", cmd_repair},
+		{"boot", cmd_bootable},
+		{"find", cmd_find},
+		{"prioritize", cmd_prioritize},
+		{"legacy", cmd_legacy},
+		{"reload", cmd_reload},
+	};
+
+	optind = 0;
+	for (i = 0; command && i < sizeof(cmds)/sizeof(cmds[0]); ++i)
+		if (0 == strncmp(cmds[i].name, command, strlen(command)))
+			return cmds[i].fp(argc, argv);
+
+	return -1;
+}
+
+static int oem_partition_gpt_handler(FILE *fp)
+{
+	int argc = 0;
+	int ret = 0;
+	int i;
+	char buffer[K_MAX_ARG_LEN];
+	char **argv = NULL;
+
+	ui_print("Using GPT\n");
+
+	uuid_generator = uuid_generate;
+	while (fgets(buffer, sizeof(buffer), fp)) {
+		buffer[strlen(buffer)-1]='\0';
+		argv = str_to_array(buffer, &argc);
+		ret |= _oem_partition_gpt_sub_command(argc, argv);
+		if (ret)
+		  fastboot_fail("GPT command failed\n");
+
+		for(i = 0; i < argc ; i++) {
+			if (argv[i]) {
+				  free(argv[i]);
+				  argv[i]=NULL;
+			}
+		}
+
+		if (argv) {
+			free(argv);
+			argv=NULL;
+		}
+	}
+
+	return ret;
+}
+
+static int oem_partition_mbr_handler(FILE *fp)
+{
+	ui_print("Using MBR\n");
+	return 0;
+}
+
+static int oem_partition_cmd_handler(int argc, char **argv)
+{
+	char buffer[K_MAX_ARG_LEN];
+	char partition_type[K_MAX_ARG_LEN];
+	FILE *fp;
+	int retval = -1;
+
+	memset(buffer, 0, sizeof(buffer));
+
+	if (argc == 2) {
+		fp = fopen(argv[1], "r");
+		if (!fp) {
+		      fastboot_fail("Can't open partition file");
+		      return -1;
+		}
+
+		if (!fgets(buffer, sizeof(buffer), fp)) {
+		      fastboot_fail("partition file is empty");
+		      return -1;
+		}
+
+		buffer[strlen(buffer)-1]='\0';
+
+		if (sscanf(buffer, "%*[^=]=%255s", partition_type) != 1) {
+		      fastboot_fail("partition file is invalid");
+		      return -1;
+		}
+
+		if (!strncmp("gpt", partition_type, strlen(partition_type)))
+		      retval = oem_partition_gpt_handler(fp);
+
+		if (!strncmp("mbr", partition_type, strlen(partition_type)))
+		      retval = oem_partition_mbr_handler(fp);
+
+		fclose(fp);
 	}
 
 	return retval;
@@ -753,6 +918,9 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd(REPART_PARTITION, oem_repart_partition);
 
 	ret |= aboot_register_oem_cmd("nvm", oem_nvm_cmd_handler);
+	ret |= aboot_register_oem_cmd("start_partitioning", oem_partition_start_handler);
+	ret |= aboot_register_oem_cmd("partition", oem_partition_cmd_handler);
+	ret |= aboot_register_oem_cmd("stop_partitioning", oem_partition_stop_handler);
 
 	fastboot_register("continue", cmd_intel_reboot);
 	fastboot_register("reboot", cmd_intel_reboot);

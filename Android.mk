@@ -59,10 +59,33 @@ ifeq ($(TARGET_USE_DROIDBOOT),true)
 # Plug-in libary for Droidboot
 include $(CLEAR_VARS)
 LOCAL_MODULE := libintel_droidboot
-LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files)
+LIBCGPT_FILES := \
+	gpt/lib/cgpt_add.c \
+	gpt/lib/cgpt_boot.c \
+	gpt/lib/cgpt_common.c \
+	gpt/lib/cgpt_create.c \
+	gpt/lib/cgpt_find.c \
+	gpt/lib/cgpt_legacy.c \
+	gpt/lib/cgptlib_internal.c \
+	gpt/lib/cgpt_prioritize.c \
+	gpt/lib/cgpt_repair.c \
+	gpt/lib/cgpt_show.c \
+	gpt/lib/crc32.c \
+	gpt/lib/utility_stub.c \
+	gpt/lib/cmd_add.c \
+	gpt/lib/cmd_boot.c \
+	gpt/lib/cmd_create.c \
+	gpt/lib/cmd_find.c \
+	gpt/lib/cmd_legacy.c \
+	gpt/lib/cmd_prioritize.c \
+	gpt/lib/cmd_repair.c \
+	gpt/lib/cmd_reload.c \
+	gpt/lib/cmd_show.c
+
+LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-LOCAL_C_INCLUDES := bootable/droidboot bootable/recovery $(common_libintelprov_includes)
+LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter -Wno-unused-but-set-variable
 ifneq ($(DROIDBOOT_NO_GUI),true)
 LOCAL_CFLAGS += -DUSE_GUI
@@ -99,3 +122,4 @@ LOCAL_STATIC_LIBRARIES := libmincrypt libapplypatch libbz
 include $(BUILD_EXECUTABLE)
 endif
 
+include $(call all-makefiles-under,$(LOCAL_PATH))
