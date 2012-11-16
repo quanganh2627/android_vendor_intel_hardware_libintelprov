@@ -187,7 +187,7 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 	patchval.type = VAL_BLOB;
 
 	if (ApplyImagePatch(src_data, src_size, &patchval,
-				MemorySink, &msi, &ctx)) {
+				MemorySink, &msi, &ctx, NULL)) {
 		LOGE("Patching process failed");
 		goto out;
 	}
