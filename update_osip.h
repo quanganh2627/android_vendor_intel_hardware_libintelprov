@@ -66,6 +66,7 @@ void dump_OS_page(struct OSIP_header *osip, int os_index, int numpages);
 int read_osimage_data(void **data, size_t *size, int osii_index);
 int write_stitch_image(void *data, size_t size, int osii_index);
 int get_named_osii_index(char *destination);
+int invalidate_osii(char *destination);
 int get_attribute_osii_index(int attr);
 int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba);
 int verify_osip_sizes(struct OSIP_header *osip);

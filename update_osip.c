@@ -627,6 +627,11 @@ int get_named_osii_index(char *destination)
 	int attr;
 	struct OSIP_header osip;
 
+	if (destination == NULL) {
+		fprintf(stderr, "destination is a NULL pointer\n");
+		return -1;
+	}
+
 	if (!strcmp(destination, UEFI_FW_NAME))
 		return UEFI_FW_IDX;
 
@@ -668,4 +673,29 @@ int get_attribute_osii_index(int attr)
 		if ((osip.desc[i].attribute&(~1)) == attr)
 			return i;
 	return osip.num_pointers;
+}
+
+int invalidate_osii(char *destination) {
+	int osii_index;
+	struct OSIP_header osip;
+
+	// destination parameter validity is tested in function get_named_osii_index
+	osii_index = get_named_osii_index(destination);
+	if (osii_index < 0 || (unsigned int)osii_index >
+			ARRAY_SIZE(osip.reserved)) {
+		fprintf(stderr, "Bad OSII index %d\n", osii_index);
+		return -1;
+	}
+
+	if (read_OSIP(&osip)) {
+		fprintf(stderr, "Can't read OSIP!\n");
+		return -1;
+	}
+
+	// Remove OS index information
+	osip.desc[osii_index].attribute = ATTR_NOTUSED;
+	osip.desc[osii_index].ddr_load_address = 0;
+	osip.desc[osii_index].entry_point = 0;
+
+	return write_OSIP(&osip);
 }

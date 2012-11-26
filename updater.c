@@ -133,6 +133,33 @@ done:
     return ret;
 }
 
+Value *DeleteOsFn(const char *name, State *state, int argc, Expr *argv[]) {
+    Value *ret = NULL;
+    char *destination = NULL;
+
+    if (ReadArgs(state, argv, 1, &destination) < 0) {
+        return NULL;
+    }
+
+    if (strlen(destination) == 0) {
+        ErrorAbort(state, "destination argument to %s can't be empty", name);
+        goto done;
+    }
+
+    if (invalidate_osii(destination)) {
+        ErrorAbort(state, "Error writing %s to OSIP", destination);
+        goto done;
+    }
+
+    ret = StringValue(strdup(""));
+
+done:
+    if (destination)
+        free(destination);
+
+    return ret;
+}
+
 #define DNX_BIN_PATH	"/tmp/dnx.bin"
 #define IFWI_BIN_PATH	"/tmp/ifwi.bin"
 #define IFWI_NAME	"ifwi"
@@ -413,4 +440,5 @@ void Register_libintel_updater(void)
     RegisterFunction("flash_nvm_spid", FlashSpidNvmFn);
     RegisterFunction("identify_nvm", ReadModemNvmIdFn);
     RegisterFunction("extract_osip", ExtractOsipFn);
+    RegisterFunction("delete_os", DeleteOsFn);
 }
