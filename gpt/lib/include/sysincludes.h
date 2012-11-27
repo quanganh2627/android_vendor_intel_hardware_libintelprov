@@ -39,7 +39,7 @@
 #include "biosincludes.h"
 #endif
 
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(__INTEL_COMPILER)
 #define __pragma(...)
 #endif
 
