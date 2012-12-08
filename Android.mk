@@ -93,6 +93,10 @@ endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
 LOCAL_CFLAGS += -DCLVT
 endif
+ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
+  LOCAL_CFLAGS += -DMRFLD
+endif
+
 include $(BUILD_STATIC_LIBRARY)
 
 # a test flashtool for testing the intelprov library

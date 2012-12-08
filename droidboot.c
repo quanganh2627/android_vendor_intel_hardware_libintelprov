@@ -295,6 +295,99 @@ static int flash_modem_get_hw_id(void *data, unsigned sz)
 	return ret;
 }
 
+#ifdef MRFLD
+
+static int flash_dnx(void *data, unsigned sz)
+{
+    return 0;
+}
+
+#define BOOT0 "/dev/block/mmcblk0boot0"
+#define BOOT1 "/dev/block/mmcblk0boot1"
+#define BOOT_PARTITION_SIZE 0x400000
+
+int write_image(int fd, char *image, unsigned size)
+{
+    int ret = 0;
+    char *ptr = NULL;
+
+    ptr = image;
+    if (!ptr) {
+        pr_error("write_image(): Image is invalid\n");
+        return -1;
+    }
+
+    while(size) {
+    /*If this condition is not present, the write*/
+    /*function errors out while writing the last chunk*/
+        ret = write(fd, ptr, size);
+        if (ret <= 0 && errno != EINTR) {
+            fprintf(stderr, "write_image(): image write failed with errno %d\n", errno);
+            return -1;
+        }
+        ptr += ret;
+        size -= ret;
+    }
+
+    fsync(fd);
+    return 0;
+}
+
+static int flash_ifwi(void *data, unsigned size)
+{
+    int boot0_fd, boot1_fd, ret = 0;
+
+    if (size > BOOT_PARTITION_SIZE) {
+        fprintf(stderr, "flash_ifwi(): Truncating last %d bytes from the IFWI\n",
+        (size - BOOT_PARTITION_SIZE));
+        /* Since the last 144 bytes are the FUP header which are not required,*/
+        /* we truncate it to fit into the boot partition. */
+        size = BOOT_PARTITION_SIZE;
+    }
+
+    boot0_fd = open(BOOT0, O_RDWR);
+    if (boot0_fd < 0) {
+        fprintf(stderr, "flash_ifwi(): failed to open %s\n", BOOT0);
+        return -1;
+    }
+    boot1_fd = open(BOOT1, O_RDWR);
+    if (boot1_fd < 0) {
+        fprintf(stderr, "flash_ifwi(): failed to open %s\n", BOOT1);
+        close(boot0_fd);
+        return -1;
+    }
+
+    if (lseek(boot0_fd, 0, SEEK_SET) < 0) { /* Seek to start of file */
+        fprintf(stderr, "flash_ifwi(): lseek failed on boot0");
+        close(boot0_fd);
+        close(boot1_fd);
+        return -1;
+    }
+
+    if (lseek(boot1_fd, 0, SEEK_SET) < 0) {
+        fprintf(stderr, "flash_ifwi(): lseek failed on boot1");
+        close(boot0_fd);
+        close(boot1_fd);
+        return -1;
+    }
+
+    ret = write_image(boot0_fd, (char*)data, size);
+    if (ret)
+        fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT0);
+    else {
+        ret = write_image(boot1_fd, (char*)data, size);
+        if (ret)
+            fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT1);
+    }
+
+    close(boot0_fd);
+    close(boot1_fd);
+
+    return ret;
+}
+
+#else
+
 #define BIN_DNX  "/tmp/__dnx.bin"
 #define BIN_IFWI "/tmp/__ifwi.bin"
 
@@ -337,6 +430,8 @@ static int flash_ifwi(void *data, unsigned sz)
 	}
 	return 0;
 }
+
+#endif
 
 #define PROXY_SERVICE_NAME		"proxy"
 #define PROXY_PROP		"service.proxy.enable"
