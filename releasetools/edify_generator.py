@@ -297,6 +297,10 @@ class EdifyGenerator(object):
     self.Print("Updating IFWI image...\n");
     self.script.append('flash_ifwi("/tmp/%s");' % (filename,))
 
-  def DeleteOs(self, name):
-    """Delete os attribute in osip table"""
-    self.script.append('delete_os("%s");' % (name,))
+  def InvalidateOs(self, name):
+    """Invalidate os image in osip table"""
+    self.script.append('invalidate_os("%s");' % (name,))
+
+  def RestoreOs(self, name):
+    """Restore os image in osip table"""
+    self.script.append('restore_os("%s");' % (name,))

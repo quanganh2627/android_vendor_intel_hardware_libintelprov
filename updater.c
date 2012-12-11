@@ -133,7 +133,7 @@ done:
     return ret;
 }
 
-Value *DeleteOsFn(const char *name, State *state, int argc, Expr *argv[]) {
+Value *ExecuteOsipFunction(const char *name, State *state, int argc, Expr *argv[], int (*action)(char*)) {
     Value *ret = NULL;
     char *destination = NULL;
 
@@ -146,7 +146,7 @@ Value *DeleteOsFn(const char *name, State *state, int argc, Expr *argv[]) {
         goto done;
     }
 
-    if (invalidate_osii(destination)) {
+    if (action(destination) == -1) {
         ErrorAbort(state, "Error writing %s to OSIP", destination);
         goto done;
     }
@@ -158,6 +158,14 @@ done:
         free(destination);
 
     return ret;
+}
+
+Value *InvalidateOsFn(const char *name, State *state, int argc, Expr *argv[]) {
+    return ExecuteOsipFunction(name, state, argc, argv, invalidate_osii);
+}
+
+Value *RestoreOsFn(const char *name, State *state, int argc, Expr *argv[]) {
+    return ExecuteOsipFunction(name, state, argc, argv, restore_osii);
 }
 
 #define DNX_BIN_PATH	"/tmp/dnx.bin"
@@ -447,5 +455,6 @@ void Register_libintel_updater(void)
     RegisterFunction("flash_nvm_spid", FlashSpidNvmFn);
     RegisterFunction("identify_nvm", ReadModemNvmIdFn);
     RegisterFunction("extract_osip", ExtractOsipFn);
-    RegisterFunction("delete_os", DeleteOsFn);
+    RegisterFunction("invalidate_os", InvalidateOsFn);
+    RegisterFunction("restore_os", RestoreOsFn);
 }

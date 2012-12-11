@@ -390,6 +390,8 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   script.ShowProgress(0.5, 0)
 
+  script.InvalidateOs("boot")
+
   if OPTIONS.wipe_user_data:
     script.FormatPartition("/data")
   else:
@@ -450,6 +452,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
     script.AppendExtra(OPTIONS.extra_script)
 
   script.UnmountAll()
+  script.RestoreOs("boot")
   script.AddToZip(input_zip, output_zip)
   WriteMetadata(metadata, output_zip)
   if script.cur_progress < .9:
@@ -684,6 +687,8 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   script.Comment("---- start making changes here ----")
 
+  script.InvalidateOs("boot")
+
   if OPTIONS.wipe_user_data:
     script.Print("Erasing user data...")
     script.FormatPartition("/data")
@@ -831,6 +836,8 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
     fn, tf, sf, size, _ = item
     script.ApplyPatch("/"+fn, "-", tf.size, tf.sha1, sf.sha1, "patch/"+fn+".p")
   script.SetPermissions("/system/build.prop", 0, 0, 0644)
+
+  script.RestoreOs("boot")
 
   script.AddToZip(target_zip, output_zip)
   WriteMetadata(metadata, output_zip)

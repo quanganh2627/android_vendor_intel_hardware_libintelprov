@@ -676,7 +676,7 @@ int get_attribute_osii_index(int attr)
 	return osip.num_pointers;
 }
 
-int invalidate_osii(char *destination) {
+int update_osii(char *destination, int ddr_load_address, int entry_point) {
 	int osii_index;
 	struct OSIP_header osip;
 
@@ -693,10 +693,20 @@ int invalidate_osii(char *destination) {
 		return -1;
 	}
 
-	// Remove OS index information
-	osip.desc[osii_index].attribute = ATTR_NOTUSED;
-	osip.desc[osii_index].ddr_load_address = 0;
-	osip.desc[osii_index].entry_point = 0;
+	/* Update the pointers of the OS image */
+	osip.desc[osii_index].ddr_load_address = ddr_load_address;
+	osip.desc[osii_index].entry_point = entry_point;
 
 	return write_OSIP(&osip);
+}
+
+int invalidate_osii(char *destination) {
+	/* Invalidate the pointers of the OS image */
+	return update_osii(destination, 0, 0);
+}
+
+int restore_osii(char *destination) {
+	/* The OS image might have been invalidated.
+	 * Restore the pointers */
+	return update_osii(destination, DDR_LOAD_ADDX, ENTRY_POINT);
 }
