@@ -315,11 +315,10 @@ def SignOutput(temp_zip_name, output_zip_name):
   common.SignFile(temp_zip_name, output_zip_name, OPTIONS.package_key, pw,
                   whole_file=True)
 
-
 def AppendAssertions(script, input_zip):
   device = GetBuildProp("ro.product.device", input_zip)
-  script.AssertDevice(device)
-
+  comp_device = GetCompatibleProduct(device)
+  script.AssertDevice(device, comp_device)
 
 def MakeRecoveryPatch(output_zip, recovery_img, boot_img):
   """Generate a binary patch that creates the recovery image starting
@@ -493,6 +492,29 @@ def GetBuildProp(property, z):
   if not m:
     raise common.ExternalError("couldn't find %s in build.prop" % (property,))
   return m.group(1).strip()
+
+def GetCompatibleProduct(product):
+  """ Return the fingerprint of the compatible product of a given name """
+  filename = os.path.join(os.path.dirname(__file__), ".", "product_name_mapping.def")
+  if not os.path.exists(filename):
+    raise common.ExternalError("couldn't find %s" % (filename,))
+    return None
+
+  f = open(filename, "r")
+
+  for line in f:
+    if line.startswith(product):
+      line = line.strip()
+      p = line.split(":", 1)
+      f.close()
+      if len(p) == 2:
+        # It is expected that for each product listed in product_name_mapping.def
+        # a compatible name is given. If no compatible name is given None will be
+        #returned.
+        return p[1].strip()
+
+  f.close()
+  return None
 
 
 def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):

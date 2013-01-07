@@ -86,10 +86,16 @@ class EdifyGenerator(object):
     self.script.append(('assert(!less_than_int(%s, '
                         'getprop("ro.build.date.utc")));') % (timestamp,))
 
-  def AssertDevice(self, device):
+  def AssertDevice(self, device, compatible_dev):
     """Assert that the device identifier is the given string."""
-    cmd = ('assert(getprop("ro.product.device") == "%s" ||\0'
-           'getprop("ro.build.product") == "%s");' % (device, device))
+    if not compatible_dev:
+      cmd = ('assert(getprop("ro.product.device") == "%s" ||\0'
+             'getprop("ro.build.product") == "%s");' % (device, device))
+    else:
+      cmd = ('assert(getprop("ro.product.device") == "%s" ||\0'
+             'getprop("ro.build.product") == "%s" ||\0'
+             'getprop("ro.product.device") == "%s" ||\0'
+             'getprop("ro.build.product") == "%s");' % (device, device, compatible_dev, compatible_dev))
     self.script.append(self._WordWrap(cmd))
 
   def AssertSomeBootloader(self, *bootloaders):

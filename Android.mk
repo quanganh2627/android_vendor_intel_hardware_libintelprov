@@ -49,7 +49,8 @@ LOCAL_PREBUILT_EXECUTABLES := \
     releasetools/edify_generator.py \
     releasetools/lfstk_wrapper.py \
     releasetools/mfld_osimage.py \
-    releasetools/sign_target_files_apks
+    releasetools/sign_target_files_apks \
+    releasetools/product_name_mapping.def
 include $(BUILD_HOST_PREBUILT)
 
 # if DROIDBOOT is not used, we dont want this...
