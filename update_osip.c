@@ -133,10 +133,10 @@ int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba)
 	unsigned int os_ctr = 0;
 	unsigned int ptn_ctr = 0;
 	int i;
+	int ret = -1;
 
 	for (i = 0; i < osip->num_pointers; i++) {
 		uint8_t attr = osip->desc[i].attribute;
-		int ret;
 
 		switch (attr&(~1)) {
 		case ATTR_SIGNED_FW:
@@ -161,6 +161,7 @@ int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba)
 			}
 			osip->desc[i].logical_start_block = ptn_lba;
 			ptn_ctr++;
+			ret = 0;
 			break;
 		default:
 			fprintf(stderr, "Unhandled attribute %d!\n", attr);
@@ -174,14 +175,14 @@ int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba)
 
 	osip->header_checksum = 0;
 	osip->header_checksum = get_osip_crc(osip);
-	return 0;
+	return ret;
 }
 
 
 static uint32_t get_free_lba(const uint32_t *slots, int num_slots, int slot_size,
 		struct OSIP_header *osip)
 {
-	int freeslot;
+	int freeslot=0;
 	int i, j;
         /* this algorithm allows transition to droidboot
            we allow the already flashed osip not to use the slots

@@ -42,12 +42,12 @@ Value *ExtractOsipFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(filename) == 0) {
+    if (filename == NULL || strlen(filename) == 0) {
         ErrorAbort(state, "filename argument to %s can't be empty", name);
         goto done;
     }
 
-    if (strlen(source) == 0) {
+    if (source == NULL || strlen(source) == 0) {
         ErrorAbort(state, "source argument to %s can't be empty", name);
         goto done;
     }
@@ -93,12 +93,12 @@ Value *FlashOsipFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(filename) == 0) {
+    if (filename == NULL || strlen(filename) == 0) {
         ErrorAbort(state, "filename argument to %s can't be empty", name);
         goto done;
     }
 
-    if (strlen(destination) == 0) {
+    if (destination == NULL || strlen(destination) == 0) {
         ErrorAbort(state, "destination argument to %s can't be empty", name);
         goto done;
     }
@@ -141,7 +141,7 @@ Value *DeleteOsFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(destination) == 0) {
+    if (destination == NULL || strlen(destination) == 0) {
         ErrorAbort(state, "destination argument to %s can't be empty", name);
         goto done;
     }
@@ -178,7 +178,7 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(filename) == 0) {
+    if (filename == NULL || strlen(filename) == 0) {
         ErrorAbort(state, "filename argument to %s can't be empty", name);
         goto done;
     }
@@ -214,6 +214,13 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
         strcpy(dnx_name, "dnx");
         strncat(dnx_name, &(ifwi_name[strlen(IFWI_NAME)]), sizeof(dnx_name) - strlen("dnx") -1);
         dnx_entry = mzFindZipEntry(&ifwi_za, dnx_name);
+
+        if (dnx_entry == NULL) {
+            ErrorAbort(state, "Could not find DNX entry");
+            close(ifwi_bin_fd);
+            close(dnx_bin_fd);
+            goto error;
+        }
 
         err = mzExtractZipEntryToFile(&ifwi_za, dnx_entry, dnx_bin_fd);
         if (!err) {
@@ -306,7 +313,7 @@ Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(filename) == 0) {
+    if (filename == NULL || strlen(filename) == 0) {
         ErrorAbort(state, "filename argument to %s can't be empty", name);
         goto done;
     }
@@ -367,7 +374,7 @@ Value *FlashNvmFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(filename) == 0) {
+    if (filename == NULL || strlen(filename) == 0) {
         ErrorAbort(state, "filename argument to %s can't be empty", name);
         goto done;
     }
@@ -392,7 +399,7 @@ Value *FlashSpidNvmFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(filename) == 0) {
+    if (filename == NULL || strlen(filename) == 0) {
         ErrorAbort(state, "filename argument to %s can't be empty", name);
         goto done;
     }

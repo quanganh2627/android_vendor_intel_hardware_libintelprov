@@ -35,7 +35,7 @@ int cgpt_create(CgptCreateParams *params) {
   if (!params->zap)
   {
     GptHeader *h = (GptHeader *)drive.gpt.primary_header;
-    memcpy(h->signature, GPT_HEADER_SIGNATURE, GPT_HEADER_SIGNATURE_SIZE);
+    memcpy(h->signature, GPT_HEADER_SIGNATURE, GPT_HEADER_SIGNATURE_SIZE-1);
     h->revision = GPT_HEADER_REVISION;
     h->size = sizeof(GptHeader);
     h->my_lba = 1;

@@ -56,7 +56,28 @@ int flash_modem_nvm(const char *nvm_filename, modem_nvm_status_callback cb)
 	check(cmfwdl_set_ports(h, TTY_NODE, IFX_NODE));
 
 	pbuffer_nvm_command = (struct cmfwdl_buffer*)malloc(sizeof(struct cmfwdl_buffer));
+
+	if (pbuffer_nvm_command == NULL) {
+                if (cb != NULL)
+                {
+                        cb("Unable to malloc command\r\n", OUTPUT_DEBUG | OUTPUT_FASTBOOT_INFO);
+                }
+                ret = -1;
+                goto out;
+	}
+
 	pbuffer_nvm_response = (struct cmfwdl_buffer*)malloc(sizeof(struct cmfwdl_buffer));
+
+	if (pbuffer_nvm_response == NULL) {
+		free(pbuffer_nvm_command);
+                if (cb != NULL)
+                {
+                        cb("Unable to malloc response\r\n", OUTPUT_DEBUG | OUTPUT_FASTBOOT_INFO);
+                }
+                ret = -1;
+                goto out;
+	}
+
 
 	pbuffer_nvm_response->data = NULL;
 	pbuffer_nvm_command->data = NULL;
@@ -250,16 +271,26 @@ int read_modem_nvm_id(char* out_buffer, size_t max_out_size, modem_nvm_status_ca
 	check(cmfwdl_set_ports(h, TTY_NODE, IFX_NODE));
 
 	pbuffer_nvm_response = (struct cmfwdl_buffer*)malloc(sizeof(struct cmfwdl_buffer));
+	if (pbuffer_nvm_response == NULL)
+	{
+		if (cb != NULL)
+		{
+			cb("Unable to malloc response\r\n", OUTPUT_DEBUG | OUTPUT_FASTBOOT_INFO);
+		}
+		ret = -1;
+		goto out;
+	}
+
 
 	pbuffer_nvm_response->data = NULL;
 
 	if ((ret = cmfwdl_nvm_config_read(h, pbuffer_nvm_response)) == 0)
 	{
-		cb("Reading NVM config ID from the modem...\r\n", OUTPUT_DEBUG);
 		if (cb != NULL)
 		{
 			if (pbuffer_nvm_response->data != NULL)
 			{
+				cb("Reading NVM config ID from the modem...\r\n", OUTPUT_DEBUG);
 				cb((char*)pbuffer_nvm_response->data, OUTPUT_DEBUG | OUTPUT_FASTBOOT_INFO);
 			}
 		}

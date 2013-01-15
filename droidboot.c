@@ -736,20 +736,24 @@ static int oem_partition_gpt_handler(FILE *fp)
 	while (fgets(buffer, sizeof(buffer), fp)) {
 		buffer[strlen(buffer)-1]='\0';
 		argv = str_to_array(buffer, &argc);
-		ret |= _oem_partition_gpt_sub_command(argc, argv);
-		if (ret)
-		  fastboot_fail("GPT command failed\n");
 
-		for(i = 0; i < argc ; i++) {
-			if (argv[i]) {
-				  free(argv[i]);
-				  argv[i]=NULL;
+		if(argv != NULL) {
+			ret |= _oem_partition_gpt_sub_command(argc, argv);
+			if (ret)
+				fastboot_fail("GPT command failed\n");
+
+			for(i = 0; i < argc ; i++) {
+				if (argv[i]) {
+					free(argv[i]);
+					argv[i]=NULL;
+				}
 			}
-		}
-
-		if (argv) {
 			free(argv);
 			argv=NULL;
+		}
+		else {
+			fastboot_fail("GPT str_to_array error. Malformed string ?\n");
+			ret = -1;
 		}
 	}
 
