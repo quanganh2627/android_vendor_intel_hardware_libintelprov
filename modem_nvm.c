@@ -81,7 +81,10 @@ int flash_modem_nvm(const char *nvm_filename, modem_nvm_status_callback cb)
 			{
 				snprintf(strBuff, LOG_BUFF_SIZE, "Send NVM config failed. Error %d\r\n", ret);
 				cb(strBuff, OUTPUT_DEBUG | OUTPUT_FASTBOOT_INFO);
-				cb((char*)pbuffer_nvm_response->data, OUTPUT_DEBUG | OUTPUT_FASTBOOT_INFO);
+				if (pbuffer_nvm_response->data != NULL)
+				{
+					cb((char*)pbuffer_nvm_response->data, OUTPUT_DEBUG | OUTPUT_FASTBOOT_INFO);
+				}
 			}
 		}
 	}
@@ -255,7 +258,10 @@ int read_modem_nvm_id(char* out_buffer, size_t max_out_size, modem_nvm_status_ca
 		cb("Reading NVM config ID from the modem...\r\n", OUTPUT_DEBUG);
 		if (cb != NULL)
 		{
-			cb((char*)pbuffer_nvm_response->data, OUTPUT_DEBUG | OUTPUT_FASTBOOT_INFO);
+			if (pbuffer_nvm_response->data != NULL)
+			{
+				cb((char*)pbuffer_nvm_response->data, OUTPUT_DEBUG | OUTPUT_FASTBOOT_INFO);
+			}
 		}
 	}
 	else
@@ -268,7 +274,10 @@ int read_modem_nvm_id(char* out_buffer, size_t max_out_size, modem_nvm_status_ca
 
 	if (out_buffer != NULL)
 	{
-		strncpy(out_buffer, (const char*)pbuffer_nvm_response->data, MIN(pbuffer_nvm_response->size, max_out_size));
+		if (pbuffer_nvm_response->data != NULL)
+		{
+			strncpy(out_buffer, (const char*)pbuffer_nvm_response->data, MIN(pbuffer_nvm_response->size, max_out_size));
+		}
 	}
 
 	cmfwdl_free_buffer(h, pbuffer_nvm_response);

@@ -83,6 +83,9 @@ static void progress_callback(enum cmfwdl_status_type type, int value,
 
 static void nvm_output_callback(const char *msg, int output)
 {
+	if (msg == NULL) {
+		return;
+	}
 	if (output & OUTPUT_DEBUG) {
 		pr_debug(msg);
 	}
