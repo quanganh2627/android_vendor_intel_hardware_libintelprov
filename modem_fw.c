@@ -224,7 +224,7 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 		printf("WARNING: Unable to disable all power management."
 				" Proceeding anyway.\n");
 
-	check(cmfwdl_enable_flashing(h, IFX_NODE0)); /* Switch to Flashing mode */
+	check(cmfwdl_enable_flashing(IFX_NODE0)); /* Switch to Flashing mode */
 
 	/* First part of modem boot: initialization and open comm ports */
 	check(cmfwdl_pre_boot_modem(h, cb, NULL));
@@ -312,8 +312,8 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 	b_end_reboot = b_asked_reboot;
 	ret = 0;
 out:
+	cmfwdl_disable_flashing(IFX_NODE0); /* Switch back to IPC mode */
 	cmfwdl_destroy_instance(h, b_end_reboot);
-	cmfwdl_disable_flashing(h, IFX_NODE0); /* Switch back to IPC mode */
 	// wait for modem to reboot
 	sleep(8);
 	enable_pm();
