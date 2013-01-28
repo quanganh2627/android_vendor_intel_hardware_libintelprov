@@ -763,7 +763,8 @@ static int oem_partition_gpt_handler(FILE *fp)
 static int oem_partition_mbr_handler(FILE *fp)
 {
 	ui_print("Using MBR\n");
-	return 0;
+
+	return ufdisk_create_partition();
 }
 
 static int oem_partition_cmd_handler(int argc, char **argv)
