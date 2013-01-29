@@ -26,6 +26,7 @@
 #include <cutils/properties.h>
 #include <cutils/android_reboot.h>
 #include <unistd.h>
+#include <charger/charger.h>
 
 #include "volumeutils/ufdisk.h"
 #include "update_osip.h"
@@ -694,6 +695,25 @@ static int oem_partition_stop_handler(int argc, char **argv)
 	return 0;
 }
 
+static int oem_get_batt_info_handler(int argc, char **argv)
+{
+	char msg_buf[] = " level: 000";
+	int batt_level = 0;
+
+	batt_level = get_battery_level();
+	if (batt_level == -1) {
+		fastboot_fail("Could not get battery level");
+		return -1;
+	}
+	// Prepare the message sent to the host
+	snprintf(msg_buf, sizeof(msg_buf), "\nlevel: %d", batt_level);
+	// Push the value to the host
+	fastboot_info(msg_buf);
+	// Display the result on the UI
+	ui_print("Battery level at %d%%\n", batt_level);
+
+	return 0;
+}
 
 static int _oem_partition_gpt_sub_command(int argc, char **argv)
 {
@@ -1024,6 +1044,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("start_partitioning", oem_partition_start_handler);
 	ret |= aboot_register_oem_cmd("partition", oem_partition_cmd_handler);
 	ret |= aboot_register_oem_cmd("stop_partitioning", oem_partition_stop_handler);
+	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
 
 	fastboot_register("continue", cmd_intel_reboot);
 	fastboot_register("reboot", cmd_intel_reboot);
