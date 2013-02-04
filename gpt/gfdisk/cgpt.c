@@ -157,7 +157,7 @@ int main(int argc, char **argv)
     FILE *fp;
 
     memset(buffer, 0, sizeof(buffer));
-    int j=100;
+    int j=1;
     int ret=-1;
     while (j--) {
         if (argc == 2) {
