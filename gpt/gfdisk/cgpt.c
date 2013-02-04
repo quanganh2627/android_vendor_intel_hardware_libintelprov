@@ -79,6 +79,7 @@ static int _oem_partition_gpt_sub_command(int argc, char **argv)
         {"prioritize", cmd_prioritize},
         {"legacy", cmd_legacy},
         {"start", cmd_start_partitioning},
+        {"reload", cmd_reload},
         {"end", cmd_stop_partitioning},
     };
 
