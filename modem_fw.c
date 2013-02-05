@@ -31,7 +31,7 @@
 #define IFX_NODE1	"/dev/ttyIFX1"
 #define HSU_PM_SYSFS	"/sys/devices/pci0000:00/0000:00:05.1/power/control"
 #define S0_PM_SYSFS	"/sys/module/intel_soc_pmu/parameters/s0ix"
-#define TRACE_FILE	"/modemtrace.log"
+#define TRACE_FILE	"/logs/modem_flash_trace.log"
 #define RND_CERTIFICATE_FILE	"/logs/modem_rnd_certif.bin"
 #define HW_ID_FILE	"/logs/modem_hw_id.hwd"
 #define FUSE_FILE	"/logs/modem_fuse.fus"
@@ -115,6 +115,7 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 
 	struct cmfwdl_buffer *p_buffer_read_rd_certif = NULL;
 	struct cmfwdl_buffer *p_buffer_hw_id = NULL;
+	int b_trace = 0;
 	int b_erase_all = 0;
 	int b_asked_reboot = CMFWDL_REBOOT;
 	int b_end_reboot = CMFWDL_REBOOT;
@@ -164,6 +165,8 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 			b_erase_rd_certif = 1;
 		} else if (!strcmp(argv[arg], "h")) {
 			read_hw_id = 1;
+		} else if (!strcmp(argv[arg], "l")) {
+			b_trace = 1;
 		}
 		if (b_fw_download != 0)
 		{
@@ -201,7 +204,7 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 		check(cmfwdl_set_ports(h, NULL, IFX_NODE1));
 	}
 
-	check(cmfwdl_set_trace_file(h, 1, TRACE_FILE));
+	check(cmfwdl_set_trace_file(h, b_trace, TRACE_FILE));
 
 	/* If asked, set erase mode to erase all (code and calibration table) */
 	if (b_erase_all == 1) {
