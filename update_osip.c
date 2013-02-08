@@ -133,10 +133,10 @@ int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba)
 	unsigned int os_ctr = 0;
 	unsigned int ptn_ctr = 0;
 	int i;
+	int ret = -1;
 
 	for (i = 0; i < osip->num_pointers; i++) {
 		uint8_t attr = osip->desc[i].attribute;
-		int ret;
 
 		switch (attr&(~1)) {
 		case ATTR_SIGNED_FW:
@@ -161,6 +161,7 @@ int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba)
 			}
 			osip->desc[i].logical_start_block = ptn_lba;
 			ptn_ctr++;
+			ret = 0;
 			break;
 		default:
 			fprintf(stderr, "Unhandled attribute %d!\n", attr);
@@ -174,14 +175,14 @@ int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba)
 
 	osip->header_checksum = 0;
 	osip->header_checksum = get_osip_crc(osip);
-	return 0;
+	return ret;
 }
 
 
 static uint32_t get_free_lba(const uint32_t *slots, int num_slots, int slot_size,
 		struct OSIP_header *osip)
 {
-	int freeslot;
+	int freeslot=0;
 	int i, j;
         /* this algorithm allows transition to droidboot
            we allow the already flashed osip not to use the slots
@@ -675,7 +676,7 @@ int get_attribute_osii_index(int attr)
 	return osip.num_pointers;
 }
 
-int invalidate_osii(char *destination) {
+int update_osii(char *destination, int ddr_load_address, int entry_point) {
 	int osii_index;
 	struct OSIP_header osip;
 
@@ -692,10 +693,20 @@ int invalidate_osii(char *destination) {
 		return -1;
 	}
 
-	// Remove OS index information
-	osip.desc[osii_index].attribute = ATTR_NOTUSED;
-	osip.desc[osii_index].ddr_load_address = 0;
-	osip.desc[osii_index].entry_point = 0;
+	/* Update the pointers of the OS image */
+	osip.desc[osii_index].ddr_load_address = ddr_load_address;
+	osip.desc[osii_index].entry_point = entry_point;
 
 	return write_OSIP(&osip);
+}
+
+int invalidate_osii(char *destination) {
+	/* Invalidate the pointers of the OS image */
+	return update_osii(destination, 0, 0);
+}
+
+int restore_osii(char *destination) {
+	/* The OS image might have been invalidated.
+	 * Restore the pointers */
+	return update_osii(destination, DDR_LOAD_ADDX, ENTRY_POINT);
 }

@@ -86,10 +86,16 @@ class EdifyGenerator(object):
     self.script.append(('assert(!less_than_int(%s, '
                         'getprop("ro.build.date.utc")));') % (timestamp,))
 
-  def AssertDevice(self, device):
+  def AssertDevice(self, device, compatible_dev):
     """Assert that the device identifier is the given string."""
-    cmd = ('assert(getprop("ro.product.device") == "%s" ||\0'
-           'getprop("ro.build.product") == "%s");' % (device, device))
+    if not compatible_dev:
+      cmd = ('assert(getprop("ro.product.device") == "%s" ||\0'
+             'getprop("ro.build.product") == "%s");' % (device, device))
+    else:
+      cmd = ('assert(getprop("ro.product.device") == "%s" ||\0'
+             'getprop("ro.build.product") == "%s" ||\0'
+             'getprop("ro.product.device") == "%s" ||\0'
+             'getprop("ro.build.product") == "%s");' % (device, device, compatible_dev, compatible_dev))
     self.script.append(self._WordWrap(cmd))
 
   def AssertSomeBootloader(self, *bootloaders):
@@ -291,6 +297,10 @@ class EdifyGenerator(object):
     self.Print("Updating IFWI image...\n");
     self.script.append('flash_ifwi("/tmp/%s");' % (filename,))
 
-  def DeleteOs(self, name):
-    """Delete os attribute in osip table"""
-    self.script.append('delete_os("%s");' % (name,))
+  def InvalidateOs(self, name):
+    """Invalidate os image in osip table"""
+    self.script.append('invalidate_os("%s");' % (name,))
+
+  def RestoreOs(self, name):
+    """Restore os image in osip table"""
+    self.script.append('restore_os("%s");' % (name,))

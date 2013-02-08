@@ -812,7 +812,7 @@ uint8_t RepairEntries(GptData *gpt, const uint32_t valid_entries) {
    * partition table. Also don't overwrite the primary one with the
    * secondary one as that will stop Windows from booting. */
   GptHeader* h = (GptHeader*)(gpt->primary_header);
-  if (!memcmp(h->signature, GPT_HEADER_SIGNATURE2, GPT_HEADER_SIGNATURE_SIZE))
+  if (!memcmp(h->signature, GPT_HEADER_SIGNATURE2, GPT_HEADER_SIGNATURE_SIZE-1))
     return 0;
 
   if (valid_entries == MASK_BOTH) {

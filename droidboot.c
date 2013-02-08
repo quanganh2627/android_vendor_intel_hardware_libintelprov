@@ -83,6 +83,9 @@ static void progress_callback(enum cmfwdl_status_type type, int value,
 
 static void nvm_output_callback(const char *msg, int output)
 {
+	if (msg == NULL) {
+		return;
+	}
 	if (output & OUTPUT_DEBUG) {
 		pr_debug(msg);
 	}
@@ -733,20 +736,24 @@ static int oem_partition_gpt_handler(FILE *fp)
 	while (fgets(buffer, sizeof(buffer), fp)) {
 		buffer[strlen(buffer)-1]='\0';
 		argv = str_to_array(buffer, &argc);
-		ret |= _oem_partition_gpt_sub_command(argc, argv);
-		if (ret)
-		  fastboot_fail("GPT command failed\n");
 
-		for(i = 0; i < argc ; i++) {
-			if (argv[i]) {
-				  free(argv[i]);
-				  argv[i]=NULL;
+		if(argv != NULL) {
+			ret |= _oem_partition_gpt_sub_command(argc, argv);
+			if (ret)
+				fastboot_fail("GPT command failed\n");
+
+			for(i = 0; i < argc ; i++) {
+				if (argv[i]) {
+					free(argv[i]);
+					argv[i]=NULL;
+				}
 			}
-		}
-
-		if (argv) {
 			free(argv);
 			argv=NULL;
+		}
+		else {
+			fastboot_fail("GPT str_to_array error. Malformed string ?\n");
+			ret = -1;
 		}
 	}
 
@@ -756,7 +763,8 @@ static int oem_partition_gpt_handler(FILE *fp)
 static int oem_partition_mbr_handler(FILE *fp)
 {
 	ui_print("Using MBR\n");
-	return 0;
+
+	return ufdisk_create_partition();
 }
 
 static int oem_partition_cmd_handler(int argc, char **argv)

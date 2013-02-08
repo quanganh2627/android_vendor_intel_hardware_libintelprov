@@ -42,12 +42,12 @@ Value *ExtractOsipFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(filename) == 0) {
+    if (filename == NULL || strlen(filename) == 0) {
         ErrorAbort(state, "filename argument to %s can't be empty", name);
         goto done;
     }
 
-    if (strlen(source) == 0) {
+    if (source == NULL || strlen(source) == 0) {
         ErrorAbort(state, "source argument to %s can't be empty", name);
         goto done;
     }
@@ -93,12 +93,12 @@ Value *FlashOsipFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(filename) == 0) {
+    if (filename == NULL || strlen(filename) == 0) {
         ErrorAbort(state, "filename argument to %s can't be empty", name);
         goto done;
     }
 
-    if (strlen(destination) == 0) {
+    if (destination == NULL || strlen(destination) == 0) {
         ErrorAbort(state, "destination argument to %s can't be empty", name);
         goto done;
     }
@@ -133,7 +133,7 @@ done:
     return ret;
 }
 
-Value *DeleteOsFn(const char *name, State *state, int argc, Expr *argv[]) {
+Value *ExecuteOsipFunction(const char *name, State *state, int argc, Expr *argv[], int (*action)(char*)) {
     Value *ret = NULL;
     char *destination = NULL;
 
@@ -141,12 +141,12 @@ Value *DeleteOsFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(destination) == 0) {
+    if (destination == NULL || strlen(destination) == 0) {
         ErrorAbort(state, "destination argument to %s can't be empty", name);
         goto done;
     }
 
-    if (invalidate_osii(destination)) {
+    if (action(destination) == -1) {
         ErrorAbort(state, "Error writing %s to OSIP", destination);
         goto done;
     }
@@ -158,6 +158,14 @@ done:
         free(destination);
 
     return ret;
+}
+
+Value *InvalidateOsFn(const char *name, State *state, int argc, Expr *argv[]) {
+    return ExecuteOsipFunction(name, state, argc, argv, invalidate_osii);
+}
+
+Value *RestoreOsFn(const char *name, State *state, int argc, Expr *argv[]) {
+    return ExecuteOsipFunction(name, state, argc, argv, restore_osii);
 }
 
 #define DNX_BIN_PATH	"/tmp/dnx.bin"
@@ -178,7 +186,7 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(filename) == 0) {
+    if (filename == NULL || strlen(filename) == 0) {
         ErrorAbort(state, "filename argument to %s can't be empty", name);
         goto done;
     }
@@ -214,6 +222,13 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
         strcpy(dnx_name, "dnx");
         strncat(dnx_name, &(ifwi_name[strlen(IFWI_NAME)]), sizeof(dnx_name) - strlen("dnx") -1);
         dnx_entry = mzFindZipEntry(&ifwi_za, dnx_name);
+
+        if (dnx_entry == NULL) {
+            ErrorAbort(state, "Could not find DNX entry");
+            close(ifwi_bin_fd);
+            close(dnx_bin_fd);
+            goto error;
+        }
 
         err = mzExtractZipEntryToFile(&ifwi_za, dnx_entry, dnx_bin_fd);
         if (!err) {
@@ -306,7 +321,7 @@ Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(filename) == 0) {
+    if (filename == NULL || strlen(filename) == 0) {
         ErrorAbort(state, "filename argument to %s can't be empty", name);
         goto done;
     }
@@ -367,7 +382,7 @@ Value *FlashNvmFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(filename) == 0) {
+    if (filename == NULL || strlen(filename) == 0) {
         ErrorAbort(state, "filename argument to %s can't be empty", name);
         goto done;
     }
@@ -392,7 +407,7 @@ Value *FlashSpidNvmFn(const char *name, State *state, int argc, Expr *argv[]) {
         return NULL;
     }
 
-    if (strlen(filename) == 0) {
+    if (filename == NULL || strlen(filename) == 0) {
         ErrorAbort(state, "filename argument to %s can't be empty", name);
         goto done;
     }
@@ -440,5 +455,6 @@ void Register_libintel_updater(void)
     RegisterFunction("flash_nvm_spid", FlashSpidNvmFn);
     RegisterFunction("identify_nvm", ReadModemNvmIdFn);
     RegisterFunction("extract_osip", ExtractOsipFn);
-    RegisterFunction("delete_os", DeleteOsFn);
+    RegisterFunction("invalidate_os", InvalidateOsFn);
+    RegisterFunction("restore_os", RestoreOsFn);
 }

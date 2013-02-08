@@ -22,14 +22,14 @@ int cgpt_legacy(CgptLegacyParams *params) {
   h1 = (GptHeader *)drive.gpt.primary_header;
   h2 = (GptHeader *)drive.gpt.secondary_header;
   if (params->efipart) {
-    memcpy(h1->signature, GPT_HEADER_SIGNATURE, GPT_HEADER_SIGNATURE_SIZE);
-    memcpy(h2->signature, GPT_HEADER_SIGNATURE, GPT_HEADER_SIGNATURE_SIZE);
+    memcpy(h1->signature, GPT_HEADER_SIGNATURE, GPT_HEADER_SIGNATURE_SIZE-1);
+    memcpy(h2->signature, GPT_HEADER_SIGNATURE, GPT_HEADER_SIGNATURE_SIZE-1);
     RepairEntries(&drive.gpt, MASK_SECONDARY);
     drive.gpt.modified |= (GPT_MODIFIED_HEADER1 | GPT_MODIFIED_ENTRIES1 |
                            GPT_MODIFIED_HEADER2);
   } else {
-    memcpy(h1->signature, GPT_HEADER_SIGNATURE2, GPT_HEADER_SIGNATURE_SIZE);
-    memcpy(h2->signature, GPT_HEADER_SIGNATURE2, GPT_HEADER_SIGNATURE_SIZE);
+    memcpy(h1->signature, GPT_HEADER_SIGNATURE2, GPT_HEADER_SIGNATURE_SIZE-1);
+    memcpy(h2->signature, GPT_HEADER_SIGNATURE2, GPT_HEADER_SIGNATURE_SIZE-1);
     memset(drive.gpt.primary_entries, 0, drive.gpt.sector_bytes);
     drive.gpt.modified |= (GPT_MODIFIED_HEADER1 | GPT_MODIFIED_ENTRIES1 |
                            GPT_MODIFIED_HEADER2);
