@@ -315,7 +315,7 @@ out:
 	cmfwdl_disable_flashing(IFX_NODE0); /* Switch back to IPC mode */
 	cmfwdl_destroy_instance(h, b_end_reboot);
 	// wait for modem to reboot
-	sleep(8);
+	sleep(5);
 	enable_pm();
 	return ret;
 }
