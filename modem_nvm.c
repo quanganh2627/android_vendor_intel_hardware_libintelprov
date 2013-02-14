@@ -20,12 +20,15 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
+#include <string.h>
 #include <cmfwdl.h>
 
 #include "minzip/Zip.h"
 #include "util.h"
 #include "modem_fw.h"
 #include "modem_nvm.h"
+
+#define strnicmp	strncasecmp
 
 #define check(val) if (0 != (val)) { \
 		printf("flash_modem_fw: '%s' failed\n", #val); \
@@ -176,7 +179,7 @@ int flash_modem_nvm_spid(const char *nvm_filename, modem_nvm_status_callback cb)
 	num = mzZipEntryCount(&nvm_za);
 	for (i = 0; i < num; i++) {
 		nvm_entry = mzGetZipEntryAt(&nvm_za, i);
-		if (nvm_entry && strncmp(spid_buf, nvm_entry->fileName, HARDWARE_ID_LEN) == 0) {
+		if (nvm_entry && strnicmp(spid_buf, nvm_entry->fileName, HARDWARE_ID_LEN) == 0) {
 			snprintf(filenamebuffer, MAX_FILENAME_LEN, "/tmp/modem_%s_nvm.tlv", spid_buf);
 			nvm_fd = open(filenamebuffer, O_RDWR | O_TRUNC | O_CREAT, FILEMODE);
 			if (nvm_fd < 0) {
@@ -207,7 +210,7 @@ int flash_modem_nvm_spid(const char *nvm_filename, modem_nvm_status_callback cb)
 			}
 			found = 1;
 			break;
-		} else if (nvm_entry && strncmp(nvm_entry->fileName, DEFAULT_NVM_FILE, strlen(DEFAULT_NVM_FILE))) {
+		} else if (nvm_entry && strnicmp(nvm_entry->fileName, DEFAULT_NVM_FILE, strlen(DEFAULT_NVM_FILE))) {
 			default_nvm_entry = nvm_entry;
 		} else {
 			goto closezip;
