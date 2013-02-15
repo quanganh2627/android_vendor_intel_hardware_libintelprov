@@ -188,18 +188,19 @@ int flash_modem_fw(char *bootloader_name, char *firmware_filename, int argc, cha
 	boot_buffer.data = NULL;
 
 	/* Set up various properties */
-	if (cmfwdl_file_exist(firmware_filename)) {
-	    cmfwdl_set_modemname(h, cmfwdl_get_modemname_from_file(firmware_filename));
+	if (cmfwdl_file_exist(bootloader_name)) {
+		cmfwdl_set_modemname(h, cmfwdl_get_modemname_from_file(bootloader_name));
 	}
 	if (cmfwdl_modemname(h) == no_modem) {
-	    cmfwdl_set_modemname(h, xmm6260);
+		cmfwdl_set_modemname(h, xmm6260);
 	}
 
-#ifdef CLVT
-	check(cmfwdl_set_ports(h, NULL, IFX_NODE1));
-#else
-	check(cmfwdl_set_ports(h, TTY_NODE, IFX_NODE0));
-#endif
+	if (cmfwdl_modemtype(h) == medfield) {
+		check(cmfwdl_set_ports(h, TTY_NODE, IFX_NODE0));
+	} else {
+		check(cmfwdl_set_ports(h, NULL, IFX_NODE1));
+	}
+
 	check(cmfwdl_set_trace_file(h, 1, TRACE_FILE));
 
 	/* If asked, set erase mode to erase all (code and calibration table) */
