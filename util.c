@@ -1,3 +1,18 @@
+/*
+ * Copyright 2011 Intel Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include <errno.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -113,4 +128,51 @@ void dump_trace_file(const char *filename)
 	while (fgets(buf, sizeof(buf), fp))
 		printf("%s", buf);
 	fclose(fp);
+}
+
+int snhexdump(char *str, size_t size, const unsigned char *data, unsigned int sz)
+{
+	int ret=0;
+	while(sz > 0 && size >4) {
+		int len = snprintf(str, 4, "%02x ",*data);
+		str += len;
+		size -= len;
+		sz--;
+		data++;
+		ret += len;
+	}
+	return ret;
+}
+
+void hexdump_buffer(const unsigned char *buffer, unsigned int buffer_size,
+		void (*printrow)(const char *text), unsigned int bytes_per_row)
+{
+	unsigned int left = buffer_size;
+	static char buffer_txt[1024];
+
+	while (left > 0) {
+		unsigned int row = left < bytes_per_row ? left : bytes_per_row;
+		unsigned int rowlen = snhexdump(buffer_txt, sizeof(buffer_txt)
+				- 1, buffer, row);
+		snprintf(buffer_txt + rowlen,
+				sizeof(buffer_txt) - rowlen - 1, "\n");
+		printrow(buffer_txt);
+		buffer += row;
+		left -= row;
+	}
+}
+
+void twoscomplement(unsigned char *cs, unsigned char *buf, unsigned int size)
+{
+	*cs = 0;
+	while (size > 0) {
+		*cs += *buf;
+		buf++;
+		size--;
+	}
+	*cs = (~*cs) + 1;
+}
+
+int is_hex(char c) {
+	return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
 }
