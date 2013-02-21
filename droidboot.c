@@ -41,6 +41,8 @@
 #include "droidboot_ui.h"
 #include "update_partition.h"
 #include <cgpt.h>
+#include "pmdb.h"
+#include "token.h"
 
 #define IMG_RADIO "/radio.img"
 #define IMG_RADIO_RND "/radio_rnd.img"
@@ -1125,6 +1127,45 @@ end:
 	return retval;
 }
 
+static int oem_fru_handler(int argc, char **argv)
+{
+	int ret = -1;
+	char *str;
+	char tmp[3];
+	char fru[PMDB_FRU_SIZE];
+	int i;
+
+	if (argc != 3) {
+		fastboot_fail("oem fru must be called with \"set\" subcommand\n");
+		goto out;
+	}
+
+	if (strcmp(argv[1], "set")) {
+		fastboot_fail("unknown oem fru subcommand\n");
+		goto out;
+	}
+
+	str = argv[2];
+	if (strlen(str) != (PMDB_FRU_SIZE * 2)) {
+		fastboot_fail("fru value must be 20 4-bits nibbles in hexa format. Ex: 123456...\n");
+		goto out;
+	}
+
+	tmp[2] = 0;
+	for (i = 0; i < PMDB_FRU_SIZE; i++) {
+		/* FRU is passed by 4bits nibbles. Need to reorder them into hex values. */
+		tmp[0] = str[2*i+1];
+		tmp[1] = str[2*i];
+		if (!is_hex(tmp[0]) || ! is_hex(tmp[1]))
+			fastboot_fail("fru value have non hexadecimal characters\n");
+		sscanf(tmp, "%2hhx", &fru[i]);
+	}
+	ret = pmdb_write_fru(fru, PMDB_FRU_SIZE);
+
+out:
+	return ret;
+}
+
 #ifdef USE_GUI
 #define PROP_FILE					"/default.prop"
 #define SERIAL_NUM_FILE			"/sys/class/android_usb/android0/iSerial"
@@ -1266,6 +1307,8 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
 	ret |= aboot_register_oem_cmd("enable_flash_logs", oem_enable_flash_logs);
 	ret |= aboot_register_oem_cmd("disable_flash_logs", oem_disable_flash_logs);
+	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
+	ret |= libintel_droidboot_token_init();
 
 	fastboot_register("continue", cmd_intel_reboot);
 	fastboot_register("reboot", cmd_intel_reboot);
