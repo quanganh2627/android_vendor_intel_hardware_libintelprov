@@ -749,18 +749,24 @@ static int oem_partition_gpt_handler(FILE *fp)
 	int i;
 	char buffer[K_MAX_ARG_LEN];
 	char **argv = NULL;
+	char value[PROPERTY_VALUE_MAX] = {'\0'};
 
 	ui_print("Using GPT\n");
 
+	property_get("sys.partitioning", value, NULL);
+	if (strcmp(value, "1")) {
+		fastboot_fail("Partitioning is not started\n");
+		return -1;
+	}
+
 	uuid_generator = uuid_generate;
 	while (fgets(buffer, sizeof(buffer), fp)) {
-		buffer[strlen(buffer)-1]='\0';
+		if (buffer[strlen(buffer)-1] == '\n')
+			buffer[strlen(buffer)-1]='\0';
 		argv = str_to_array(buffer, &argc);
 
 		if(argv != NULL) {
-			ret |= _oem_partition_gpt_sub_command(argc, argv);
-			if (ret)
-				fastboot_fail("GPT command failed\n");
+			ret = _oem_partition_gpt_sub_command(argc, argv);
 
 			for(i = 0; i < argc ; i++) {
 				if (argv[i]) {
@@ -770,14 +776,21 @@ static int oem_partition_gpt_handler(FILE *fp)
 			}
 			free(argv);
 			argv=NULL;
+
+			if (ret) {
+				pr_error("gpt command failed: %s", buffer);
+				fastboot_fail("GPT command failed\n");
+				return -1;
+			}
 		}
 		else {
+			pr_error("GPT str_to_array error: %s", buffer);
 			fastboot_fail("GPT str_to_array error. Malformed string ?\n");
-			ret = -1;
+			return -1;
 		}
 	}
 
-	return ret;
+	return 0;
 }
 
 static int oem_partition_mbr_handler(FILE *fp)
