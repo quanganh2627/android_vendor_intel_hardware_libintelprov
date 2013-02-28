@@ -840,7 +840,7 @@ static int oem_partition_mbr_handler(FILE *fp)
 	return ufdisk_create_partition();
 }
 
-static int oem_partition_cmd_handler(int argc, char **argv)
+int oem_partition_cmd_handler(int argc, char **argv)
 {
 	char buffer[K_MAX_ARG_LEN];
 	char partition_type[K_MAX_ARG_LEN];
