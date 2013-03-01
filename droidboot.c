@@ -129,17 +129,27 @@ static int flash_uefi_firmware(void *data, unsigned sz)
 	return flash_image(data, sz, get_named_osii_index(UEFI_FW_NAME));
 }
 
+int flash_logs = 0;
 static int flash_modem(void *data, unsigned sz)
 {
 	int ret;
-	int argc = 1;
-	char *argv[1];
+	int argc;
+	char *argv[2];
+
+	if(flash_logs == 0) {
+		argc = 1;
+		argv[0] = "f";
+	}
+	else {
+		argc = 2;
+		argv[0] = "f";
+		argv[1] = "l";
+	}
 
 	if (file_write(IMG_RADIO, data, sz)) {
 		pr_error("Couldn't write radio image to %s", IMG_RADIO);
 		return -1;
 	}
-	argv[0] = "f";
 	/* Update modem SW. */
 	ret = flash_modem_fw(IMG_RADIO, IMG_RADIO, argc, argv, progress_callback);
 	unlink(IMG_RADIO);
@@ -695,6 +705,22 @@ static int oem_partition_stop_handler(int argc, char **argv)
 	return 0;
 }
 
+static int oem_enable_flash_logs(int argc, char **argv)
+{
+	if(oem_partition_stop_handler(argc, argv) != 0)
+		return -1;
+	flash_logs = 1;
+	ui_print("Enable flash logs\n");
+	return 0;
+}
+
+static int oem_disable_flash_logs(int argc, char **argv)
+{
+	flash_logs = 0;
+	ui_print("Disable flash logs\n");
+	return 0;
+}
+
 static int oem_get_batt_info_handler(int argc, char **argv)
 {
 	char msg_buf[] = " level: 000";
@@ -1058,6 +1084,8 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("partition", oem_partition_cmd_handler);
 	ret |= aboot_register_oem_cmd("stop_partitioning", oem_partition_stop_handler);
 	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
+	ret |= aboot_register_oem_cmd("enable_flash_logs", oem_enable_flash_logs);
+	ret |= aboot_register_oem_cmd("disable_flash_logs", oem_disable_flash_logs);
 
 	fastboot_register("continue", cmd_intel_reboot);
 	fastboot_register("reboot", cmd_intel_reboot);
