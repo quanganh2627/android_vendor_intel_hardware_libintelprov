@@ -24,11 +24,8 @@
 #include "flash_ifwi.h"
 #include "fw_version_check.h"
 
-#define DNX_SYSFS_INT	    "/sys/devices/ipc/intel_fw_update.0/dnx"
-#define DNX_SYSFS_INT_ALT   "/sys/kernel/fw_update/dnx"
-
-#define IFWI_SYSFS_INT	    "/sys/devices/ipc/intel_fw_update.0/ifwi"
-#define IFWI_SYSFS_INT_ALT  "/sys/kernel/fw_update/ifwi"
+#define DNX_SYSFS_INT	 "/sys/devices/ipc/intel_fw_update.0/dnx"
+#define IFWI_SYSFS_INT	 "/sys/devices/ipc/intel_fw_update.0/ifwi"
 
 #define BUF_SIZ	4096
 
@@ -147,12 +144,9 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 
 	f_dst = fopen(DNX_SYSFS_INT, "wb");
 	if (f_dst == NULL) {
-		f_dst = fopen(DNX_SYSFS_INT_ALT, "wb");
-		if (f_dst == NULL) {
-			fprintf(stderr, "open %s failed\n", DNX_SYSFS_INT_ALT);
-			ret = -1;
-			goto err;
-		}
+		fprintf(stderr, "open %s failed\n", DNX_SYSFS_INT);
+		ret = -1;
+		goto err;
 	}
 
 	while ((cont = fread(buff, 1, sizeof(buff), f_src)) > 0) {
@@ -173,15 +167,11 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 		ret = -1;
 		goto end;
 	}
-
 	f_dst = fopen(IFWI_SYSFS_INT, "wb");
 	if (f_dst == NULL) {
-		f_dst = fopen(IFWI_SYSFS_INT_ALT, "wb");
-		if (f_dst == NULL) {
-			fprintf(stderr, "open %s failed\n", IFWI_SYSFS_INT_ALT);
-			ret = -1;
-			goto err;
-		}
+		fprintf(stderr, "open %s failed\n", IFWI_SYSFS_INT);
+		ret = -1;
+		goto err;
 	}
 
 	while ((cont = fread(buff, 1, sizeof(buff), f_src)) > 0) {
