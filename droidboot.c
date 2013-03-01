@@ -43,6 +43,8 @@
 #define IMG_RADIO "/radio.img"
 #define IMG_RADIO_RND "/radio_rnd.img"
 
+static int oem_partition_stop_handler(int argc, char **argv);
+
 static void progress_callback(enum cmfwdl_status_type type, int value,
 		const char *msg, void *data)
 {
@@ -179,6 +181,9 @@ static int flash_modem_get_fuse(void *data, unsigned sz)
 	int argc = 1;
 	char *argv[1];
 
+	if(oem_partition_stop_handler(argc, argv) != 0)
+		return -1;
+
 	if (file_write(IMG_RADIO, data, sz)) {
 		pr_error("Couldn't write radio image to %s", IMG_RADIO);
 		return -1;
@@ -194,6 +199,9 @@ static int flash_modem_get_fuse_only(void *data, unsigned sz)
 	int ret;
 	int argc = 1;
 	char *argv[1];
+
+	if(oem_partition_stop_handler(argc, argv) != 0)
+		return -1;
 
 	if (file_write(IMG_RADIO, data, sz)) {
 		pr_error("Couldn't write radio image to %s", IMG_RADIO);
@@ -258,6 +266,9 @@ static int flash_modem_write_rnd(void *data, unsigned sz)
 	int argc = 1;
 	char *argv[1];
 
+	if(oem_partition_stop_handler(argc, argv) != 0)
+		return -1;
+
 	if (access(IMG_RADIO, F_OK)) {
 		pr_error("Radio Image %s Not Found!!\nCall flash radio_img first", IMG_RADIO);
 		return -1;
@@ -296,6 +307,9 @@ static int flash_modem_get_hw_id(void *data, unsigned sz)
 	int ret;
 	int argc = 1;
 	char *argv[1];
+
+	if(oem_partition_stop_handler(argc, argv) != 0)
+		return -1;
 
 	if (file_write(IMG_RADIO, data, sz)) {
 		pr_error("Couldn't write radio image to %s", IMG_RADIO);
