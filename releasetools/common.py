@@ -173,7 +173,7 @@ def LoadRecoveryFSTab(zip):
     line = line.strip()
     if not line or line.startswith("#"): continue
     pieces = line.split()
-    if not (len(pieces) >= 5):
+    if not (3 <= len(pieces) <= 5):
       raise ValueError("malformed recovery.fstab line: \"%s\"" % (line,))
 
     p = Partition()
