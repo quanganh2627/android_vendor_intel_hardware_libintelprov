@@ -37,6 +37,7 @@
 
 #define TTY_NODE            "/dev/ttyMFD1"
 #define IFX_NODE            "/dev/ttyIFX0"
+#define MBD_DEV             "/dev/mdm_ctrl"
 
 #define LOG_BUFF_SIZE       256
 
@@ -44,6 +45,7 @@ int flash_modem_nvm(const char *nvm_filename, modem_nvm_status_callback cb)
 {
 	struct cmfwdl *h;
 	int ret = -1;
+	int err = -1;
 	struct cmfwdl_buffer *pbuffer_nvm_command;
 	struct cmfwdl_buffer *pbuffer_nvm_response;
 	char strBuff[LOG_BUFF_SIZE] = {'\0'};
@@ -120,9 +122,9 @@ out:
 
 	// we reboot in any case to make sure we leave the modem
 	// in correct state
-	cmfwdl_destroy_instance(h, CMFWDL_REBOOT);
+	err = cmfwdl_destroy_instance(h, CMFWDL_REBOOT);
 
-	return ret;
+	return (ret == 0 ? err : ret);
 }
 
 #define MAX_FILENAME_LEN 256
@@ -261,6 +263,7 @@ int read_modem_nvm_id(char* out_buffer, size_t max_out_size, modem_nvm_status_ca
 {
 	struct cmfwdl *h;
 	int ret = -1;
+	int err = -1;
 	struct cmfwdl_buffer *pbuffer_nvm_response;
 
 	h = cmfwdl_create_instance();
@@ -318,7 +321,7 @@ int read_modem_nvm_id(char* out_buffer, size_t max_out_size, modem_nvm_status_ca
 
 out:
 
-	cmfwdl_destroy_instance(h, CMFWDL_REBOOT);
+	err = cmfwdl_destroy_instance(h, CMFWDL_REBOOT);
 
-	return ret;
+	return (ret == 0 ? err : ret);
 }
