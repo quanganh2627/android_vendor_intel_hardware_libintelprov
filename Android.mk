@@ -17,12 +17,11 @@ common_libintelprov_files := \
 	modem_nvm.c
 
 common_libintelprov_includes := \
-	hardware/intel/PRIVATE/cmfwdl/lib/cmfwdl \
+	vendor/intel/hardware/PRIVATE/cmfwdl/lib/cmfwdl \
 	bionic/libc/private
 
-chaabi_dir := $(TOP)/hardware/intel/PRIVATE/chaabi
+chaabi_dir := $(TOP)/vendor/intel/hardware/PRIVATE/chaabi
 sep_lib_includes := $(chaabi_dir)/SepMW/VOS6/External/Linux/inc/
-
 
 # Plug-in library for AOSP updater
 include $(CLEAR_VARS)
