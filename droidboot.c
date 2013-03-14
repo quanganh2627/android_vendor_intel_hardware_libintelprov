@@ -754,6 +754,27 @@ static char **str_to_array(char *str, int *argc)
 	return tokens;
 }
 
+static int oem_write_osip_header(int argc, char **argv)
+{
+	static struct OSIP_header default_osip = {
+		.sig = OSIP_SIG,
+		.intel_reserved = 0,
+		.header_rev_minor = 0,
+		.header_rev_major = 1,
+		.header_checksum = 0,
+		.num_pointers = 1,
+		.num_images = 1,
+		.header_size = 0
+	};
+
+	ui_print("Write OSIP header\n");
+	default_osip.header_checksum = get_osip_crc(&default_osip);
+	write_OSIP(&default_osip);
+	restore_osii("boot");
+	restore_osii("recovery");
+	restore_osii("fastboot");
+	return 0;
+}
 static int oem_partition_start_handler(int argc, char **argv)
 {
 	property_set("sys.partitioning", "1");
@@ -1144,6 +1165,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd(REPART_PARTITION, oem_repart_partition);
 
 	ret |= aboot_register_oem_cmd("nvm", oem_nvm_cmd_handler);
+	ret |= aboot_register_oem_cmd("write_osip_header", oem_write_osip_header);
 	ret |= aboot_register_oem_cmd("start_partitioning", oem_partition_start_handler);
 	ret |= aboot_register_oem_cmd("partition", oem_partition_cmd_handler);
 	ret |= aboot_register_oem_cmd("stop_partitioning", oem_partition_stop_handler);

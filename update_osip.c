@@ -37,8 +37,6 @@
 
 #define pr_perror(x)	fprintf(stderr, "%s failed: %s\n", x, strerror(errno))
 
-#define OSIP_SIG 0x24534f24	/* $OS$ */
-
 #define MAX(x, y)       ((x) > (y) ? (x) : (y))
 #define MIN(x, y)       ((x) < (y) ? (x) : (y))
 
@@ -50,6 +48,8 @@ const uint32_t fw_lba_slots[] = {
 	(FW_START_OFFSET + (FW_MAX_LBA * 0)),
 	(FW_START_OFFSET + (FW_MAX_LBA * 1))
 };
+
+
 #define FW_SLOTS	ARRAY_SIZE(fw_lba_slots)
 
 #define OS_START_OFFSET	(FW_START_OFFSET + (FW_MAX_LBA * FW_SLOTS))
@@ -67,7 +67,7 @@ const uint32_t os_lba_slots[] = {
 
 #define CLEAR_BIT(x, b)		((x) &= ~(1 << b))
 
-static uint8_t get_osip_crc(struct OSIP_header *osip)
+uint8_t get_osip_crc(struct OSIP_header *osip)
 {
 	size_t i;
 	unsigned char *dat;
