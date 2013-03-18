@@ -27,6 +27,8 @@
 #include <cutils/android_reboot.h>
 #include <unistd.h>
 #include <charger/charger.h>
+#include <linux/ioctl.h>
+#include <linux/mdm_ctrl.h>
 
 #include "volumeutils/ufdisk.h"
 #include "update_osip.h"
@@ -42,6 +44,8 @@
 
 #define IMG_RADIO "/radio.img"
 #define IMG_RADIO_RND "/radio_rnd.img"
+
+static int oem_partition_stop_handler(int argc, char **argv);
 
 static void progress_callback(enum cmfwdl_status_type type, int value,
 		const char *msg, void *data)
@@ -179,6 +183,9 @@ static int flash_modem_get_fuse(void *data, unsigned sz)
 	int argc = 1;
 	char *argv[1];
 
+	if(oem_partition_stop_handler(argc, argv) != 0)
+		return -1;
+
 	if (file_write(IMG_RADIO, data, sz)) {
 		pr_error("Couldn't write radio image to %s", IMG_RADIO);
 		return -1;
@@ -194,6 +201,9 @@ static int flash_modem_get_fuse_only(void *data, unsigned sz)
 	int ret;
 	int argc = 1;
 	char *argv[1];
+
+	if(oem_partition_stop_handler(argc, argv) != 0)
+		return -1;
 
 	if (file_write(IMG_RADIO, data, sz)) {
 		pr_error("Couldn't write radio image to %s", IMG_RADIO);
@@ -258,6 +268,9 @@ static int flash_modem_write_rnd(void *data, unsigned sz)
 	int argc = 1;
 	char *argv[1];
 
+	if(oem_partition_stop_handler(argc, argv) != 0)
+		return -1;
+
 	if (access(IMG_RADIO, F_OK)) {
 		pr_error("Radio Image %s Not Found!!\nCall flash radio_img first", IMG_RADIO);
 		return -1;
@@ -296,6 +309,9 @@ static int flash_modem_get_hw_id(void *data, unsigned sz)
 	int ret;
 	int argc = 1;
 	char *argv[1];
+
+	if(oem_partition_stop_handler(argc, argv) != 0)
+		return -1;
 
 	if (file_write(IMG_RADIO, data, sz)) {
 		pr_error("Couldn't write radio image to %s", IMG_RADIO);
@@ -447,15 +463,18 @@ static int flash_ifwi(void *data, unsigned sz)
 
 #endif
 
-#define PROXY_SERVICE_NAME		"proxy"
+#define PROXY_SERVICE_NAME	"proxy"
 #define PROXY_PROP		"service.proxy.enable"
 #define PROXY_START		"1"
 #define PROXY_STOP		"0"
-#define HSI_PORT	"/sys/bus/hsi/devices/port0"
+#define HSI_PORT		"/sys/bus/hsi/devices/port0"
+#define MCD_CTRL		"/dev/mdm_ctrl"
 
 static int oem_manage_service_proxy(int argc, char **argv)
 {
 	int retval = 0;
+	int mcd_fd = -1;
+	int evt_type = 0;
 
 	if ((argc < 2) || (strcmp(argv[0], PROXY_SERVICE_NAME))) {
 		/* Should not pass here ! */
@@ -480,20 +499,65 @@ static int oem_manage_service_proxy(int argc, char **argv)
 				/* Reset the modem */
 				pr_info("Reset modem\n");
 				reset_modem();
-			}
-			close(fd);
+			} else
+				close(fd);
 
 			/* Start proxy service (at-proxy). */
 			property_set(PROXY_PROP, PROXY_START);
 
 		} else {
-			pr_error("Fails to find HSI node: %s\n", HSI_PORT);
-			retval = -1;
+			/* MCD build. Modem needs to be powered */
+			/* Boot up the modem */
+			if ((mcd_fd = open(MCD_CTRL, O_RDWR)) == -1) {
+				pr_error("Unable to open MCD node or find HSI. ABORT.\n");
+				return -1;
+			}
+			if (ioctl(mcd_fd, MDM_CTRL_POWER_ON) == -1) {
+				pr_info("Unable to power on modem. ABORT.\n");
+				close(mcd_fd);
+				return -1;
+			} else {
+				/* Let modem time to boot */
+				pr_info("Modem will be powered up... ");
+				evt_type = MDM_CTRL_STATE_IPC_READY;
+				if (ioctl(mcd_fd, MDM_CTRL_WAIT_FOR_STATE, &evt_type) == -1) {
+					pr_error("Power up failure. ABORT.\n");
+					close(mcd_fd);
+					return -1;
+				}
+				pr_info("Modem powered up.\n");
+				close(mcd_fd);
+				/* Start proxy service (at-proxy). */
+				property_set(PROXY_PROP, PROXY_START);
+			}
 		}
 
 	} else if (!strcmp(argv[1], "stop")) {
-		/* Stop proxy service (at-proxy). */
+		/* For MCD build, modem will be powered down */
+		if ((mcd_fd = open(MCD_CTRL, O_RDWR)) == -1) {
+			/* Stop proxy service (at-proxy). */
+			property_set(PROXY_PROP, PROXY_STOP);
+			return 0;
+		}
+		/* Stop proxy service (at-proxy) anyway. */
 		property_set(PROXY_PROP, PROXY_STOP);
+		if (ioctl(mcd_fd, MDM_CTRL_POWER_OFF) == -1) {
+			pr_info("Unable to power off modem. ABORT.\n");
+			close(mcd_fd);
+			return -1;
+		} else {
+			/* Let modem time to stop. */
+			pr_info("Modem will be powered down... ");
+			evt_type = MDM_CTRL_STATE_OFF;
+			if (ioctl(mcd_fd, MDM_CTRL_WAIT_FOR_STATE, &evt_type) == -1) {
+				pr_error("Power down failure. ABORT.\n");
+				close(mcd_fd);
+				return -1;
+			}
+			pr_info("Modem powered down.\n");
+			close(mcd_fd);
+			return 0;
+		}
 
 	} else {
 		pr_error("Unknown command. Use %s [start/stop].\n", PROXY_SERVICE_NAME);
@@ -826,7 +890,7 @@ static int oem_partition_mbr_handler(FILE *fp)
 	return ufdisk_create_partition();
 }
 
-static int oem_partition_cmd_handler(int argc, char **argv)
+int oem_partition_cmd_handler(int argc, char **argv)
 {
 	char buffer[K_MAX_ARG_LEN];
 	char partition_type[K_MAX_ARG_LEN];
