@@ -336,6 +336,19 @@ static int flash_dnx(void *data, unsigned sz)
 #define BOOT1 "/dev/block/mmcblk0boot1"
 #define BOOT_PARTITION_SIZE 0x400000
 
+#define IFWI_TYPE_LSH 12
+
+void dump_fw_versions_long(struct firmware_versions_long *v)
+{
+	pr_info("	   ifwi: %04X.%04X\n", v->ifwi.major, v->ifwi.minor);
+	pr_info("---- components ----\n");
+	pr_info("	    scu: %04X.%04X\n", v->scu.major, v->scu.minor);
+	pr_info("    hooks/oem: %04X.%04X\n", v->valhooks.major, v->valhooks.minor);
+	pr_info("	   ia32: %04X.%04X\n", v->ia32.major, v->ia32.minor);
+	pr_info("	 chaabi: %04X.%04X\n", v->chaabi.major, v->chaabi.minor);
+	pr_info("	    mIA: %04X.%04X\n", v->mia.major, v->mia.minor);
+}
+
 int write_image(int fd, char *image, unsigned size)
 {
     int ret = 0;
@@ -352,7 +365,7 @@ int write_image(int fd, char *image, unsigned size)
     /*function errors out while writing the last chunk*/
         ret = write(fd, ptr, size);
         if (ret <= 0 && errno != EINTR) {
-            fprintf(stderr, "write_image(): image write failed with errno %d\n", errno);
+            pr_error("write_image(): image write failed with errno %d\n", errno);
             return -1;
         }
         ptr += ret;
@@ -366,9 +379,40 @@ int write_image(int fd, char *image, unsigned size)
 static int flash_ifwi(void *data, unsigned size)
 {
     int boot0_fd, boot1_fd, ret = 0;
+    struct firmware_versions_long dev_fw_rev, img_fw_rev;
+
+    if (get_image_fw_rev_long(data, size, &img_fw_rev)) {
+        pr_error("Coudn't extract FW version data from image\n");
+        return -1;
+    }
+    pr_info("Image FW versions:\n");
+    dump_fw_versions_long(&img_fw_rev);
+
+    if (get_current_fw_rev_long(&dev_fw_rev)) {
+        pr_error("Couldn't query existing IFWI version\n");
+        return -1;
+    }
+    pr_info("Attempting to flash ifwi image version %04X.%04X over ifwi current version %04X.%04X\n",
+        img_fw_rev.ifwi.major,img_fw_rev.ifwi.minor,dev_fw_rev.ifwi.major,dev_fw_rev.ifwi.minor);
+
+    if (img_fw_rev.ifwi.major != dev_fw_rev.ifwi.major) {
+        pr_error("IFWI FW Major version numbers (file=%04X current=%04X) don't match, Update abort.\n",
+            img_fw_rev.ifwi.major, dev_fw_rev.ifwi.major);
+
+        /* Not an error case. Let update continue to next IFWI versions. */
+        return 0;
+    }
+
+    if ( (img_fw_rev.ifwi.minor >> IFWI_TYPE_LSH) != (dev_fw_rev.ifwi.minor >> IFWI_TYPE_LSH) ) {
+        pr_error("IFWI FW Type (file=%1X current=%1X) don't match, Update abort.\n",
+            img_fw_rev.ifwi.minor >> IFWI_TYPE_LSH, dev_fw_rev.ifwi.minor >> IFWI_TYPE_LSH);
+
+        /* Not an error case. Let update continue to next IFWI versions. */
+        return 0;
+    }
 
     if (size > BOOT_PARTITION_SIZE) {
-        fprintf(stderr, "flash_ifwi(): Truncating last %d bytes from the IFWI\n",
+        pr_error("flash_ifwi(): Truncating last %d bytes from the IFWI\n",
         (size - BOOT_PARTITION_SIZE));
         /* Since the last 144 bytes are the FUP header which are not required,*/
         /* we truncate it to fit into the boot partition. */
@@ -377,25 +421,25 @@ static int flash_ifwi(void *data, unsigned size)
 
     boot0_fd = open(BOOT0, O_RDWR);
     if (boot0_fd < 0) {
-        fprintf(stderr, "flash_ifwi(): failed to open %s\n", BOOT0);
+        pr_error("flash_ifwi(): failed to open %s\n", BOOT0);
         return -1;
     }
     boot1_fd = open(BOOT1, O_RDWR);
     if (boot1_fd < 0) {
-        fprintf(stderr, "flash_ifwi(): failed to open %s\n", BOOT1);
+        pr_error("flash_ifwi(): failed to open %s\n", BOOT1);
         close(boot0_fd);
         return -1;
     }
 
     if (lseek(boot0_fd, 0, SEEK_SET) < 0) { /* Seek to start of file */
-        fprintf(stderr, "flash_ifwi(): lseek failed on boot0");
+        pr_error("flash_ifwi(): lseek failed on boot0");
         close(boot0_fd);
         close(boot1_fd);
         return -1;
     }
 
     if (lseek(boot1_fd, 0, SEEK_SET) < 0) {
-        fprintf(stderr, "flash_ifwi(): lseek failed on boot1");
+        pr_error("flash_ifwi(): lseek failed on boot1");
         close(boot0_fd);
         close(boot1_fd);
         return -1;
@@ -403,11 +447,11 @@ static int flash_ifwi(void *data, unsigned size)
 
     ret = write_image(boot0_fd, (char*)data, size);
     if (ret)
-        fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT0);
+        pr_error("flash_ifwi(): write to %s failed\n", BOOT0);
     else {
         ret = write_image(boot1_fd, (char*)data, size);
         if (ret)
-            fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT1);
+            pr_error("flash_ifwi(): write to %s failed\n", BOOT1);
     }
 
     close(boot0_fd);
@@ -1165,7 +1209,6 @@ void libintel_droidboot_init(void)
 {
 	int ret = 0;
 	struct OSIP_header osip;
-	struct firmware_versions cur_fw_rev;
 
 	ret |= aboot_register_flash_cmd(ANDROID_OS_NAME, flash_android_kernel);
 	ret |= aboot_register_flash_cmd(RECOVERY_OS_NAME, flash_recovery_kernel);
@@ -1219,10 +1262,21 @@ void libintel_droidboot_init(void)
 		dump_osip_header(&osip);
 	}
 
+#ifdef MRFLD
+	struct firmware_versions_long cur_fw_rev;
+	if (get_current_fw_rev_long(&cur_fw_rev)) {
+		pr_error("Can't query kernel for current FW version");
+	} else {
+		printf("Current FW versions:\n");
+		dump_fw_versions_long(&cur_fw_rev);
+	}
+#else
+	struct firmware_versions cur_fw_rev;
 	if (get_current_fw_rev(&cur_fw_rev)) {
 		pr_error("Can't query kernel for current FW version");
 	} else {
 		printf("Current FW versions: (CHAABI versions unreadable at runtime)\n");
 		dump_fw_versions(&cur_fw_rev);
 	}
+#endif
 }

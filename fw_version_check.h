@@ -36,17 +36,35 @@ struct firmware_versions {
 	struct fw_version chaabi_ext;
 };
 
+struct fw_version_long {
+	uint16_t major;
+	uint16_t minor;
+};
+
+struct firmware_versions_long {
+	struct fw_version_long scubootstrap;
+	struct fw_version_long scu;
+	struct fw_version_long ia32;
+	struct fw_version_long valhooks;
+	struct fw_version_long ifwi;
+	struct fw_version_long chaabi;
+	struct fw_version_long mia;
+};
+
 /* Query the SCU for current firmware versions and populate
  * the fields in v. Returns nonzero on error */
 int get_current_fw_rev(struct firmware_versions *v);
+int get_current_fw_rev_long(struct firmware_versions_long *v);
 
 /* Assuming data points to a blob of memory containing an IFWI
  * firmware image, inpsect the FIP header inside it and
  * populate the fields in v. Returns nonzero on error */
 int get_image_fw_rev(void *data, unsigned sz, struct firmware_versions *v);
+int get_image_fw_rev_long(void *data, unsigned sz, struct firmware_versions_long *v);
 
 /* Dump all the firmware component versions to stdout */
 void dump_fw_versions(struct firmware_versions *v);
+void dump_fw_versions_long(struct firmware_versions_long *v);
 
 /* Compare versions v1 and v2, and return -1, 1, or 0 if v1 is less than,
  * greater than, or equal to v2, respectively */
