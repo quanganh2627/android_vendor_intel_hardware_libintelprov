@@ -15,6 +15,7 @@
  */
 
 #ifndef UPDATE_OSIP_H
+#define UPDATE_OSIP_H
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -28,6 +29,7 @@
 #define UEFI_FW_NAME        "uefi"
 #define MAX_OSIP_DESC 	    7
 /* mfld-structures section 2.7.1 mfld-fas v0.8*/
+#define OSIP_SIG 0x24534f24	/* $OS$ */
 
 struct OSII {			//os image identifier
 	uint16_t os_rev_minor;
@@ -58,6 +60,7 @@ struct OSIP_header {		// os image profile
 	struct OSII desc[MAX_OSIP_DESC];
 };
 
+uint8_t get_osip_crc(struct OSIP_header *osip);
 int write_OSIP(struct OSIP_header *osip);
 int read_OSIP(struct OSIP_header *osip);
 void dump_osip_header(struct OSIP_header *osip);

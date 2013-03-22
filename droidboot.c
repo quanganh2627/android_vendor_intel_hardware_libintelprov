@@ -27,6 +27,8 @@
 #include <cutils/android_reboot.h>
 #include <unistd.h>
 #include <charger/charger.h>
+#include <linux/ioctl.h>
+#include <linux/mdm_ctrl.h>
 
 #include "volumeutils/ufdisk.h"
 #include "update_osip.h"
@@ -461,15 +463,18 @@ static int flash_ifwi(void *data, unsigned sz)
 
 #endif
 
-#define PROXY_SERVICE_NAME		"proxy"
+#define PROXY_SERVICE_NAME	"proxy"
 #define PROXY_PROP		"service.proxy.enable"
 #define PROXY_START		"1"
 #define PROXY_STOP		"0"
-#define HSI_PORT	"/sys/bus/hsi/devices/port0"
+#define HSI_PORT		"/sys/bus/hsi/devices/port0"
+#define MCD_CTRL		"/dev/mdm_ctrl"
 
 static int oem_manage_service_proxy(int argc, char **argv)
 {
 	int retval = 0;
+	int mcd_fd = -1;
+	int evt_type = 0;
 
 	if ((argc < 2) || (strcmp(argv[0], PROXY_SERVICE_NAME))) {
 		/* Should not pass here ! */
@@ -494,20 +499,65 @@ static int oem_manage_service_proxy(int argc, char **argv)
 				/* Reset the modem */
 				pr_info("Reset modem\n");
 				reset_modem();
-			}
-			close(fd);
+			} else
+				close(fd);
 
 			/* Start proxy service (at-proxy). */
 			property_set(PROXY_PROP, PROXY_START);
 
 		} else {
-			pr_error("Fails to find HSI node: %s\n", HSI_PORT);
-			retval = -1;
+			/* MCD build. Modem needs to be powered */
+			/* Boot up the modem */
+			if ((mcd_fd = open(MCD_CTRL, O_RDWR)) == -1) {
+				pr_error("Unable to open MCD node or find HSI. ABORT.\n");
+				return -1;
+			}
+			if (ioctl(mcd_fd, MDM_CTRL_POWER_ON) == -1) {
+				pr_info("Unable to power on modem. ABORT.\n");
+				close(mcd_fd);
+				return -1;
+			} else {
+				/* Let modem time to boot */
+				pr_info("Modem will be powered up... ");
+				evt_type = MDM_CTRL_STATE_IPC_READY;
+				if (ioctl(mcd_fd, MDM_CTRL_WAIT_FOR_STATE, &evt_type) == -1) {
+					pr_error("Power up failure. ABORT.\n");
+					close(mcd_fd);
+					return -1;
+				}
+				pr_info("Modem powered up.\n");
+				close(mcd_fd);
+				/* Start proxy service (at-proxy). */
+				property_set(PROXY_PROP, PROXY_START);
+			}
 		}
 
 	} else if (!strcmp(argv[1], "stop")) {
-		/* Stop proxy service (at-proxy). */
+		/* For MCD build, modem will be powered down */
+		if ((mcd_fd = open(MCD_CTRL, O_RDWR)) == -1) {
+			/* Stop proxy service (at-proxy). */
+			property_set(PROXY_PROP, PROXY_STOP);
+			return 0;
+		}
+		/* Stop proxy service (at-proxy) anyway. */
 		property_set(PROXY_PROP, PROXY_STOP);
+		if (ioctl(mcd_fd, MDM_CTRL_POWER_OFF) == -1) {
+			pr_info("Unable to power off modem. ABORT.\n");
+			close(mcd_fd);
+			return -1;
+		} else {
+			/* Let modem time to stop. */
+			pr_info("Modem will be powered down... ");
+			evt_type = MDM_CTRL_STATE_OFF;
+			if (ioctl(mcd_fd, MDM_CTRL_WAIT_FOR_STATE, &evt_type) == -1) {
+				pr_error("Power down failure. ABORT.\n");
+				close(mcd_fd);
+				return -1;
+			}
+			pr_info("Modem powered down.\n");
+			close(mcd_fd);
+			return 0;
+		}
 
 	} else {
 		pr_error("Unknown command. Use %s [start/stop].\n", PROXY_SERVICE_NAME);
@@ -704,6 +754,27 @@ static char **str_to_array(char *str, int *argc)
 	return tokens;
 }
 
+static int oem_write_osip_header(int argc, char **argv)
+{
+	static struct OSIP_header default_osip = {
+		.sig = OSIP_SIG,
+		.intel_reserved = 0,
+		.header_rev_minor = 0,
+		.header_rev_major = 1,
+		.header_checksum = 0,
+		.num_pointers = 1,
+		.num_images = 1,
+		.header_size = 0
+	};
+
+	ui_print("Write OSIP header\n");
+	default_osip.header_checksum = get_osip_crc(&default_osip);
+	write_OSIP(&default_osip);
+	restore_osii("boot");
+	restore_osii("recovery");
+	restore_osii("fastboot");
+	return 0;
+}
 static int oem_partition_start_handler(int argc, char **argv)
 {
 	property_set("sys.partitioning", "1");
@@ -1094,6 +1165,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd(REPART_PARTITION, oem_repart_partition);
 
 	ret |= aboot_register_oem_cmd("nvm", oem_nvm_cmd_handler);
+	ret |= aboot_register_oem_cmd("write_osip_header", oem_write_osip_header);
 	ret |= aboot_register_oem_cmd("start_partitioning", oem_partition_start_handler);
 	ret |= aboot_register_oem_cmd("partition", oem_partition_cmd_handler);
 	ret |= aboot_register_oem_cmd("stop_partitioning", oem_partition_stop_handler);
