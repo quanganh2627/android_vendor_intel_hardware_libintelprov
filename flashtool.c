@@ -11,7 +11,9 @@
 #include "util.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
+#ifndef NO_CMFWDL
 #include "modem_fw.h"
+#endif
 
 #define PROP_BUILD_ID	"ro.build.display.id"
 
@@ -160,6 +162,7 @@ void cmd_write_osip(char *entry, char *filename)
 	}
 }
 
+#ifndef NO_CMFWDL
 static void progress_callback(enum cmfwdl_status_type type, int value,
         const char *msg, void *data)
 {
@@ -209,6 +212,7 @@ void cmd_flash_modem_fw(char *filename)
 		exit(1);
 	}
 }
+#endif
 
 int main(int argc, char ** argv)
 {
@@ -268,9 +272,11 @@ int main(int argc, char ** argv)
 	case CMD_WRITE_FW:
 		cmd_write_fw(filename);
 		break;
+#ifndef NO_CMFWDL
 	case CMD_WRITE_3G_FW:
 		cmd_flash_modem_fw(filename);
 		break;
+#endif
 	}
 	return 0;
 }

@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef NO_CMFWDL
 #include <cmfwdl.h>
+#endif
 #include <droidboot.h>
 #include <droidboot_plugin.h>
 #include <droidboot_util.h>
@@ -33,8 +35,10 @@
 #include "volumeutils/ufdisk.h"
 #include "update_osip.h"
 #include "util.h"
+#ifndef NO_CMFWDL
 #include "modem_fw.h"
 #include "modem_nvm.h"
+#endif
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
 #include "fastboot.h"
@@ -49,6 +53,7 @@
 
 static int oem_partition_stop_handler(int argc, char **argv);
 
+#ifndef NO_CMFWDL
 static void progress_callback(enum cmfwdl_status_type type, int value,
 		const char *msg, void *data)
 {
@@ -100,6 +105,7 @@ static void nvm_output_callback(const char *msg, int output)
 		fastboot_info(msg);
 	}
 }
+#endif
 
 static int flash_image(void *data, unsigned sz, int index)
 {
@@ -136,6 +142,7 @@ static int flash_uefi_firmware(void *data, unsigned sz)
 }
 
 int flash_logs = 0;
+#ifndef NO_CMFWDL
 static int flash_modem(void *data, unsigned sz)
 {
 	int ret;
@@ -326,6 +333,7 @@ static int flash_modem_get_hw_id(void *data, unsigned sz)
 	unlink(IMG_RADIO);
 	return ret;
 }
+#endif
 
 #ifdef MRFLD
 
@@ -543,6 +551,7 @@ static int flash_capsule(void *data, unsigned sz)
 #define HSI_PORT		"/sys/bus/hsi/devices/port0"
 #define MCD_CTRL		"/dev/mdm_ctrl"
 
+#ifndef NO_CMFWDL
 static int oem_manage_service_proxy(int argc, char **argv)
 {
 	int retval = 0;
@@ -639,6 +648,7 @@ static int oem_manage_service_proxy(int argc, char **argv)
 
 	return retval;
 }
+#endif
 
 #define DNX_TIMEOUT_CHANGE  "dnx_timeout"
 #define DNX_TIMEOUT_GET	    "--get"
@@ -751,6 +761,7 @@ end2:
 #define K_MAX_ARGS 256
 #define K_MAX_ARG_LEN 256
 
+#ifndef NO_CMFWDL
 static int oem_nvm_cmd_handler(int argc, char **argv)
 {
 	int retval = 0;
@@ -789,6 +800,7 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 
 	return retval;
 }
+#endif
 
 static char **str_to_array(char *str, int *argc)
 {
@@ -1256,27 +1268,36 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd(FASTBOOT_OS_NAME, flash_fastboot_kernel);
 	ret |= aboot_register_flash_cmd(UEFI_FW_NAME, flash_uefi_firmware);
 	ret |= aboot_register_flash_cmd("splashscreen", flash_splashscreen_image);
+
+#ifndef NO_CMFWDL
 	ret |= aboot_register_flash_cmd("radio", flash_modem);
 	ret |= aboot_register_flash_cmd("radio_no_end_reboot", flash_modem_no_end_reboot);
 	ret |= aboot_register_flash_cmd("radio_fuse", flash_modem_get_fuse);
 	ret |= aboot_register_flash_cmd("radio_erase_all", flash_modem_erase_all);
 	ret |= aboot_register_flash_cmd("radio_fuse_only", flash_modem_get_fuse_only);
+#endif
+
 	ret |= aboot_register_flash_cmd("dnx", flash_dnx);
 	ret |= aboot_register_flash_cmd("ifwi", flash_ifwi);
 	ret |= aboot_register_flash_cmd("capsule", flash_capsule);
 
+#ifndef NO_CMFWDL
 	ret |= aboot_register_flash_cmd("radio_img", flash_modem_store_fw);
 	ret |= aboot_register_flash_cmd("rnd_read", flash_modem_read_rnd);
 	ret |= aboot_register_flash_cmd("rnd_write", flash_modem_write_rnd);
 	ret |= aboot_register_flash_cmd("rnd_erase", flash_modem_erase_rnd);
 	ret |= aboot_register_flash_cmd("radio_hwid", flash_modem_get_hw_id);
-
 	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
+#endif
+
 	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);
 	ret |= aboot_register_oem_cmd(ERASE_PARTITION, oem_erase_partition);
 	ret |= aboot_register_oem_cmd(REPART_PARTITION, oem_repart_partition);
 
+#ifndef NO_CMFWDL
 	ret |= aboot_register_oem_cmd("nvm", oem_nvm_cmd_handler);
+#endif
+
 	ret |= aboot_register_oem_cmd("write_osip_header", oem_write_osip_header);
 	ret |= aboot_register_oem_cmd("start_partitioning", oem_partition_start_handler);
 	ret |= aboot_register_oem_cmd("partition", oem_partition_cmd_handler);
