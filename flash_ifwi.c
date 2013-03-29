@@ -150,6 +150,8 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 		goto end;
 	}
 
+	fprintf(stderr, "Found IFWI to be flashed (maj=%02X min=%02X)\n", img_ifwi_rev.major, img_ifwi_rev.minor);
+
 	f_src = fopen(dnx, "rb");
 	if (f_src == NULL) {
 		fprintf(stderr, "open %s failed\n", dnx);
@@ -211,6 +213,7 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 err:
 	fclose(f_src);
 end:
+	fprintf(stderr, "IFWI flashed\n");
 	return ret;
 }
 
