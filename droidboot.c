@@ -463,6 +463,33 @@ static int flash_ifwi(void *data, unsigned sz)
 
 #endif
 
+#define CAPSULE_PARTITION_NAME "/FWUP"
+#define CAPSULE_UPDATE_FLAG_PATH "/sys/firmware/osnib/fw_update"
+
+static int flash_capsule(void *data, unsigned sz)
+{
+	Volume *v;
+	char capsule_trigger = '1';
+
+	if ((v = volume_for_path(CAPSULE_PARTITION_NAME)) == NULL) {
+		pr_error("Cannot find FWUP volume!\n");
+		return -1;
+	}
+
+	if (file_write(v->device, data, sz)) {
+		pr_error("Capsule flashing failed!\n");
+		return -1;
+	}
+
+	if (file_write(CAPSULE_UPDATE_FLAG_PATH,
+				&capsule_trigger, sizeof(capsule_trigger))) {
+		pr_error("Capsule flashing failed!\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 #define PROXY_SERVICE_NAME	"proxy"
 #define PROXY_PROP		"service.proxy.enable"
 #define PROXY_START		"1"
@@ -1152,6 +1179,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("radio_fuse_only", flash_modem_get_fuse_only);
 	ret |= aboot_register_flash_cmd("dnx", flash_dnx);
 	ret |= aboot_register_flash_cmd("ifwi", flash_ifwi);
+	ret |= aboot_register_flash_cmd("capsule", flash_capsule);
 
 	ret |= aboot_register_flash_cmd("radio_img", flash_modem_store_fw);
 	ret |= aboot_register_flash_cmd("rnd_read", flash_modem_read_rnd);
