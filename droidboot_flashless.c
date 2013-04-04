@@ -29,6 +29,7 @@
 #include <charger/charger.h>
 #include <linux/ioctl.h>
 #include <linux/mdm_ctrl.h>
+#include <sys/mount.h>
 
 #include "volumeutils/ufdisk.h"
 #include "update_osip.h"
@@ -133,6 +134,12 @@ static int flash_modem(void *data, unsigned sz)
 		pr_error("%s failed at %s\n", __func__,
 			 "miu_initialize failed");
 	} else {
+		/* modem flashing needs write access to /system partition */
+		ret = mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL);
+		if (ret < 0) {
+		    pr_error("Failed to mount /system");
+		    goto error;
+		}
 		/* Update modem SW. */
 		if (miu_flash_modem_fw(IMG_RADIO,
 				       flash_options) == E_MIU_ERR_SUCCESS) {
@@ -144,7 +151,12 @@ static int flash_modem(void *data, unsigned sz)
 			ret = -1;
 		}
 		miu_dispose();
+
+		ret = umount("/system");
+		if (ret < 0)
+		    pr_error("Failed to umount /system");
 	}
+error:
 	unlink(IMG_RADIO);
 	return ret;
 }
