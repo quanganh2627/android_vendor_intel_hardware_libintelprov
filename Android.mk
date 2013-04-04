@@ -88,6 +88,9 @@ LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter -Wno-unused-but-set-variable
 ifneq ($(DROIDBOOT_NO_GUI),true)
 LOCAL_CFLAGS += -DUSE_GUI
 endif
+ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
+  LOCAL_CFLAGS += -DCLVT
+endif
 ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
   LOCAL_CFLAGS += -DMRFLD
 endif
