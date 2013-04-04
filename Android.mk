@@ -16,17 +16,34 @@ common_pmdb_files := \
 token_implementation := \
 	token.c
 
+ifeq ($(MIU_RMC_FLASHLESS),true)
+USE_FLASHLESS_FILES := true
+else ifeq ($(MIU_IMC_FLASHLESS),true)
+USE_FLASHLESS_FILES := true
+endif
+
 common_libintelprov_files := \
 	update_osip.c \
-	modem_fw.c \
 	fw_version_check.c \
 	util.c \
 	flash_ifwi.c \
+
+ifneq ($(USE_FLASHLESS_FILES),true)
+common_libintelprov_files += \
+	modem_fw.c \
 	modem_nvm.c
+endif
 
 common_libintelprov_includes := \
-	hardware/intel/PRIVATE/cmfwdl/lib/cmfwdl \
-	bionic/libc/private
+	bionic/libc/private \
+
+ifneq ($(USE_FLASHLESS_FILES),true)
+common_libintelprov_includes += \
+	hardware/intel/PRIVATE/cmfwdl/lib/cmfwdl
+else
+common_libintelprov_includes += \
+	$(TARGET_OUT_HEADERS)/IFX-modem
+endif
 
 chaabi_dir := $(TOP)/hardware/intel/PRIVATE/chaabi
 sep_lib_includes := $(chaabi_dir)/SepMW/VOS6/External/Linux/inc/
@@ -35,13 +52,22 @@ sep_lib_includes := $(chaabi_dir)/SepMW/VOS6/External/Linux/inc/
 # Plug-in library for AOSP updater
 include $(CLEAR_VARS)
 LOCAL_MODULE := libintel_updater
+ifneq ($(USE_FLASHLESS_FILES),true)
 LOCAL_SRC_FILES := updater.c $(common_libintelprov_files)
+else
+LOCAL_SRC_FILES := updater_flashless.c $(common_libintelprov_files)
+endif
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_C_INCLUDES := bootable/recovery $(common_libintelprov_includes)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
+endif
+ifneq ($(USE_FLASHLESS_FILES),true)
+LOCAL_WHOLE_STATIC_LIBRARIES := libcmfwdl
+else
+LOCAL_WHOLE_STATIC_LIBRARIES := libmiu
 endif
 include $(BUILD_STATIC_LIBRARY)
 
@@ -103,19 +129,33 @@ LIBCGPT_FILES := \
 	gpt/lib/cmd_show.c
 
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter -Wno-unused-but-set-variable
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+
+LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
+
+LOCAL_SRC_FILES := update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES)
+
+ifneq ($(USE_FLASHLESS_FILES),true)
+LOCAL_SRC_FILES += droidboot.c
+else
+LOCAL_SRC_FILES += droidboot_flashless.c
+endif
 
 ifeq ($(external_release),no)
-LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES) $(common_pmdb_files) $(token_implementation)
-LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include $(sep_lib_includes)
+LOCAL_SRC_FILES += $(common_pmdb_files) $(token_implementation)
+LOCAL_C_INCLUDES += $(sep_lib_includes)
 LOCAL_WHOLE_STATIC_LIBRARIES := libsecurity_sectoken libcrypto_static CC6_UMIP_ACCESS CC6_ALL_BASIC_LIB
 else
-LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES)
-LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
 LOCAL_CFLAGS += -DEXTERNAL
 endif
 
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+ifneq ($(USE_FLASHLESS_FILES),true)
+LOCAL_WHOLE_STATIC_LIBRARIES += libcmfwdl
+else
+LOCAL_WHOLE_STATIC_LIBRARIES += libmiu
+endif
+
 ifneq ($(DROIDBOOT_NO_GUI),true)
 LOCAL_CFLAGS += -DUSE_GUI
 endif
@@ -133,9 +173,17 @@ include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE := flashtool
 LOCAL_SHARED_LIBRARIES := liblog libcutils
+ifneq ($(USE_FLASHLESS_FILES),true)
 LOCAL_STATIC_LIBRARIES := libcmfwdl
+else
+LOCAL_STATIC_LIBRARIES := libmiu
+endif
 LOCAL_C_INCLUDES := $(common_libintelprov_includes) bootable/recovery
-LOCAL_SRC_FILES:= flashtool.c $(common_libintelprov_files)
+ifneq ($(USE_FLASHLESS_FILES),true)
+LOCAL_SRC_FILES := flashtool.c $(common_libintelprov_files)
+else
+LOCAL_SRC_FILES := flashtool_flashless.c $(common_libintelprov_files)
+endif
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
