@@ -31,6 +31,7 @@
 #define DEVICE_NAME_ALT	"/sys/kernel/fw_update/fw_info/fw_version"
 #define FIP_PATTERN	0x50494624
 #define SCU_IPC_VERSION_LEN 16
+#define SCU_IPC_VERSION_LEN_LONG 32
 
 #define SMIP_PATTERN	    0x50494D53
 #define PTI_FIELD_OFFSET    0x030C
@@ -66,8 +67,58 @@ struct FIP_header {
 	struct IFWI_rev ifwi_rev;
 };
 
-#define print_perror(x)	fprintf(stderr, "%s: %s failed: %s\n", \
-		__func__, x, strerror(errno))
+struct fip_version_block_long {
+	uint16_t minor;
+	uint16_t major;
+	uint8_t  checksum;
+	uint8_t  reserved8;
+	uint16_t reserved16;
+};
+
+struct fip_version_block_chxx_long {
+	uint16_t minor;
+	uint16_t major;
+	uint8_t  checksum;
+	uint8_t  reserved8;
+	uint16_t reserved16;
+	uint16_t size;
+	uint16_t dest;
+};
+
+struct FIP_header_long {
+	uint32_t FIP_SIG;
+	struct fip_version_block_long umip_rev;
+	struct fip_version_block_long spat_rev;
+	struct fip_version_block_long spct_rev;
+	struct fip_version_block_long rpch_rev;
+	struct fip_version_block_long ch00_rev;
+	struct fip_version_block_long mipd_rev;
+	struct fip_version_block_long mipn_rev;
+	struct fip_version_block_long scuc_rev;
+	struct fip_version_block_long hvm_rev;
+	struct fip_version_block_long mia_rev;
+	struct fip_version_block_long ia32_rev;
+	struct fip_version_block_long oem_rev;
+	struct fip_version_block_long ved_rev;
+	struct fip_version_block_long vec_rev;
+	struct fip_version_block_long mos_rev;
+	struct fip_version_block_long pos_rev;
+	struct fip_version_block_long cos_rev;
+	struct fip_version_block_chxx_long ch01_rev;
+	struct fip_version_block_chxx_long ch02_rev;
+	struct fip_version_block_chxx_long ch03_rev;
+	struct fip_version_block_chxx_long ch04_rev;
+	struct fip_version_block_chxx_long ch05_rev;
+	struct fip_version_block_chxx_long ch06_rev;
+	struct fip_version_block_chxx_long ch07_rev;
+	struct fip_version_block_chxx_long ch08_rev;
+	struct fip_version_block_chxx_long ch09_rev;
+	struct fip_version_block_chxx_long ch10_rev;
+	struct fip_version_block_long dfrm_rev;
+	struct fip_version_block_long osrm_rev;
+	struct fip_version_block_long dxxm_rev;
+	struct fip_version_block_long ifwi_rev;
+};
 
 /* Bytes in scu_ipc_version after the ioctl():
  * 00 SCU RT Firmware Minor Revision
@@ -97,7 +148,7 @@ int get_current_fw_rev(struct firmware_versions *v)
 	if (fw_info == NULL) {
 		fw_info = fopen(DEVICE_NAME_ALT, "r");
 		if (fw_info == NULL) {
-			print_perror("fopen");
+			fprintf(stderr, "fopen: failed to open %s or %s", DEVICE_NAME, DEVICE_NAME_ALT);
 			return -1;
 		}
 	}
@@ -126,6 +177,82 @@ int get_current_fw_rev(struct firmware_versions *v)
 	v->chaabi_res.minor = 0;
 	v->chaabi_ext.major = 0;
 	v->chaabi_ext.minor = 0;
+	return 0;
+}
+
+/* Bytes in scu_ipc_version after the ioctl():
+
+ * 00 SCU Boot Strap Firmware Minor Revision Low
+ * 01 SCU Boot Strap Firmware Minor Revision High
+ * 02 SCU Boot Strap Firmware Major Revision Low
+ * 03 SCU Boot Strap Firmware Major Revision High
+
+ * 04 SCU Firmware Minor Revision Low
+ * 05 SCU Firmware Minor Revision High
+ * 06 SCU Firmware Major Revision Low
+ * 07 SCU Firmware Major Revision High
+
+ * 08 IA Firmware Minor Revision Low
+ * 09 IA Firmware Minor Revision High
+ * 10 IA Firmware Major Revision Low
+ * 11 IA Firmware Major Revision High
+
+ * 12 Validation Hooks Firmware Minor Revision Low
+ * 13 Validation Hooks Firmware Minor Revision High
+ * 14 Validation Hooks Firmware Major Revision Low
+ * 15 Validation Hooks Firmware Major Revision High
+
+ * 16 IFWI Firmware Minor Revision Low
+ * 17 IFWI Firmware Minor Revision High
+ * 18 IFWI Firmware Major Revision Low
+ * 19 IFWI Firmware Major Revision High
+
+ * 20 Chaabi Firmware Minor Revision Low
+ * 21 Chaabi Firmware Minor Revision High
+ * 22 Chaabi Firmware Major Revision Low
+ * 23 Chaabi Firmware Major Revision High
+
+ * 24 mIA Firmware Minor Revision Low
+ * 25 mIA Firmware Minor Revision High
+ * 26 mIA Firmware Major Revision Low
+ * 27 mIA Firmware Major Revision High
+
+ */
+int get_current_fw_rev_long(struct firmware_versions_long *v)
+{
+	int i;
+	FILE *fw_info;
+	unsigned int fw_revision[SCU_IPC_VERSION_LEN_LONG];
+
+	fw_info = fopen(DEVICE_NAME, "r");
+	if (fw_info == NULL) {
+		fw_info = fopen(DEVICE_NAME_ALT, "r");
+		if (fw_info == NULL) {
+			fprintf(stderr, "fopen: failed to open %s or %s", DEVICE_NAME, DEVICE_NAME_ALT);
+			return -1;
+		}
+	}
+
+	memset(fw_revision, 0, SCU_IPC_VERSION_LEN_LONG);
+	for (i = 0; i < SCU_IPC_VERSION_LEN_LONG; i++)
+		fscanf(fw_info, "%x", &fw_revision[i]);
+	fclose(fw_info);
+
+	v->scubootstrap.minor = fw_revision[1] << 8 | fw_revision[0];
+	v->scubootstrap.major = fw_revision[3] << 8 | fw_revision[2];
+	v->scu.minor = fw_revision[5]  << 8 | fw_revision[4];
+	v->scu.major = fw_revision[7]  << 8 | fw_revision[6];
+	v->ia32.minor = fw_revision[9]  << 8 | fw_revision[8];
+	v->ia32.major = fw_revision[11] << 8 | fw_revision[10];
+	v->valhooks.minor = fw_revision[13] << 8 | fw_revision[12];
+	v->valhooks.major = fw_revision[15] << 8 | fw_revision[14];
+	v->ifwi.minor = fw_revision[17] << 8 | fw_revision[16];
+	v->ifwi.major = fw_revision[19] << 8 | fw_revision[18];
+	v->chaabi.minor = fw_revision[21] << 8 | fw_revision[20];
+	v->chaabi.major = fw_revision[23] << 8 | fw_revision[22];
+	v->mia.minor = fw_revision[25] << 8 | fw_revision[24];
+	v->mia.major = fw_revision[27] << 8 | fw_revision[26];
+
 	return 0;
 }
 
@@ -161,50 +288,154 @@ int get_image_fw_rev(void *data, unsigned sz, struct firmware_versions *v)
 	struct FIP_header fip;
 	unsigned char *databytes = (unsigned char *)data;
 	int magic;
+	int magic_found = 0;
 
-	v->ifwi.major=0;
-	v->ifwi.minor=0;
+	if (v == NULL) {
+		fprintf(stderr, "Null pointer !\n");
+		return -1;
+	}
+	else
+		memset((void *)v, 0, sizeof(struct firmware_versions));
 
-	while ((v->ifwi.major == 0) && (v->ifwi.minor == 0)){
+	while (sz >= sizeof(fip)){
 
 		/* Scan for the FIP magic */
 		while (sz >= sizeof(fip)) {
 			memcpy(&magic, databytes, sizeof(magic));
 			if (magic == FIP_PATTERN)
+			{
+				magic_found = 1;
 				break;
+			}
 			databytes += sizeof(magic);
 			sz -= sizeof(magic);
 		}
 
-		if (sz < sizeof(fip)) {
-			fprintf(stderr, "Couldn't find FIP magic in image!");
+		if (!magic_found) {
+			fprintf(stderr, "Couldn't find FIP magic in image!\n");
 			return -1;
+		}
+		if (sz < sizeof(fip)) {
+			break;
 		}
 
 		memcpy(&fip, databytes, sizeof(fip));
-		v->ifwi.major = fip.ifwi_rev.major;
-		v->ifwi.minor = fip.ifwi_rev.minor;
-		v->scu.major = fip.scu_rev.major;
-		v->scu.minor = fip.scu_rev.minor;
-		v->oem.major = fip.oem_rev.major;
-		v->oem.minor = fip.oem_rev.minor;
-		v->punit.major = fip.punit_rev.major;
-		v->punit.minor = fip.punit_rev.minor;
-		v->ia32.major = fip.ia32_rev.major;
-		v->ia32.minor = fip.ia32_rev.minor;
-		v->supp_ia32.major = fip.suppia32_rev.major;
-		v->supp_ia32.minor = fip.suppia32_rev.minor;
-		v->chaabi_icache.major = fip.chaabi_rev.icache.major;
-		v->chaabi_icache.minor = fip.chaabi_rev.icache.minor;
-		v->chaabi_res.major = fip.chaabi_rev.resident.major;
-		v->chaabi_res.minor = fip.chaabi_rev.resident.minor;
-		v->chaabi_ext.major = fip.chaabi_rev.ext.major;
-		v->chaabi_ext.minor = fip.chaabi_rev.ext.minor;
 
-		if ((v->ifwi.major == 0) && (v->ifwi.minor == 0)){
+		/* don't update if null */
+		if (fip.ifwi_rev.major != 0)
+			v->ifwi.major = fip.ifwi_rev.major;
+		if (fip.ifwi_rev.minor != 0)
+			v->ifwi.minor = fip.ifwi_rev.minor;
+		if (fip.scu_rev.major != 0)
+			v->scu.major = fip.scu_rev.major;
+		if (fip.scu_rev.minor != 0)
+			v->scu.minor = fip.scu_rev.minor;
+		if (fip.oem_rev.major != 0)
+			v->oem.major = fip.oem_rev.major;
+		if (fip.oem_rev.minor != 0)
+			v->oem.minor = fip.oem_rev.minor;
+		if (fip.punit_rev.major != 0)
+			v->punit.major = fip.punit_rev.major;
+		if (fip.punit_rev.minor != 0)
+			v->punit.minor = fip.punit_rev.minor;
+		if (fip.ia32_rev.major != 0)
+			v->ia32.major = fip.ia32_rev.major;
+		if (fip.ia32_rev.minor != 0)
+			v->ia32.minor = fip.ia32_rev.minor;
+		if (fip.suppia32_rev.major != 0)
+			v->supp_ia32.major = fip.suppia32_rev.major;
+		if (fip.suppia32_rev.minor != 0)
+			v->supp_ia32.minor = fip.suppia32_rev.minor;
+		if (fip.chaabi_rev.icache.major != 0)
+			v->chaabi_icache.major = fip.chaabi_rev.icache.major;
+		if (fip.chaabi_rev.icache.minor != 0)
+			v->chaabi_icache.minor = fip.chaabi_rev.icache.minor;
+		if (fip.chaabi_rev.resident.major != 0)
+			v->chaabi_res.major = fip.chaabi_rev.resident.major;
+		if (fip.chaabi_rev.resident.minor != 0)
+			v->chaabi_res.minor = fip.chaabi_rev.resident.minor;
+		if (fip.chaabi_rev.ext.major != 0)
+			v->chaabi_ext.major = fip.chaabi_rev.ext.major;
+		if (fip.chaabi_rev.ext.minor != 0)
+			v->chaabi_ext.minor = fip.chaabi_rev.ext.minor;
+
+		databytes += sizeof(magic);
+		sz -= sizeof(magic);
+	}
+
+	return 0;
+}
+
+int get_image_fw_rev_long(void *data, unsigned sz, struct firmware_versions_long *v)
+{
+	struct FIP_header_long fip;
+	unsigned char *databytes = (unsigned char *)data;
+	int magic;
+	int magic_found = 0;
+
+	if (v == NULL) {
+		fprintf(stderr, "Null pointer !\n");
+		return -1;
+	}
+	else
+		memset((void *)v, 0, sizeof(struct firmware_versions));
+
+	while (sz >= sizeof(fip)){
+
+		/* Scan for the FIP magic */
+		while (sz >= sizeof(fip)) {
+			memcpy(&magic, databytes, sizeof(magic));
+			if (magic == FIP_PATTERN)
+			{
+				magic_found = 1;
+				break;
+			}
 			databytes += sizeof(magic);
 			sz -= sizeof(magic);
 		}
+
+		if (!magic_found) {
+			fprintf(stderr, "Couldn't find FIP magic in image!\n");
+			return -1;
+		}
+		if (sz < sizeof(fip)) {
+			break;
+		}
+
+		memcpy(&fip, databytes, sizeof(fip));
+
+		/* not available in ifwi file */
+		v->scubootstrap.minor = 0;
+		v->scubootstrap.major = 0;
+
+		/* don't update if null */
+		if(fip.scuc_rev.minor != 0)
+			v->scu.minor = fip.scuc_rev.minor;
+		if(fip.scuc_rev.major != 0)
+			v->scu.major = fip.scuc_rev.major;
+		if(fip.ia32_rev.minor != 0)
+			v->ia32.minor = fip.ia32_rev.minor;
+		if(fip.ia32_rev.major != 0)
+			v->ia32.major = fip.ia32_rev.major;
+		if(fip.oem_rev.minor != 0)
+			v->valhooks.minor = fip.oem_rev.minor;
+		if(fip.oem_rev.major != 0)
+			v->valhooks.major = fip.oem_rev.major;
+		if(fip.ifwi_rev.minor != 0)
+			v->ifwi.minor = fip.ifwi_rev.minor;
+		if(fip.ifwi_rev.major != 0)
+			v->ifwi.major = fip.ifwi_rev.major;
+		if(fip.ch00_rev.minor != 0)
+			v->chaabi.minor = fip.ch00_rev.minor;
+		if(fip.ch00_rev.major != 0)
+			v->chaabi.major = fip.ch00_rev.major;
+		if(fip.mia_rev.minor != 0)
+			v->mia.minor = fip.mia_rev.minor;
+		if(fip.mia_rev.major != 0)
+			v->mia.major = fip.mia_rev.major;
+
+		databytes += sizeof(magic);
+		sz -= sizeof(magic);
 	}
 
 	return 0;
