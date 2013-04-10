@@ -18,26 +18,19 @@ token_implementation := \
 
 common_libintelprov_files := \
 	update_osip.c \
+	modem_fw.c \
 	fw_version_check.c \
 	util.c \
-	flash_ifwi.c
-
-ifneq ($(NO_CMFWDL_LIB_USAGE),true)
-common_libintelprov_files += \
-	modem_fw.c \
+	flash_ifwi.c \
 	modem_nvm.c
-endif
 
 common_libintelprov_includes := \
+	hardware/intel/PRIVATE/cmfwdl/lib/cmfwdl \
 	bionic/libc/private
 
 chaabi_dir := $(TOP)/hardware/intel/PRIVATE/chaabi
 sep_lib_includes := $(chaabi_dir)/SepMW/VOS6/External/Linux/inc/
 
-ifneq ($(NO_CMFWDL_LIB_USAGE),true)
-common_libintelprov_includes += \
-	hardware/intel/PRIVATE/cmfwdl/lib/cmfwdl
-endif
 
 # Plug-in library for AOSP updater
 include $(CLEAR_VARS)
@@ -47,9 +40,6 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_C_INCLUDES := bootable/recovery $(common_libintelprov_includes)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-ifeq ($(NO_CMFWDL_LIB_USAGE),true)
-LOCAL_CFLAGS += -DNO_CMFWDL
-endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
 endif
@@ -135,9 +125,6 @@ endif
 ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
   LOCAL_CFLAGS += -DMRFLD
 endif
-ifeq ($(NO_CMFWDL_LIB_USAGE),true)
-LOCAL_CFLAGS += -DNO_CMFWDL
-endif
 
 include $(BUILD_STATIC_LIBRARY)
 
@@ -146,14 +133,10 @@ include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE := flashtool
 LOCAL_SHARED_LIBRARIES := liblog libcutils
+LOCAL_STATIC_LIBRARIES := libcmfwdl
 LOCAL_C_INCLUDES := $(common_libintelprov_includes) bootable/recovery
 LOCAL_SRC_FILES:= flashtool.c $(common_libintelprov_files)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-ifeq ($(NO_CMFWDL_LIB_USAGE),true)
-LOCAL_CFLAGS += -DNO_CMFWDL
-else
-LOCAL_STATIC_LIBRARIES += libcmfwdl
-endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
 endif
