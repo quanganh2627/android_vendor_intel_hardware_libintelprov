@@ -45,8 +45,11 @@
 #include "droidboot_ui.h"
 #include "update_partition.h"
 #include <cgpt.h>
+
+#ifndef EXTERNAL
 #include "pmdb.h"
 #include "token.h"
+#endif
 
 #define IMG_RADIO "/radio.img"
 #define IMG_RADIO_RND "/radio_rnd.img"
@@ -1117,6 +1120,7 @@ end:
 	return retval;
 }
 
+#ifndef EXTERNAL
 static int oem_fru_handler(int argc, char **argv)
 {
 	int ret = -1;
@@ -1155,6 +1159,7 @@ static int oem_fru_handler(int argc, char **argv)
 out:
 	return ret;
 }
+#endif
 
 #ifdef USE_GUI
 #define PROP_FILE					"/default.prop"
@@ -1305,8 +1310,10 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
 	ret |= aboot_register_oem_cmd("enable_flash_logs", oem_enable_flash_logs);
 	ret |= aboot_register_oem_cmd("disable_flash_logs", oem_disable_flash_logs);
+#ifndef EXTERNAL
 	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
 	ret |= libintel_droidboot_token_init();
+#endif
 
 	fastboot_register("continue", cmd_intel_reboot);
 	fastboot_register("reboot", cmd_intel_reboot);
