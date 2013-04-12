@@ -25,8 +25,10 @@
 
 #include "update_osip.h"
 #include "util.h"
+#ifndef NO_CMFWDL
 #include "modem_fw.h"
 #include "modem_nvm.h"
+#endif
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
 
@@ -260,6 +262,7 @@ done:
     return ret;
 }
 
+#ifndef NO_CMFWDL
 static void progress_callback(enum cmfwdl_status_type type, int value,
         const char *msg, void *data)
 {
@@ -445,15 +448,18 @@ Value *ReadModemNvmIdFn(const char *name, State *state, int argc, Expr *argv[]) 
 
     return ret;
 }
+#endif
 
 void Register_libintel_updater(void)
 {
     RegisterFunction("flash_osip", FlashOsipFn);
     RegisterFunction("flash_ifwi", FlashIfwiFn);
+#ifndef NO_CMFWDL
     RegisterFunction("flash_modem", FlashModemFn);
     RegisterFunction("flash_nvm", FlashNvmFn);
     RegisterFunction("flash_nvm_spid", FlashSpidNvmFn);
     RegisterFunction("identify_nvm", ReadModemNvmIdFn);
+#endif
     RegisterFunction("extract_osip", ExtractOsipFn);
     RegisterFunction("invalidate_os", InvalidateOsFn);
     RegisterFunction("restore_os", RestoreOsFn);

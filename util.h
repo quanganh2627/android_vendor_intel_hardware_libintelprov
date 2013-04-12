@@ -22,5 +22,10 @@ int file_string_write(const char *filename, const char *what);
 void dump_trace_file(const char *filename);
 int file_read(const char *filename, void **datap, size_t *szp);
 int safe_read(int fd, void *data, size_t size);
+int snhexdump(char *str, size_t size, const unsigned char *data, unsigned int sz);
+void hexdump_buffer(const unsigned char *buffer, unsigned int buffer_size, void
+		(*printrow)(const char *text), unsigned int bytes_per_row);
+void twoscomplement( unsigned char *cs, unsigned char *buf, unsigned int size);
+int is_hex(char c);
 
 #endif
