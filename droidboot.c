@@ -539,6 +539,20 @@ static int flash_capsule(void *data, unsigned sz)
 	return 0;
 }
 
+#define ULPMC_PATH "/dev/ulpmc-fwupdate"
+static int flash_ulpmc(void *data, unsigned sz)
+{
+	/*
+	 * TODO: check version after flashing
+	 */
+	if (file_write(ULPMC_PATH, data, sz)) {
+		pr_error("ULPMC flashing failed\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 #define PROXY_SERVICE_NAME	"proxy"
 #define PROXY_PROP		"service.proxy.enable"
 #define PROXY_START		"1"
@@ -1269,6 +1283,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("dnx", flash_dnx);
 	ret |= aboot_register_flash_cmd("ifwi", flash_ifwi);
 	ret |= aboot_register_flash_cmd("capsule", flash_capsule);
+	ret |= aboot_register_flash_cmd("ulpmc", flash_ulpmc);
 
 	ret |= aboot_register_flash_cmd("radio_img", flash_modem_store_fw);
 	ret |= aboot_register_flash_cmd("rnd_read", flash_modem_read_rnd);
