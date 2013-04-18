@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <cmfwdl.h>
 #include <droidboot.h>
 #include <droidboot_plugin.h>
 #include <droidboot_util.h>
@@ -23,24 +22,25 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdarg.h>
 #include <cutils/properties.h>
 #include <cutils/android_reboot.h>
 #include <unistd.h>
 #include <charger/charger.h>
 #include <linux/ioctl.h>
 #include <linux/mdm_ctrl.h>
+#include <sys/mount.h>
 
 #include "volumeutils/ufdisk.h"
 #include "update_osip.h"
 #include "util.h"
-#include "modem_fw.h"
-#include "modem_nvm.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
 #include "fastboot.h"
 #include "droidboot_ui.h"
 #include "update_partition.h"
 #include <cgpt.h>
+#include "miu.h"
 
 #ifndef EXTERNAL
 #include "pmdb.h"
@@ -50,57 +50,41 @@
 #define IMG_RADIO "/radio.img"
 #define IMG_RADIO_RND "/radio_rnd.img"
 
+static int radio_flash_logs = 0;
+
 static int oem_partition_stop_handler(int argc, char **argv);
 
-static void progress_callback(enum cmfwdl_status_type type, int value,
-		const char *msg, void *data)
-{
-	static int last_update_progress = -1;
+#define INFO_MSG_LEN    (size_t)128
 
-	switch (type) {
-	case cmfwdl_status_booting:
-		pr_debug("modem: Booting...");
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_synced:
-		pr_info("modem: Device Synchronized");
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_downloading:
-		pr_info("modem: Loading Component %s", msg);
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_msg_detail:
-		pr_info("modem: <msg> %s", msg);
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_error_detail:
-		pr_error("modem: ERROR: %s", msg);
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_progress:
-		pr_info("    <Progress> %d%%", value);
-		last_update_progress = value;
-		break;
-	case cmfwdl_status_version:
-		pr_info("modem: Version: %s", msg);
-		break;
-	default:
-		pr_info("modem: Ignoring: %s", msg);
-		break;
+static void miu_progress_cb(int progress, int total)
+{
+	char buff[INFO_MSG_LEN] = { '\0' };
+
+	snprintf(buff, INFO_MSG_LEN, "Progress: %d / %d\n", progress, total);
+
+	pr_info(buff);
+
+	if (radio_flash_logs) {
+		fastboot_info(buff);
 	}
 }
 
-static void nvm_output_callback(const char *msg, int output)
+static void miu_log_cb(const char *msg, ...)
 {
-	if (msg == NULL) {
-		return;
-	}
-	if (output & OUTPUT_DEBUG) {
-		pr_debug(msg);
-	}
-	if (output & OUTPUT_FASTBOOT_INFO) {
-		fastboot_info(msg);
+	char buff[INFO_MSG_LEN] = { '\0' };
+	va_list ap;
+
+	if (msg != NULL) {
+		va_start(ap, msg);
+
+		vsnprintf(buff, sizeof(buff), msg, ap);
+
+		pr_info(buff);
+		if (radio_flash_logs) {
+			fastboot_info(buff);
+		}
+
+		va_end(ap);
 	}
 }
 
@@ -138,103 +122,152 @@ static int flash_uefi_firmware(void *data, unsigned sz)
 	return flash_image(data, sz, get_named_osii_index(UEFI_FW_NAME));
 }
 
-int flash_logs = 0;
 static int flash_modem(void *data, unsigned sz)
 {
-	int ret;
-	int argc;
-	char *argv[2];
+	int ret = -1;
 
-	if(flash_logs == 0) {
-		argc = 1;
-		argv[0] = "f";
-	}
-	else {
-		argc = 2;
-		argv[0] = "f";
-		argv[1] = "l";
-	}
+	e_miu_flash_options_t flash_options = 0;
 
 	if (file_write(IMG_RADIO, data, sz)) {
 		pr_error("Couldn't write radio image to %s", IMG_RADIO);
-		return -1;
+		return ret;
 	}
-	/* Update modem SW. */
-	ret = flash_modem_fw(IMG_RADIO, IMG_RADIO, argc, argv, progress_callback);
-	unlink(IMG_RADIO);
-	return ret;
-}
-
-static int flash_modem_no_end_reboot(void *data, unsigned sz)
-{
-	int ret;
-	int argc = 1;
-	char *argv[1];
-
-	if (file_write(IMG_RADIO, data, sz)) {
-		pr_error("Couldn't write radio image to %s", IMG_RADIO);
-		return -1;
+	if (radio_flash_logs) {
+		flash_options |= E_MIU_FLASH_ENABLE_LOGS;
 	}
-	argv[0] = "d";
-	/* Update modem SW. */
-	ret = flash_modem_fw(IMG_RADIO, IMG_RADIO, argc, argv, progress_callback);
+
+	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+		pr_error("%s failed at %s\n", __func__,
+			 "miu_initialize failed");
+	} else {
+		/* modem flashing needs write access to /system partition */
+		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
+		    pr_error("Failed to mount /system");
+		    goto out;
+		}
+		/* Update modem SW. */
+		if (miu_flash_modem_fw(IMG_RADIO,
+				       flash_options) == E_MIU_ERR_SUCCESS) {
+			ret = 0;
+			pr_info("%s successful\n", __func__);
+		} else {
+			pr_error("%s failed at %s\n", __func__,
+				 "miu_flash_modem_fw");
+			ret = -1;
+		}
+		if (umount("/system") < 0) {
+		    pr_error("Failed to umount /system");
+			goto out;
+		}
+	}
+out:
+	miu_dispose();
 	unlink(IMG_RADIO);
 	return ret;
 }
 
 static int flash_modem_get_fuse(void *data, unsigned sz)
 {
-	int ret;
-	int argc = 1;
-	char *argv[1];
-
-	if(oem_partition_stop_handler(argc, argv) != 0)
-		return -1;
+	int ret = -1;
+	e_miu_flash_options_t flash_options = 0;
 
 	if (file_write(IMG_RADIO, data, sz)) {
 		pr_error("Couldn't write radio image to %s", IMG_RADIO);
-		return -1;
+		return ret;
 	}
-	argv[0] = "u"; /* Update modem SW and get chip fusing parameters */
-	ret = flash_modem_fw(IMG_RADIO, IMG_RADIO, argc, argv, progress_callback);
+	if (radio_flash_logs) {
+		flash_options |= E_MIU_FLASH_ENABLE_LOGS;
+	}
+	flash_options |= E_MIU_FLASH_GET_FUSE_INFO;
+
+	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+		pr_error("%s failed at %s\n", __func__,
+			 "miu_initialize failed");
+	} else {
+		/* modem flashing needs write access to /system partition */
+		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
+			pr_error("Failed to mount /system");
+			goto out;
+		}
+		/* Update modem SW. */
+		if (miu_flash_modem_fw(IMG_RADIO,
+				       flash_options) == E_MIU_ERR_SUCCESS) {
+			ret = 0;
+			pr_info("%s successful\n", __func__);
+		} else {
+			pr_error("%s failed at %s\n", __func__,
+				 "miu_flash_modem_fw");
+			ret = -1;
+		}
+		if (umount("/system") < 0) {
+			pr_error("Failed to umount /system");
+			goto out;
+		}
+	}
+out:
+	miu_dispose();
 	unlink(IMG_RADIO);
 	return ret;
 }
 
 static int flash_modem_get_fuse_only(void *data, unsigned sz)
 {
-	int ret;
-	int argc = 1;
-	char *argv[1];
+	int ret = -1;
 
-	if(oem_partition_stop_handler(argc, argv) != 0)
-		return -1;
-
-	if (file_write(IMG_RADIO, data, sz)) {
-		pr_error("Couldn't write radio image to %s", IMG_RADIO);
-		return -1;
+	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+		pr_error("%s failed at %s\n", __func__,
+			 "miu_initialize failed");
+	} else {
+		/* Update modem SW. */
+		if (miu_get_modem_fuse() == E_MIU_ERR_SUCCESS) {
+			ret = 0;
+			pr_info("%s successful\n", __func__);
+		} else {
+			pr_error("%s failed at %s\n", __func__,
+				 "miu_get_modem_fuse");
+			ret = -1;
+		}
+		miu_dispose();
 	}
-
-	argv[0] = "v"; /* Only get chip fusing parameters */
-	ret = flash_modem_fw(IMG_RADIO, IMG_RADIO, argc, argv, progress_callback);
-	unlink(IMG_RADIO);
 	return ret;
 }
 
 static int flash_modem_erase_all(void *data, unsigned sz)
 {
-	int ret;
-	int argc = 2;
-	char *argv[2];
+	int ret = -1;
+	e_miu_flash_options_t flash_options = 0;
 
-	if (file_write(IMG_RADIO, data, sz)) {
-		pr_error("Couldn't write radio image to %s", IMG_RADIO);
-		return -1;
+	if (radio_flash_logs) {
+		flash_options |= E_MIU_FLASH_ENABLE_LOGS;
 	}
-	argv[0] = "e";
-	argv[1] = "f";
-	/* Update modem SW. */
-	ret = flash_modem_fw(IMG_RADIO, IMG_RADIO, argc, argv, progress_callback);
+	flash_options |= E_MIU_FLASH_ERASE_ALL_FIRST;
+
+	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+		pr_error("%s failed at %s\n", __func__,
+			 "miu_initialize failed");
+	} else {
+		/* modem flashing needs write access to /system partition */
+		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
+			pr_error("Failed to mount /system");
+			goto out;
+		}
+		/* Update modem SW. */
+		if (miu_flash_modem_fw(IMG_RADIO,
+				       flash_options) == E_MIU_ERR_SUCCESS) {
+			ret = 0;
+			pr_info("%s successful\n", __func__);
+		} else {
+			pr_error("%s failed at %s\n", __func__,
+				 "miu_flash_modem_fw");
+			ret = -1;
+		}
+		if (umount("/system") < 0) {
+			pr_error("Failed to umount /system");
+			goto out;
+		}
+	}
+out:
+	miu_dispose();
 	unlink(IMG_RADIO);
 	return ret;
 }
@@ -252,41 +285,69 @@ static int flash_modem_store_fw(void *data, unsigned sz)
 
 static int flash_modem_read_rnd(void *data, unsigned sz)
 {
-	int ret;
-	int argc = 1;
-	char *argv[1];
+	int ret = -1;
 
-	if (file_write(IMG_RADIO, data, sz)) {
-		pr_error("Couldn't write modem fw to %s", IMG_RADIO);
-		return -1;
+	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+		pr_error("%s failed at %s\n", __func__,
+			 "miu_initialize failed");
+	} else {
+		/* modem rnd read needs read access to /system partition */
+		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
+			pr_error("Failed to mount /system");
+			goto out;
+		}
+		/* Get RND Cert (print out in stdout) */
+		if (miu_read_modem_rnd_cert(IMG_RADIO) == E_MIU_ERR_SUCCESS) {
+			ret = 0;
+			pr_info("%s successful\n", __func__);
+		} else {
+			pr_error("%s failed at %s\n", __func__,
+				 "miu_read_modem_rnd_cert");
+		}
+		if (umount("/system") < 0) {
+			pr_error("Failed to umount /system");
+			goto out;
+		}
 	}
-	argv[0] = "g";
-	/* Get RND Cert (print out in stdout) */
-	ret = flash_modem_fw(IMG_RADIO, NULL, argc, argv, progress_callback);
+out:
+	miu_dispose();
 	unlink(IMG_RADIO);
 	return ret;
 }
 
 static int flash_modem_write_rnd(void *data, unsigned sz)
 {
-	int ret;
-	int argc = 1;
-	char *argv[1];
+	int ret = -1;
 
-	if(oem_partition_stop_handler(argc, argv) != 0)
-		return -1;
-
-	if (access(IMG_RADIO, F_OK)) {
-		pr_error("Radio Image %s Not Found!!\nCall flash radio_img first", IMG_RADIO);
-		return -1;
-	}
 	if (file_write(IMG_RADIO_RND, data, sz)) {
 		pr_error("Couldn't write radio_rnd image to %s", IMG_RADIO_RND);
-		return -1;
+		return ret;
 	}
-	argv[0] = "r";
-	/* Flash RND Cert */
-	ret = flash_modem_fw(IMG_RADIO, IMG_RADIO_RND, argc, argv, progress_callback);
+	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+		pr_error("%s failed at %s\n", __func__,
+			 "miu_initialize failed");
+	} else {
+		/* modem rnd write needs write access to /system partition */
+		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
+			pr_error("Failed to mount /system");
+			goto out;
+		}
+		/* Flash RND Cert */
+		if (miu_write_modem_rnd_cert(IMG_RADIO, IMG_RADIO_RND) ==
+		    E_MIU_ERR_SUCCESS) {
+			ret = 0;
+			pr_info("%s successful\n", __func__);
+		} else {
+			pr_error("%s failed at %s\n", __func__,
+				 "miu_read_modem_rnd_cert");
+		}
+		if (umount("/system") < 0) {
+			pr_error("Failed to umount /system");
+			goto out;
+		}
+	}
+out:
+	miu_dispose();
 	unlink(IMG_RADIO);
 	unlink(IMG_RADIO_RND);
 	return ret;
@@ -294,38 +355,32 @@ static int flash_modem_write_rnd(void *data, unsigned sz)
 
 static int flash_modem_erase_rnd(void *data, unsigned sz)
 {
-	int ret;
-	int argc = 1;
-	char *argv[1];
+	int ret = -1;
 
-	if (file_write(IMG_RADIO, data, sz)) {
-		pr_error("Couldn't write radio image to %s", IMG_RADIO);
-		return -1;
+	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+		pr_error("%s failed at %s\n", __func__,
+			 "miu_initialize failed");
+	} else {
+		/* modem rnd erase needs write access to /system partition */
+		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
+			pr_error("Failed to mount /system");
+			goto out;
+		}
+		/* Erase RND Cert */
+		if (miu_erase_modem_rnd_cert(IMG_RADIO) == E_MIU_ERR_SUCCESS) {
+			ret = 0;
+			pr_info("%s successful\n", __func__);
+		} else {
+			pr_error("%s failed at %s\n", __func__,
+				 "miu_read_modem_rnd_cert");
+		}
+		if (umount("/system") < 0) {
+			pr_error("Failed to umount /system");
+			goto out;
+		}
 	}
-	argv[0] = "y";
-	/* Erase RND Cert */
-	ret = flash_modem_fw(IMG_RADIO, NULL, argc, argv, progress_callback);
-	unlink(IMG_RADIO);
-	return ret;
-}
-
-static int flash_modem_get_hw_id(void *data, unsigned sz)
-{
-	int ret;
-	int argc = 1;
-	char *argv[1];
-
-	if(oem_partition_stop_handler(argc, argv) != 0)
-		return -1;
-
-	if (file_write(IMG_RADIO, data, sz)) {
-		pr_error("Couldn't write radio image to %s", IMG_RADIO);
-		return -1;
-	}
-	printf("Getting radio HWID...\n");
-	argv[0] = "h";
-	/* Get modem HWID (print out in stdout) */
-	ret = flash_modem_fw(IMG_RADIO, NULL, argc, argv, progress_callback);
+out:
+	miu_dispose();
 	unlink(IMG_RADIO);
 	return ret;
 }
@@ -578,20 +633,6 @@ static int oem_manage_service_proxy(int argc, char **argv)
 		/* indicating that the HSI bus is enabled.*/
 		if (-1 != access(HSI_PORT, F_OK))
 		{
-			/* WORKAROUND */
-			/* Check number of cpus => identify CTP (Clovertrail) */
-			/* No modem reset for CTP, not supported */
-			int fd;
-			fd = open("/sys/class/cpuid/cpu3/dev", O_RDONLY);
-
-			if (fd == -1)
-			{
-				/* Reset the modem */
-				pr_info("Reset modem\n");
-				reset_modem();
-			} else
-				close(fd);
-
 			/* Start proxy service (at-proxy). */
 			property_set(PROXY_PROP, PROXY_START);
 
@@ -770,40 +811,54 @@ end2:
 
 static int oem_nvm_cmd_handler(int argc, char **argv)
 {
-	int retval = 0;
+	int retval = -1;
 	char *nvm_path = NULL;
 
-	if (!strcmp(argv[1], "apply")) {
-		pr_info("in apply");
-		if (argc < 3) {
-			pr_error("oem_nvm_cmd_handler called with wrong parameter!\n");
-			retval = -1;
-			return retval;
+	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+		pr_error("%s failed at %s\n", __func__,
+				 "miu_initialize failed");
+	} else {
+		/* modem rnd write needs write access to /system partition */
+		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
+			pr_error("Failed to mount /system");
+			goto out;
 		}
-		nvm_path = argv[2];
+		if (!strcmp(argv[1], "apply") || !strcmp(argv[1], "applyzip")) {
+			pr_info("Applying nvm...");
 
-		retval = flash_modem_nvm(nvm_path, nvm_output_callback);
-	}
-	else if (!strcmp(argv[1], "applyzip")) {
-		pr_info("in applyzip");
-		if (argc < 3) {
-			pr_error("oem_nvm_cmd_handler called with wrong parameter!\n");
+			if (argc < 3) {
+				pr_error("oem_nvm_cmd_handler called with wrong parameter!\n");
+				retval = -1;
+				return retval;
+			}
+			nvm_path = argv[2];
+
+			if (miu_flash_modem_nvm(nvm_path) == E_MIU_ERR_SUCCESS) {
+				retval = 0;
+				pr_info("%s successful\n", __func__);
+			} else {
+				pr_error("%s failed with error: %i\n", __func__,
+					retval);
+				retval = -1;
+			}
+		} else if (!strcmp(argv[1], "identify")) {
+			pr_info("Identifying nvm...");
+
+			if (miu_read_modem_nvm_id(NULL, 0) == E_MIU_ERR_SUCCESS) {
+				retval = 0;
+				pr_info("%s successful\n", __func__);
+			} else {
+				pr_error("%s failed with error: %i\n", __func__,
+					retval);
+				retval = -1;
+			}
+		} else {
+			pr_error("Unknown command. Use %s [apply].\n", "nvm");
 			retval = -1;
-			return retval;
 		}
-		nvm_path = argv[2];
-
-		retval = flash_modem_nvm_spid(nvm_path, nvm_output_callback);
 	}
-        else if (!strcmp(argv[1], "identify")) {
-		pr_info("in identify");
-		retval = read_modem_nvm_id(NULL, 0, nvm_output_callback);
-	}
-	else {
-		pr_error("Unknown command. Use %s [apply].\n", "nvm");
-		retval = -1;
-	}
-
+out:
+	miu_dispose();
 	return retval;
 }
 
@@ -865,6 +920,7 @@ static int oem_write_osip_header(int argc, char **argv)
 	restore_osii("fastboot");
 	return 0;
 }
+
 static int oem_partition_start_handler(int argc, char **argv)
 {
 	property_set("sys.partitioning", "1");
@@ -880,19 +936,17 @@ static int oem_partition_stop_handler(int argc, char **argv)
 	return 0;
 }
 
-static int oem_enable_flash_logs(int argc, char **argv)
+static int oem_enable_radio_flash_logs(int argc, char **argv)
 {
-	if(oem_partition_stop_handler(argc, argv) != 0)
-		return -1;
-	flash_logs = 1;
-	ui_print("Enable flash logs\n");
+	radio_flash_logs = 1;
+	ui_print("Enable radio flash logs\n");
 	return 0;
 }
 
-static int oem_disable_flash_logs(int argc, char **argv)
+static int oem_disable_radio_flash_logs(int argc, char **argv)
 {
-	flash_logs = 0;
-	ui_print("Disable flash logs\n");
+	radio_flash_logs = 0;
+	ui_print("Disable radio flash logs\n");
 	return 0;
 }
 
@@ -1276,7 +1330,6 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd(UEFI_FW_NAME, flash_uefi_firmware);
 	ret |= aboot_register_flash_cmd("splashscreen", flash_splashscreen_image);
 	ret |= aboot_register_flash_cmd("radio", flash_modem);
-	ret |= aboot_register_flash_cmd("radio_no_end_reboot", flash_modem_no_end_reboot);
 	ret |= aboot_register_flash_cmd("radio_fuse", flash_modem_get_fuse);
 	ret |= aboot_register_flash_cmd("radio_erase_all", flash_modem_erase_all);
 	ret |= aboot_register_flash_cmd("radio_fuse_only", flash_modem_get_fuse_only);
@@ -1289,7 +1342,6 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("rnd_read", flash_modem_read_rnd);
 	ret |= aboot_register_flash_cmd("rnd_write", flash_modem_write_rnd);
 	ret |= aboot_register_flash_cmd("rnd_erase", flash_modem_erase_rnd);
-	ret |= aboot_register_flash_cmd("radio_hwid", flash_modem_get_hw_id);
 
 	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
 	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);
@@ -1302,8 +1354,8 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("partition", oem_partition_cmd_handler);
 	ret |= aboot_register_oem_cmd("stop_partitioning", oem_partition_stop_handler);
 	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
-	ret |= aboot_register_oem_cmd("enable_flash_logs", oem_enable_flash_logs);
-	ret |= aboot_register_oem_cmd("disable_flash_logs", oem_disable_flash_logs);
+	ret |= aboot_register_oem_cmd("enable_flash_logs", oem_enable_radio_flash_logs);
+	ret |= aboot_register_oem_cmd("disable_flash_logs", oem_disable_radio_flash_logs);
 #ifndef EXTERNAL
 	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
 	ret |= libintel_droidboot_token_init();

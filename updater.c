@@ -14,21 +14,36 @@
  * limitations under the License.
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <stdarg.h>
 #include <edify/expr.h>
 #include <updater/updater.h>
 
 #include "update_osip.h"
 #include "util.h"
-#include "modem_fw.h"
-#include "modem_nvm.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
+#include "miu.h"
+
+static void miu_progress_cb(int progress, int total)
+{
+	printf("Progress: %d / %d\n", progress, total);
+}
+
+static void miu_log_cb(const char *msg, ...)
+{
+	va_list ap;
+
+	if (msg != NULL) {
+		va_start(ap, msg);
+		vprintf(msg, ap);
+		va_end(ap);
+	}
+}
 
 Value *ExtractOsipFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
@@ -260,190 +275,94 @@ done:
     return ret;
 }
 
-static void progress_callback(enum cmfwdl_status_type type, int value,
-        const char *msg, void *data)
-{
-    static int last_update_progress = -1;
-
-    switch (type) {
-    case cmfwdl_status_booting:
-        printf("modem: Booting...\n");
-        last_update_progress = -1;
-        break;
-    case cmfwdl_status_synced:
-        printf("modem: Device Synchronized\n");
-        last_update_progress = -1;
-        break;
-    case cmfwdl_status_downloading:
-        printf("modem: Loading Component %s\n", msg);
-        last_update_progress = -1;
-        break;
-    case cmfwdl_status_msg_detail:
-        printf("modem: %s\n", msg);
-        last_update_progress = -1;
-        break;
-    case cmfwdl_status_error_detail:
-        printf("modem: ERROR: %s\n", msg);
-        last_update_progress = -1;
-        break;
-    case cmfwdl_status_progress:
-        if (value / 10 == last_update_progress)
-            break;
-        last_update_progress = value / 10;
-        printf("modem: update progress %d%%\n", last_update_progress);
-        break;
-    case cmfwdl_status_version:
-        printf("modem: Version: %s\n", msg);
-        break;
-    default:
-        printf("modem: Ignoring: %s\n", msg);
-        break;
-    }
-}
-
 #define MODEM_PATH   "/tmp/radio_firmware.bin"
 #define MODEM_NAME   "radio_firmware"
-static void nvm_output_callback(const char *msg, int output)
+
+Value *FlashModemFn(const char *name, State * state, int argc, Expr * argv[])
 {
-    printf("%s", msg);
-}
+	Value *ret = NULL;
+	char *filename = NULL;
+	e_miu_flash_options_t flash_options = 0;
 
-Value *FlashModemFn(const char *name, State *state, int argc, Expr *argv[]) {
-    Value *ret = NULL;
-    char *filename = NULL;
-    char modem_name[128];
-    int err, modem_fd,i,num;
-    ZipArchive modem_za;
-    const ZipEntry *modem_entry;
-    char *argvmodem[] = {"f"};
+	if (ReadArgs(state, argv, 1, &filename) < 0) {
+		return NULL;
+	}
 
-    if (ReadArgs(state, argv, 1, &filename) < 0) {
-        return NULL;
-    }
+	if (filename == NULL || strlen(filename) == 0) {
+		ErrorAbort(state, "filename argument to %s can't be empty",
+			   name);
+		goto done;
+	}
+	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+		printf("%s failed at %s\n", __func__, "miu_initialize failed");
+	} else {
+		if (miu_flash_modem_fw(filename, flash_options) !=
+		    E_MIU_ERR_SUCCESS) {
+			printf("error during 3G Modem flashing!\n");
+		}
+		miu_dispose();
+	}
 
-    if (filename == NULL || strlen(filename) == 0) {
-        ErrorAbort(state, "filename argument to %s can't be empty", name);
-        goto done;
-    }
-
-    err = mzOpenZipArchive(filename, &modem_za);
-    if (err) {
-        printf("could not open archive %s\n",filename);
-        ret = StringValue(strdup(""));
-        goto done;
-    }
-
-    num = mzZipEntryCount(&modem_za);
-    for (i = 0; i < num; i++) {
-        modem_entry = mzGetZipEntryAt(&modem_za, i);
-        if ((modem_entry->fileNameLen + 1) < sizeof(modem_name)){
-            strncpy(modem_name, modem_entry->fileName, modem_entry->fileNameLen);
-            modem_name[modem_entry->fileNameLen] = '\0';
-        } else {
-            ErrorAbort(state, "modem file name is too big. Size max is:%d.\n", sizeof(modem_name));
-            goto error;
-        }
-        if (strncmp(modem_name, MODEM_NAME, strlen(MODEM_NAME)))
-            continue;
-
-        if ((modem_fd = open(MODEM_PATH, O_RDWR | O_TRUNC | O_CREAT, FILEMODE)) < 0) {
-            ErrorAbort(state, "unable to create Extracted file:%s.\n", MODEM_PATH);
-            goto error;
-        }
-        err = mzExtractZipEntryToFile(&modem_za, modem_entry, modem_fd);
-        if (!err) {
-            ErrorAbort(state, "Failed to unzip %s\n", MODEM_PATH);
-            close(modem_fd);
-            goto error;
-        }
-        close(modem_fd);
-        if (flash_modem_fw(MODEM_PATH, MODEM_PATH, 1, argvmodem, progress_callback)) {
-            printf("error during 3G Modem flashing!\n");
-        }
-    }
-
-    ret = StringValue(strdup(""));
-
-error:
-    mzCloseZipArchive(&modem_za);
-
+	ret = StringValue(strdup(""));
 done:
-    if (filename)
-        free(filename);
+	if (filename)
+		free(filename);
 
-    return ret;
+	return ret;
 }
 
-Value *FlashNvmFn(const char *name, State *state, int argc, Expr *argv[]) {
-    Value *ret = NULL;
-    char *filename = NULL;
+Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[])
+{
+	Value *ret = NULL;
+	char *filename = NULL;
 
-    if (ReadArgs(state, argv, 1, &filename) < 0) {
-        return NULL;
-    }
+	if (ReadArgs(state, argv, 1, &filename) < 0) {
+		return NULL;
+	}
 
-    if (filename == NULL || strlen(filename) == 0) {
-        ErrorAbort(state, "filename argument to %s can't be empty", name);
-        goto done;
-    }
+	if (filename == NULL || strlen(filename) == 0) {
+		ErrorAbort(state, "filename argument to %s can't be empty",
+			   name);
+		goto done;
+	}
+	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+		printf("%s failed at %s\n", __func__, "miu_initialize failed");
+	} else {
+		if (miu_flash_modem_nvm(filename) != E_MIU_ERR_SUCCESS) {
+			printf("error during 3G Modem NVM config!\n");
+		}
+		miu_dispose();
+	}
 
-    if (flash_modem_nvm(filename, nvm_output_callback) != 0) {
-        printf("error during 3G Modem NVM config!\n");
-    }
-
-    ret = StringValue(strdup(""));
+	ret = StringValue(strdup(""));
 done:
-    if (filename)
-        free(filename);
+	if (filename)
+		free(filename);
 
-    return ret;
+	return ret;
 }
 
-Value *FlashSpidNvmFn(const char *name, State *state, int argc, Expr *argv[]) {
-    Value *ret = NULL;
-    char *filename = NULL;
+Value *FlashSpidNvmFn(const char *name, State * state, int argc, Expr * argv[])
+{
+	Value *ret = NULL;
+	char *filename = NULL;
 
-    if (ReadArgs(state, argv, 1, &filename) < 0) {
-        return NULL;
-    }
+	if (ReadArgs(state, argv, 1, &filename) < 0) {
+		return NULL;
+	}
 
-    if (filename == NULL || strlen(filename) == 0) {
-        ErrorAbort(state, "filename argument to %s can't be empty", name);
-        goto done;
-    }
+	if (filename == NULL || strlen(filename) == 0) {
+		ErrorAbort(state, "filename argument to %s can't be empty",
+			   name);
+		goto done;
+	}
 
-    if (flash_modem_nvm_spid(filename, nvm_output_callback) != 0) {
-        printf("error during 3G Modem NVM config!\n");
-    }
-
-    ret = StringValue(strdup(""));
+	ret = StringValue(strdup(""));
 done:
-    if (filename)
-        free(filename);
+	if (filename)
+		free(filename);
 
-    return ret;
-}
-
-Value *ReadModemNvmIdFn(const char *name, State *state, int argc, Expr *argv[]) {
-    Value *ret = NULL;
-
-    char* response_buffer = (char*)malloc(sizeof(char) * CMFWDL_NVM_MAX_RESPONSE_BUFFER_SIZE);
-
-    if (response_buffer != NULL) {
-      if (read_modem_nvm_id(response_buffer, CMFWDL_NVM_MAX_RESPONSE_BUFFER_SIZE, nvm_output_callback) != 0) {
-        printf("error while reading 3G Modem NVM config!\n");
-        ret = StringValue(strdup(""));
-      }
-      else {
-        ret = StringValue(strdup(response_buffer));
-      }
-      free(response_buffer);
-    }
-    else {
-      ret = StringValue(strdup(""));
-    }
-
-    return ret;
+	return ret;
 }
 
 void Register_libintel_updater(void)
@@ -453,7 +372,6 @@ void Register_libintel_updater(void)
     RegisterFunction("flash_modem", FlashModemFn);
     RegisterFunction("flash_nvm", FlashNvmFn);
     RegisterFunction("flash_nvm_spid", FlashSpidNvmFn);
-    RegisterFunction("identify_nvm", ReadModemNvmIdFn);
     RegisterFunction("extract_osip", ExtractOsipFn);
     RegisterFunction("invalidate_os", InvalidateOsFn);
     RegisterFunction("restore_os", RestoreOsFn);
