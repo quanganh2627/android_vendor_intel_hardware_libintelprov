@@ -1,4 +1,12 @@
 LOCAL_PATH := $(call my-dir)
+
+LIBCHAABI := $(TOP)/hardware/intel/PRIVATE/chaabi
+ifeq ($(wildcard $(LIBCHAABI)),)
+	external_release := yes
+else
+	external_release := no
+endif
+
 include $(CLEAR_VARS)
 
 common_pmdb_files := \
@@ -41,6 +49,9 @@ LOCAL_C_INCLUDES := bootable/recovery $(common_libintelprov_includes)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifeq ($(NO_CMFWDL_LIB_USAGE),true)
 LOCAL_CFLAGS += -DNO_CMFWDL
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
+  LOCAL_CFLAGS += -DCLVT
 endif
 include $(BUILD_STATIC_LIBRARY)
 
@@ -101,14 +112,25 @@ LIBCGPT_FILES := \
 	gpt/lib/cmd_reload.c \
 	gpt/lib/cmd_show.c
 
+LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter -Wno-unused-but-set-variable
+
+ifeq ($(external_release),no)
 LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES) $(common_pmdb_files) $(token_implementation)
+LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include $(sep_lib_includes)
+LOCAL_WHOLE_STATIC_LIBRARIES := libsecurity_sectoken libcrypto_static CC6_UMIP_ACCESS CC6_ALL_BASIC_LIB
+else
+LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES)
+LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
+LOCAL_CFLAGS += -DEXTERNAL
+endif
+
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include $(sep_lib_includes)
-LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter -Wno-unused-but-set-variable
-LOCAL_WHOLE_STATIC_LIBRARIES := libsecurity_sectoken libcrypto_static CC6_UMIP_ACCESS CC6_ALL_BASIC_LIB
 ifneq ($(DROIDBOOT_NO_GUI),true)
 LOCAL_CFLAGS += -DUSE_GUI
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
+  LOCAL_CFLAGS += -DCLVT
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
   LOCAL_CFLAGS += -DMRFLD
@@ -131,6 +153,9 @@ ifeq ($(NO_CMFWDL_LIB_USAGE),true)
 LOCAL_CFLAGS += -DNO_CMFWDL
 else
 LOCAL_STATIC_LIBRARIES += libcmfwdl
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
+  LOCAL_CFLAGS += -DCLVT
 endif
 
 include $(BUILD_EXECUTABLE)

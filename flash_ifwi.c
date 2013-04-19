@@ -40,6 +40,8 @@
 #define pr_perror(x)	fprintf(stderr, "update_ifwi_image: %s failed: %s\n", \
 		x, strerror(errno))
 
+#define CLVT_MINOR_CHECK 0x80 /* Mask applied to check IFWI compliance */
+
 struct update_info{
 	uint32_t ifwi_size;
 	uint32_t reset_after_update;
@@ -117,6 +119,16 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 		goto end;
 	}
 
+#ifdef CLVT
+	if ((img_ifwi_rev.minor & CLVT_MINOR_CHECK) != (dev_fw_rev.ifwi.minor & CLVT_MINOR_CHECK)) {
+		fprintf(stderr, "IFWI FW Minor version numbers (file=%02X current=%02X mask=%02X) don't match, Update abort.\n",
+				img_ifwi_rev.minor, dev_fw_rev.ifwi.minor,CLVT_MINOR_CHECK);
+
+		/* Not an error case. Let update continue to next IFWI versions. */
+		goto end;
+	}
+#endif
+
 	if (img_ifwi_rev.minor < dev_fw_rev.ifwi.minor) {
 		if (!ifwi_allowed) {
 			fprintf(stderr, "IFWI FW Minor downgrade not allowed (file=%02X current=%02X). Update abort.\n",
@@ -137,6 +149,8 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 		/* Not an error case. Let update continue to next IFWI versions. */
 		goto end;
 	}
+
+	fprintf(stderr, "Found IFWI to be flashed (maj=%02X min=%02X)\n", img_ifwi_rev.major, img_ifwi_rev.minor);
 
 	f_src = fopen(dnx, "rb");
 	if (f_src == NULL) {
@@ -199,6 +213,7 @@ int update_ifwi_file(const char *dnx, const char *ifwi)
 err:
 	fclose(f_src);
 end:
+	fprintf(stderr, "IFWI flashed\n");
 	return ret;
 }
 
