@@ -183,11 +183,86 @@ Value *RestoreOsFn(const char *name, State *state, int argc, Expr *argv[]) {
     return ExecuteOsipFunction(name, state, argc, argv, restore_osii);
 }
 
-#define DNX_BIN_PATH	"/tmp/dnx.bin"
 #define IFWI_BIN_PATH	"/tmp/ifwi.bin"
 #define IFWI_NAME	"ifwi"
-#define DNX_NAME	"dnx"
 #define FILEMODE  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
+
+#ifdef MRFLD
+
+Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
+    Value *ret = NULL;
+    char *filename = NULL;
+    int err, i, num, buffsize;
+    char ifwi_name[128];
+    ZipArchive ifwi_za;
+    const ZipEntry *ifwi_entry;
+    unsigned char *buffer;
+
+    if (ReadArgs(state, argv, 1, &filename) < 0) {
+        return NULL;
+    }
+
+    if (filename == NULL || strlen(filename) == 0) {
+        ErrorAbort(state, "filename argument to %s can't be empty", name);
+        goto done;
+    }
+
+    err = mzOpenZipArchive(filename, &ifwi_za);
+    if (err) {
+        ErrorAbort(state, "Failed to open zip archive %s\n", filename);
+        goto done;
+    }
+
+    num = mzZipEntryCount(&ifwi_za);
+    for (i = 0; i < num; i++) {
+        ifwi_entry = mzGetZipEntryAt(&ifwi_za, i);
+        if ((ifwi_entry->fileNameLen + 1) < sizeof(ifwi_name)){
+            strncpy(ifwi_name, ifwi_entry->fileName, ifwi_entry->fileNameLen);
+            ifwi_name[ifwi_entry->fileNameLen] = '\0';
+        } else {
+            ErrorAbort(state, "ifwi file name is too big. Size max is:%d.\n", sizeof(ifwi_name));
+            goto error;
+        }
+        if (strncmp(ifwi_name, IFWI_NAME, strlen(IFWI_NAME)))
+            continue;
+        buffsize = mzGetZipEntryUncompLen(ifwi_entry);
+        if (buffsize <= 0) {
+              ErrorAbort(state, "Bad ifwi_entry size : %d.\n", buffsize);
+              goto error;
+        }
+        buffer = (unsigned char*)malloc(sizeof(unsigned char)*buffsize);
+        if (buffer == NULL) {
+            ErrorAbort(state, "Unable to alloc ifwi buffer of %d bytes.\n", buffsize);
+            goto error;
+        }
+        err = mzExtractZipEntryToBuffer(&ifwi_za, ifwi_entry, buffer);
+        if (!err) {
+            ErrorAbort(state, "Failed to unzip %s\n", IFWI_BIN_PATH);
+            free(buffer);
+            goto error;
+        }
+        update_ifwi_file(buffer, buffsize);
+
+        free(buffer);
+        buffer = NULL;
+    }
+
+    ret = StringValue(strdup(""));
+
+error:
+    mzCloseZipArchive(&ifwi_za);
+
+done:
+    if (filename)
+        free(filename);
+
+    return ret;
+}
+
+#else
+
+#define DNX_BIN_PATH	"/tmp/dnx.bin"
+#define DNX_NAME	"dnx"
 
 Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
@@ -274,6 +349,7 @@ done:
 
     return ret;
 }
+#endif
 
 #define MODEM_PATH   "/tmp/radio_firmware.bin"
 #define MODEM_NAME   "radio_firmware"

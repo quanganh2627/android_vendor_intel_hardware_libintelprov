@@ -19,7 +19,12 @@
 
 #include <stdlib.h>
 
+#ifdef MRFLD
+int update_ifwi_file(void *data, unsigned size);
+#else
 int update_ifwi_file(const char *dnx, const char *ifwi);
+#endif
+
 int update_ifwi_image(void *data, size_t size, unsigned reset_flag);
 
 #endif
