@@ -22,6 +22,7 @@
 #include <fcntl.h>
 
 #include "flash_ifwi.h"
+#include "util.h"
 #include "fw_version_check.h"
 
 #define DNX_SYSFS_INT		"/sys/devices/ipc/intel_fw_update.0/dnx"
@@ -41,6 +42,10 @@
 		x, strerror(errno))
 
 #define CLVT_MINOR_CHECK 0x80 /* Mask applied to check IFWI compliance */
+
+#define CAPSULE_PARTITION_NAME "/dev/block/platform/intel/by-label/FWUP"
+#define CAPSULE_UPDATE_FLAG_PATH "/sys/firmware/osnib/fw_update"
+#define ULPMC_PATH "/dev/ulpmc-fwupdate"
 
 struct update_info{
 	uint32_t ifwi_size;
@@ -408,3 +413,36 @@ out:
 	free(packet);
 	return ret;
 }
+
+
+int flash_capsule(void *data, unsigned sz)
+{
+	char capsule_trigger = '1';
+
+	if (file_write(CAPSULE_PARTITION_NAME, data, sz)) {
+		pr_perror("Capsule flashing failed!\n");
+		return -1;
+	}
+
+	if (file_write(CAPSULE_UPDATE_FLAG_PATH,
+				&capsule_trigger, sizeof(capsule_trigger))) {
+		pr_perror("Capsule flashing failed!\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+int flash_ulpmc(void *data, unsigned sz)
+{
+	/*
+	 * TODO: check version after flashing
+	 */
+	if (file_write(ULPMC_PATH, data, sz)) {
+		pr_perror("ULPMC flashing failed\n");
+		return -1;
+	}
+
+	return 0;
+}
+

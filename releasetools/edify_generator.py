@@ -304,3 +304,11 @@ class EdifyGenerator(object):
   def RestoreOs(self, name):
     """Restore os image in osip table"""
     self.script.append('restore_os("%s");' % (name,))
+
+  def FlashCapsule(self, name):
+    self.Print("Updating IFWI with capsule...\n");
+    self.script.append('flash_capsule("/tmp/%s");' % (name,))
+
+  def FlashUlpmc(self, name):
+    self.Print("Updating ulpmc...\n");
+    self.script.append('flash_ulpmc("/tmp/%s");' % (name,))
