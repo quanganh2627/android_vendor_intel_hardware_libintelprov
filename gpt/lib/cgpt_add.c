@@ -16,49 +16,49 @@ static const char* DumpCgptAddParams(const CgptAddParams *params) {
 
   buf[0] = 0;
   snprintf(tmp, sizeof(tmp), "-i %d ", params->partition);
-  strncat(buf, tmp, sizeof(buf));
+  strncat(buf, tmp, sizeof(buf) - strlen(buf) - 1);
   if (params->label) {
     snprintf(tmp, sizeof(tmp), "-l %s ", params->label);
-    strncat(buf, tmp, sizeof(buf));
+    strncat(buf, tmp, sizeof(buf) - strlen(buf) - 1);
   }
   if (params->set_begin) {
     snprintf(tmp, sizeof(tmp), "-b %llu ", (unsigned long long)params->begin);
-    strncat(buf, tmp, sizeof(buf));
+    strncat(buf, tmp, sizeof(buf) - strlen(buf) - 1);
   }
   if (params->set_size) {
     snprintf(tmp, sizeof(tmp), "-s %llu ", (unsigned long long)params->size);
-    strncat(buf, tmp, sizeof(buf));
+    strncat(buf, tmp, sizeof(buf) - strlen(buf) - 1);
   }
   if (params->set_type) {
     GuidToStr(&params->type_guid, tmp, sizeof(tmp));
-    strncat(buf, "-t ", sizeof(buf));
-    strncat(buf, tmp, sizeof(buf));
-    strncat(buf, " ", sizeof(buf));
+    strncat(buf, "-t ", sizeof(buf) - strlen(buf) - 1);
+    strncat(buf, tmp, sizeof(buf) - strlen(buf) - 1);
+    strncat(buf, " ", sizeof(buf) - strlen(buf) - 1);
   }
   if (params->set_unique) {
     GuidToStr(&params->unique_guid, tmp, sizeof(tmp));
-    strncat(buf, "-u ", sizeof(buf));
-    strncat(buf, tmp, sizeof(buf));
-    strncat(buf, " ", sizeof(buf));
+    strncat(buf, "-u ", sizeof(buf) - strlen(buf) - 1);
+    strncat(buf, tmp, sizeof(buf) - strlen(buf) - 1);
+    strncat(buf, " ", sizeof(buf) - strlen(buf) - 1);
   }
   if (params->set_successful) {
     snprintf(tmp, sizeof(tmp), "-S %d ", params->successful);
-    strncat(buf, tmp, sizeof(buf));
+    strncat(buf, tmp, sizeof(buf) - strlen(buf) - 1);
   }
   if (params->set_tries) {
     snprintf(tmp, sizeof(tmp), "-T %d ", params->tries);
-    strncat(buf, tmp, sizeof(buf));
+    strncat(buf, tmp, sizeof(buf) - strlen(buf) - 1);
   }
   if (params->set_priority) {
     snprintf(tmp, sizeof(tmp), "-P %d ", params->priority);
-    strncat(buf, tmp, sizeof(buf));
+    strncat(buf, tmp, sizeof(buf) - strlen(buf) - 1);
   }
   if (params->set_raw) {
     snprintf(tmp, sizeof(tmp), "-A 0x%x ", params->raw_value);
-    strncat(buf, tmp, sizeof(buf));
+    strncat(buf, tmp, sizeof(buf) - strlen(buf) - 1);
   }
 
-  strncat(buf, "\n", sizeof(buf));
+  strncat(buf, "\n", sizeof(buf) - strlen(buf) - 1);
   return buf;
 }
 

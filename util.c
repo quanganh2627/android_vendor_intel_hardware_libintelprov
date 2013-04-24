@@ -24,6 +24,8 @@
 
 #define pr_perror(x)	fprintf(stderr, "%s failed: %s\n", x, strerror(errno))
 
+#define FILEMODE  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
+
 int safe_read(int fd, void *data, size_t size)
 {
 	int ret;
@@ -85,7 +87,7 @@ int file_write(const char *filename, const void *data, size_t sz)
 	int ret;
 	const unsigned char *what = (const unsigned char *)data;
 
-	fd = open(filename, O_RDWR | O_CREAT | O_TRUNC);
+	fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, FILEMODE);
 	if (fd < 0) {
 		printf("file_write: Can't open file %s: %s\n",
 				filename, strerror(errno));

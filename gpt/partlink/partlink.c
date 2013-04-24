@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 
         GuidToStr(&entry->unique, uuid, GUID_STRLEN);
 
-        snprintf(from, sizeof(from) - 1, "%sp%d", BASE_EMMC, i);
+        snprintf(from, sizeof(from) - 1, "%sp%d", BASE_EMMC, i + 1);
 
         snprintf(to,sizeof(to) - 1 , BASE_PLATFORM_INTEL_LABEL "/%s" , label);
         link(from, to);
