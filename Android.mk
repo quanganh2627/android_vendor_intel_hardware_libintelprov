@@ -50,9 +50,6 @@ LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifeq ($(NO_CMFWDL_LIB_USAGE),true)
 LOCAL_CFLAGS += -DNO_CMFWDL
 endif
-ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
-  LOCAL_CFLAGS += -DCLVT
-endif
 include $(BUILD_STATIC_LIBRARY)
 
 # plugin for recovery_ui
@@ -153,9 +150,6 @@ ifeq ($(NO_CMFWDL_LIB_USAGE),true)
 LOCAL_CFLAGS += -DNO_CMFWDL
 else
 LOCAL_STATIC_LIBRARIES += libcmfwdl
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
-  LOCAL_CFLAGS += -DCLVT
 endif
 
 include $(BUILD_EXECUTABLE)
