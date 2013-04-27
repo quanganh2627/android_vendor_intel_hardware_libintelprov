@@ -11,7 +11,7 @@
 #include "util.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
-#include "modem_fw.h"
+#include "miu.h"
 
 #define PROP_BUILD_ID	"ro.build.display.id"
 
@@ -28,20 +28,18 @@ enum {
 void usage(void)
 {
 	printf("\nusage: flashtool <options>\n"
-		"Available commands:\n"
-		"-i <entry name>       OSIP entry to manipulate, used with -w and -r\n"
-		"   Valid entry names are " ANDROID_OS_NAME " " RECOVERY_OS_NAME 
-		" " FASTBOOT_OS_NAME " " UEFI_FW_NAME "\n"
-		"-w <osupdate file>    Flash a file to the index, requires -i\n"
-		"-r <destination file> Read an osimage index into a file, requires -i\n"
-		"-v <firmware file>    Dump the FW versions in an IFWI release\n"
-		"-f <firmware file>    Flash an IFWI image\n"
-		"-g <firmware file>    Flash 3G firmware\n"
-		"Run with no arguments to print out some system version information\n"
-		"and a dump of the OSIP\n"
-		);
+	       "Available commands:\n"
+	       "-i <entry name>       OSIP entry to manipulate, used with -w and -r\n"
+	       "   Valid entry names are " ANDROID_OS_NAME " " RECOVERY_OS_NAME
+	       " " FASTBOOT_OS_NAME " " UEFI_FW_NAME "\n"
+	       "-w <osupdate file>    Flash a file to the index, requires -i\n"
+	       "-r <destination file> Read an osimage index into a file, requires -i\n"
+	       "-v <firmware file>    Dump the FW versions in an IFWI release\n"
+	       "-f <firmware file>    Flash an IFWI image\n"
+	       "-g <firmware file>    Flash 3G firmware\n"
+	       "Run with no arguments to print out some system version information\n"
+	       "and a dump of the OSIP\n");
 }
-
 
 void cmd_show_data(void)
 {
@@ -57,7 +55,8 @@ void cmd_show_data(void)
 	if (get_current_fw_rev(&cur_fw_ver)) {
 		fprintf(stderr, "FW read failure!\n");
 	} else {
-		printf("\nCurrent FW versions (NOTE chaabi values are invalid):\n");
+		printf
+		    ("\nCurrent FW versions (NOTE chaabi values are invalid):\n");
 		dump_fw_versions(&cur_fw_ver);
 	}
 	if (property_get(PROP_BUILD_ID, build_id, NULL) < 0) {
@@ -107,7 +106,6 @@ void cmd_write_fw(char *filename)
 	}
 	free(data);
 }
-
 
 void cmd_read_osip(char *entry, char *filename)
 {
@@ -160,64 +158,47 @@ void cmd_write_osip(char *entry, char *filename)
 	}
 }
 
-static void progress_callback(enum cmfwdl_status_type type, int value,
-        const char *msg, void *data)
+static void miu_progress_cb(int progress, int total)
 {
-	static int last_update_progress = -1;
+	printf("Progress: %d / %d\n", progress, total);
+}
 
-	switch (type) {
-	case cmfwdl_status_booting:
-		printf("modem: Booting...\n");
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_synced:
-		printf("modem: Device Synchronized\n");
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_downloading:
-		printf("modem: Loading Component %s\n", msg);
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_msg_detail:
-		printf("modem: %s\n", msg);
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_error_detail:
-		printf("modem: ERROR: %s\n", msg);
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_progress:
-		if (value / 10 == last_update_progress)
-			break;
-		last_update_progress = value / 10;
-		printf("modem: update progress %d%%\n", last_update_progress);
-		break;
-	case cmfwdl_status_version:
-		printf("modem: Version: %s\n", msg);
-		break;
-	default:
-		printf("modem: Ignoring: %s\n", msg);
-		break;
+static void miu_log_cb(const char *msg, ...)
+{
+	va_list ap;
+
+	if (msg != NULL) {
+		va_start(ap, msg);
+
+		vprintf(msg, ap);
+
+		va_end(ap);
 	}
 }
 
 void cmd_flash_modem_fw(char *filename)
 {
-	char *argv[] = {"f"};
-	if (flash_modem_fw(filename, filename, 1, argv, progress_callback)) {
-		fprintf(stderr, "Failed flashing modem FW!\n");
-		exit(1);
+	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+		fprintf(stderr, "%s failed at %s\n", __func__,
+			"miu_initialize failed");
+	} else {
+		if (miu_flash_modem_fw(filename, 0) != E_MIU_ERR_SUCCESS) {
+			fprintf(stderr, "Failed flashing modem FW!\n");
+			miu_dispose();
+			exit(1);
+		}
+		miu_dispose();
 	}
 }
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
 	int c;
 	char *entry = NULL;
 	char *filename = NULL;
 	int cmd = CMD_NONE;
 
-	while ( (c = getopt(argc, argv, "i:w:r:dv:hf:g:") ) != -1 ) {
+	while ((c = getopt(argc, argv, "i:w:r:dv:hf:g:")) != -1) {
 		switch (c) {
 		case 'i':
 			entry = strdup(optarg);
@@ -250,7 +231,6 @@ int main(int argc, char ** argv)
 			exit(1);
 		}
 	}
-
 
 	switch (cmd) {
 	case CMD_NONE:
