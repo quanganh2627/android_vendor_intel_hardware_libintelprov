@@ -21,9 +21,6 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_C_INCLUDES := bootable/recovery $(common_libintelprov_includes)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
-  LOCAL_CFLAGS += -DCLVT
-endif
 include $(BUILD_STATIC_LIBRARY)
 
 # plugin for recovery_ui
@@ -109,10 +106,6 @@ LOCAL_STATIC_LIBRARIES := libcmfwdl
 LOCAL_C_INCLUDES := $(common_libintelprov_includes) bootable/recovery
 LOCAL_SRC_FILES:= flashtool.c $(common_libintelprov_files)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
-  LOCAL_CFLAGS += -DCLVT
-endif
-
 include $(BUILD_EXECUTABLE)
 
 # update_recovery: this binary is updating the recovery from MOS
