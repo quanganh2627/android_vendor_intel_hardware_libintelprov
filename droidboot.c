@@ -846,6 +846,61 @@ static int oem_disable_radio_flash_logs(int argc, char **argv)
 	return 0;
 }
 
+static int wait_property(char *prop, char *value, int timeout_sec)
+{
+	int i;
+	char v[PROPERTY_VALUE_MAX];
+
+	for(i = 0; i < timeout_sec; i++) {
+		property_get(prop, v, NULL);
+		if(!strcmp(v, value))
+			return 0;
+		sleep(1);
+	}
+	return -1;
+}
+
+static int oem_backup_factory(int argc, char **argv)
+{
+	int len;
+	char value[PROPERTY_VALUE_MAX];
+
+	len = property_get("sys.backup_factory", value, NULL);
+	if (strcmp(value, "done") && len) {
+		fastboot_fail("Factory partition backing up failed!\n");
+		return -1;
+	}
+
+	property_set("sys.backup_factory", "backup");
+	ui_print("Backing up factory partition...\n");
+	if(wait_property("sys.backup_factory", "done", 60)) {
+		fastboot_fail("Factory partition backing up timeout!\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int oem_restore_factory(int argc, char **argv)
+{
+	char value[PROPERTY_VALUE_MAX];
+
+	property_get("sys.backup_factory", value, NULL);
+	if (strcmp(value, "done")) {
+		fastboot_fail("Factory partition restoration failed!\n");
+		return -1;
+	}
+
+	property_set("sys.backup_factory", "restore");
+	ui_print("Restoring factory partition...\n");
+	if(wait_property("sys.backup_factory", "done", 60)) {
+		fastboot_fail("Factory partition restore timeout!\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int oem_get_batt_info_handler(int argc, char **argv)
 {
 	char msg_buf[] = " level: 000";
@@ -1253,6 +1308,8 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
 	ret |= aboot_register_oem_cmd("enable_flash_logs", oem_enable_radio_flash_logs);
 	ret |= aboot_register_oem_cmd("disable_flash_logs", oem_disable_radio_flash_logs);
+	ret |= aboot_register_oem_cmd("backup_factory", oem_backup_factory);
+	ret |= aboot_register_oem_cmd("restore_factory", oem_restore_factory);
 #ifndef EXTERNAL
 	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
 	ret |= libintel_droidboot_token_init();
