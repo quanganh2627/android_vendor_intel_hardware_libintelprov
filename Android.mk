@@ -41,6 +41,9 @@ LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
 endif
+ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
+  LOCAL_CFLAGS += -DMRFLD
+endif
 LOCAL_WHOLE_STATIC_LIBRARIES := libmiu
 include $(BUILD_STATIC_LIBRARY)
 
@@ -143,6 +146,9 @@ LOCAL_SRC_FILES := flashtool.c $(common_libintelprov_files)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
+  LOCAL_CFLAGS += -DMRFLD
 endif
 
 include $(BUILD_EXECUTABLE)
