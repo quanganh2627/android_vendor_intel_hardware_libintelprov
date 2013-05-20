@@ -11,7 +11,7 @@
 #include "util.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
-#include "modem_fw.h"
+#include "miu.h"
 
 #define PROP_BUILD_ID	"ro.build.display.id"
 
@@ -41,7 +41,6 @@ void usage(void)
 		"and a dump of the OSIP\n"
 		);
 }
-
 
 void cmd_show_data(void)
 {
@@ -108,7 +107,6 @@ void cmd_write_fw(char *filename)
 	free(data);
 }
 
-
 void cmd_read_osip(char *entry, char *filename)
 {
 	void *data;
@@ -160,53 +158,36 @@ void cmd_write_osip(char *entry, char *filename)
 	}
 }
 
-static void progress_callback(enum cmfwdl_status_type type, int value,
-        const char *msg, void *data)
+static void miu_progress_cb(int progress, int total)
 {
-	static int last_update_progress = -1;
+	printf("Progress: %d / %d\n", progress, total);
+}
 
-	switch (type) {
-	case cmfwdl_status_booting:
-		printf("modem: Booting...\n");
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_synced:
-		printf("modem: Device Synchronized\n");
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_downloading:
-		printf("modem: Loading Component %s\n", msg);
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_msg_detail:
-		printf("modem: %s\n", msg);
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_error_detail:
-		printf("modem: ERROR: %s\n", msg);
-		last_update_progress = -1;
-		break;
-	case cmfwdl_status_progress:
-		if (value / 10 == last_update_progress)
-			break;
-		last_update_progress = value / 10;
-		printf("modem: update progress %d%%\n", last_update_progress);
-		break;
-	case cmfwdl_status_version:
-		printf("modem: Version: %s\n", msg);
-		break;
-	default:
-		printf("modem: Ignoring: %s\n", msg);
-		break;
+static void miu_log_cb(const char *msg, ...)
+{
+	va_list ap;
+
+	if (msg != NULL) {
+		va_start(ap, msg);
+
+		vprintf(msg, ap);
+
+		va_end(ap);
 	}
 }
 
 void cmd_flash_modem_fw(char *filename)
 {
-	char *argv[] = {"f"};
-	if (flash_modem_fw(filename, filename, 1, argv, progress_callback)) {
-		fprintf(stderr, "Failed flashing modem FW!\n");
-		exit(1);
+	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+		fprintf(stderr, "%s failed at %s\n", __func__,
+			"miu_initialize failed");
+	} else {
+		if (miu_flash_modem_fw(filename, 0) != E_MIU_ERR_SUCCESS) {
+			fprintf(stderr, "Failed flashing modem FW!\n");
+			miu_dispose();
+			exit(1);
+		}
+		miu_dispose();
 	}
 }
 
@@ -250,7 +231,6 @@ int main(int argc, char ** argv)
 			exit(1);
 		}
 	}
-
 
 	switch (cmd) {
 	case CMD_NONE:
