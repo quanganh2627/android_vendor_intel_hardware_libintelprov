@@ -488,6 +488,11 @@ int destroy_the_osip_backup(void)
 
 int write_stitch_image(void *data, size_t size, int osii_index)
 {
+	return write_stitch_image_ex(data, size, osii_index, 0);
+}
+
+int write_stitch_image_ex(void *data, size_t size, int osii_index, int large_image)
+{
 	struct OSIP_header osip;
 	struct OSII *osii;
 	uint8_t *blob;
@@ -528,8 +533,13 @@ int write_stitch_image(void *data, size_t size, int osii_index)
         case ATTR_SIGNED_COMB:
         case ATTR_SIGNED_SPLASHSCREEN:
 	case ATTR_UNSIGNED_KERNEL:
-		osii->logical_start_block = get_free_os_lba(&osip);
-		max_size_lba = OS_MAX_LBA;
+		if(large_image) {
+			osii->logical_start_block = OS_START_OFFSET;
+			max_size_lba = OS_MAX_LBA * OS_SLOTS;
+		} else {
+			osii->logical_start_block = get_free_os_lba(&osip);
+			max_size_lba = OS_MAX_LBA;
+		}
 		break;
 	case ATTR_SIGNED_FW:
 	case ATTR_UNSIGNED_FW:

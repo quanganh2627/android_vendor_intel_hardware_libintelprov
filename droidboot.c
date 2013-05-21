@@ -102,6 +102,11 @@ static int flash_android_kernel(void *data, unsigned sz)
 	return flash_image(data, sz, get_named_osii_index(ANDROID_OS_NAME));
 }
 
+static int flash_testos(void *data, unsigned sz)
+{
+	return write_stitch_image_ex(data, sz, 0, 1);
+}
+
 static int flash_recovery_kernel(void *data, unsigned sz)
 {
 	return flash_image(data, sz, get_named_osii_index(RECOVERY_OS_NAME));
@@ -1160,6 +1165,7 @@ void libintel_droidboot_init(void)
 	int ret = 0;
 	struct OSIP_header osip;
 
+	ret |= aboot_register_flash_cmd(TEST_OS_NAME, flash_testos);
 	ret |= aboot_register_flash_cmd(ANDROID_OS_NAME, flash_android_kernel);
 	ret |= aboot_register_flash_cmd(RECOVERY_OS_NAME, flash_recovery_kernel);
 	ret |= aboot_register_flash_cmd(FASTBOOT_OS_NAME, flash_fastboot_kernel);
