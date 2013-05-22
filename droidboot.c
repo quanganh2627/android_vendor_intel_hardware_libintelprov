@@ -50,6 +50,8 @@
 #define IMG_RADIO "/radio.img"
 #define IMG_RADIO_RND "/radio_rnd.img"
 
+static int oem_write_osip_header(int argc, char **argv);
+
 static int radio_flash_logs = 0;
 
 static int oem_partition_stop_handler(int argc, char **argv);
@@ -104,6 +106,7 @@ static int flash_android_kernel(void *data, unsigned sz)
 
 static int flash_testos(void *data, unsigned sz)
 {
+	oem_write_osip_header(0,0);
 	return write_stitch_image_ex(data, sz, 0, 1);
 }
 
