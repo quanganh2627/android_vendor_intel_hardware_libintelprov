@@ -28,6 +28,7 @@ common_libintelprov_includes := \
 
 chaabi_dir := $(TOP)/vendor/intel/hardware/PRIVATE/chaabi
 sep_lib_includes := $(chaabi_dir)/SepMW/VOS6/External/Linux/inc/
+cc54_lib_includes := $(TOP)/vendor/intel/hardware/cc54/libcc54/include/export/
 
 # Plug-in library for AOSP updater
 include $(CLEAR_VARS)
@@ -117,6 +118,10 @@ ifeq ($(external_release),no)
 LOCAL_SRC_FILES += $(common_pmdb_files) $(token_implementation)
 LOCAL_C_INCLUDES += $(sep_lib_includes)
 LOCAL_WHOLE_STATIC_LIBRARIES += libsecurity_sectoken libcrypto_static CC6_UMIP_ACCESS CC6_ALL_BASIC_LIB
+ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
+LOCAL_C_INCLUDES += $(cc54_lib_includes)
+LOCAL_WHOLE_STATIC_LIBRARIES += libdx_cc7_static
+endif
 else
 LOCAL_CFLAGS += -DEXTERNAL
 endif

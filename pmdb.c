@@ -23,12 +23,17 @@
 #include "pmdb-access.h"
 #include "util.h"
 #include "droidboot_ui.h"
+#ifdef MRFLD
+#include <tee_token_error.h>
+#include <tee_token_if.h>
+#endif
 
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 
 #define PMDB_FRU_OFFSET		0x00
 #define CHECKSUM_SIZE		4
 
+#ifndef MRFLD
 
 struct pmdb_field_s {
 	const char *name;
@@ -73,9 +78,20 @@ static int pmdb_write_field(const char *name, unsigned char *buf, size_t size)
 done:
 	return ret;
 }
+#endif
 
 int pmdb_write_fru(void *buf, unsigned size)
 {
+#ifdef MRFLD
+	int ret;
+	struct FRU_RAW field_rep_unit = { FRU_RAW_TAG, { 0 } };
+	memcpy(field_rep_unit.fru_value,buf,min(size,sizeof(field_rep_unit.fru_value)));
+
+	ret = tee_token_write_tmp((uint8_t *)&field_rep_unit, sizeof(struct FRU_RAW), 0);
+	fprintf(stderr, "Calling token_write -- ret = %d\n", ret);
+
+	return (0 != ret);
+#else
 	unsigned char with_cs[PMDB_FRU_SIZE + CHECKSUM_SIZE];
 
 	memset(with_cs, 0, sizeof(with_cs));
@@ -83,4 +99,5 @@ int pmdb_write_fru(void *buf, unsigned size)
 	twoscomplement(&with_cs[PMDB_FRU_SIZE], with_cs, PMDB_FRU_SIZE);
 
 	return pmdb_write_field("fru+cs", with_cs, sizeof(with_cs));
+#endif
 }
