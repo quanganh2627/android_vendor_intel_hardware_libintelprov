@@ -19,6 +19,14 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+
+#ifndef STORAGE_BASE_PATH
+#define STORAGE_BASE_PATH "/"
+#endif
+
+#ifndef STORAGE_PARTITION_FORMAT
+#define STORAGE_PARTITION_FORMAT ""
+#endif
 #define DDR_LOAD_ADDX       0x01100000
 #define ENTRY_POINT         0x01101000
 
@@ -91,6 +99,6 @@ int verify_osip_sizes(struct OSIP_header *osip);
 
 #define LBA_SIZE	512
 #define OS_MAX_LBA	22000
-#define MMC_DEV_POS "/dev/block/mmcblk0"
+#define MMC_DEV_POS STORAGE_BASE_PATH
 
 #endif
