@@ -34,8 +34,8 @@ int main(int argc, char *argv[]) {
     uint8_t label[GPT_PARTNAME_LEN];
     char  uuid[GUID_STRLEN];
 
-    char from[sizeof(BASE_EMMC) + 3];
-    char to[sizeof(BASE_PLATFORM_INTEL_LABEL) + GUID_STRLEN + 3];
+    char from[sizeof(BASE_EMMC) + 4];
+    char to[sizeof(BASE_PLATFORM_INTEL_LABEL) + GUID_STRLEN + 4];
 
     memset(&params, 0, sizeof(params));
     params.drive_name = BASE_EMMC;

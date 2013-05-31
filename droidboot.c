@@ -50,6 +50,8 @@
 #define IMG_RADIO "/radio.img"
 #define IMG_RADIO_RND "/radio_rnd.img"
 
+static int oem_write_osip_header(int argc, char **argv);
+
 static int radio_flash_logs = 0;
 
 static int oem_partition_stop_handler(int argc, char **argv);
@@ -100,6 +102,12 @@ static int flash_image(void *data, unsigned sz, int index)
 static int flash_android_kernel(void *data, unsigned sz)
 {
 	return flash_image(data, sz, get_named_osii_index(ANDROID_OS_NAME));
+}
+
+static int flash_testos(void *data, unsigned sz)
+{
+	oem_write_osip_header(0,0);
+	return write_stitch_image_ex(data, sz, 0, 1);
 }
 
 static int flash_recovery_kernel(void *data, unsigned sz)
@@ -443,47 +451,6 @@ static int flash_ifwi(void *data, unsigned sz)
 }
 
 #endif
-
-#define CAPSULE_PARTITION_NAME "/FWUP"
-#define CAPSULE_UPDATE_FLAG_PATH "/sys/firmware/osnib/fw_update"
-
-static int flash_capsule(void *data, unsigned sz)
-{
-	Volume *v;
-	char capsule_trigger = '1';
-
-	if ((v = volume_for_path(CAPSULE_PARTITION_NAME)) == NULL) {
-		pr_error("Cannot find FWUP volume!\n");
-		return -1;
-	}
-
-	if (file_write(v->device, data, sz)) {
-		pr_error("Capsule flashing failed!\n");
-		return -1;
-	}
-
-	if (file_write(CAPSULE_UPDATE_FLAG_PATH,
-				&capsule_trigger, sizeof(capsule_trigger))) {
-		pr_error("Capsule flashing failed!\n");
-		return -1;
-	}
-
-	return 0;
-}
-
-#define ULPMC_PATH "/dev/ulpmc-fwupdate"
-static int flash_ulpmc(void *data, unsigned sz)
-{
-	/*
-	 * TODO: check version after flashing
-	 */
-	if (file_write(ULPMC_PATH, data, sz)) {
-		pr_error("ULPMC flashing failed\n");
-		return -1;
-	}
-
-	return 0;
-}
 
 #define PROXY_SERVICE_NAME	"proxy"
 #define PROXY_PROP		"service.proxy.enable"
@@ -1201,6 +1168,7 @@ void libintel_droidboot_init(void)
 	int ret = 0;
 	struct OSIP_header osip;
 
+	ret |= aboot_register_flash_cmd(TEST_OS_NAME, flash_testos);
 	ret |= aboot_register_flash_cmd(ANDROID_OS_NAME, flash_android_kernel);
 	ret |= aboot_register_flash_cmd(RECOVERY_OS_NAME, flash_recovery_kernel);
 	ret |= aboot_register_flash_cmd(FASTBOOT_OS_NAME, flash_fastboot_kernel);

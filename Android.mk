@@ -1,6 +1,6 @@
 LOCAL_PATH := $(call my-dir)
 
-LIBCHAABI := $(TOP)/hardware/intel/PRIVATE/chaabi
+LIBCHAABI := $(TOP)/vendor/intel/hardware/PRIVATE/chaabi
 ifeq ($(wildcard $(LIBCHAABI)),)
 	external_release := yes
 else
@@ -26,9 +26,9 @@ common_libintelprov_includes := \
 	bionic/libc/private \
 	$(TARGET_OUT_HEADERS)/IFX-modem
 
-chaabi_dir := $(TOP)/hardware/intel/PRIVATE/chaabi
+chaabi_dir := $(TOP)/vendor/intel/hardware/PRIVATE/chaabi
 sep_lib_includes := $(chaabi_dir)/SepMW/VOS6/External/Linux/inc/
-cc54_lib_includes := $(TOP)/hardware/intel/cc54/libcc54/include/export/
+cc54_lib_includes := $(TOP)/vendor/intel/hardware/cc54/libcc54/include/export/
 
 # Plug-in library for AOSP updater
 include $(CLEAR_VARS)

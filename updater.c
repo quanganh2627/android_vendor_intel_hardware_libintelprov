@@ -357,6 +357,9 @@ done:
 Value *FlashModemFn(const char *name, State * state, int argc, Expr * argv[])
 {
 	Value *ret = NULL;
+        int err;
+        ZipArchive modem_za;
+
 	char *filename = NULL;
 	e_miu_flash_options_t flash_options = 0;
 
@@ -369,6 +372,17 @@ Value *FlashModemFn(const char *name, State * state, int argc, Expr * argv[])
 			   name);
 		goto done;
 	}
+
+        err = mzOpenZipArchive(filename, &modem_za);
+        if (err) {
+            printf("Failed to open zip archive %s\n", filename);
+            ret = StringValue(strdup(""));
+            goto done;
+        }
+        printf("miu using archive  %s\n", filename);
+        mzCloseZipArchive(&modem_za);
+
+
 	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
 		printf("%s failed at %s\n", __func__, "miu_initialize failed");
 	} else {
@@ -391,6 +405,9 @@ Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[])
 {
 	Value *ret = NULL;
 	char *filename = NULL;
+        int err;
+        ZipArchive modemnvm_za;
+
 
 	if (ReadArgs(state, argv, 1, &filename) < 0) {
 		return NULL;
@@ -401,6 +418,16 @@ Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[])
 			   name);
 		goto done;
 	}
+
+        err = mzOpenZipArchive(filename, &modemnvm_za);
+        if (err) {
+            printf("Failed to open zip archive %s\n", filename);
+            ret = StringValue(strdup(""));
+            goto done;
+        }
+        printf("miu using archive  %s\n", filename);
+        mzCloseZipArchive(&modemnvm_za);
+
 	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
 		printf("%s failed at %s\n", __func__, "miu_initialize failed");
 	} else {
@@ -441,6 +468,77 @@ done:
 	return ret;
 }
 
+Value *FlashCapsuleFn(const char *name, State *state, int argc, Expr *argv[]) {
+    Value *ret = NULL;
+    char *filename = NULL;
+    void *data;
+    unsigned size;
+
+
+    if (ReadArgs(state, argv, 1, &filename) < 0) {
+        ErrorAbort(state, "ReadArgs() failed");
+        goto done;
+    }
+
+    if (filename == NULL || strlen(filename) == 0) {
+        ErrorAbort(state, "filename argument to %s can't be empty", name);
+        goto done;
+    }
+
+    if (file_read(filename, &data, &size)) {
+        ErrorAbort(state, "file_read %s failed", filename);
+        goto done;
+    }
+
+    if (flash_capsule(data, size) != 0) {
+        ErrorAbort(state, "flash_capsule failed");
+        goto done;
+    }
+
+    /* no error */
+    ret = StringValue(strdup(""));
+done:
+    free(filename);
+    free(data);
+
+    return ret;
+}
+
+Value *FlashUlpmcFn(const char *name, State *state, int argc, Expr *argv[]) {
+    Value *ret = NULL;
+    char *filename = NULL;
+    void *data;
+    unsigned size;
+
+    if (ReadArgs(state, argv, 1, &filename) < 0) {
+        ErrorAbort(state, "ReadArgs() failed");
+        goto done;
+    }
+
+
+    if (filename == NULL || strlen(filename) == 0) {
+        ErrorAbort(state, "filename argument to %s can't be empty", name);
+        goto done;
+    }
+
+    if (file_read(filename, &data, &size)) {
+        ErrorAbort(state, "file_read failed %s failed", filename);
+        goto done;
+    }
+
+    if (flash_ulpmc(data, size) != 0) {
+        ErrorAbort(state, "flash_ulpmc failed");
+        goto done;
+    }
+
+    /* no error */
+    ret = StringValue(strdup(""));
+done:
+    free(filename);
+    free(data);
+
+    return ret;
+}
 void Register_libintel_updater(void)
 {
     RegisterFunction("flash_osip", FlashOsipFn);
@@ -451,4 +549,7 @@ void Register_libintel_updater(void)
     RegisterFunction("extract_osip", ExtractOsipFn);
     RegisterFunction("invalidate_os", InvalidateOsFn);
     RegisterFunction("restore_os", RestoreOsFn);
+
+    RegisterFunction("flash_capsule", FlashCapsuleFn);
+    RegisterFunction("flash_ulpmc", FlashUlpmcFn);
 }
