@@ -9,6 +9,10 @@
 #include <linux/fs.h>
 #include "cgpt_params.h"
 
+#ifndef STORAGE_BASE_PATH
+#define STORAGE_BASE_PATH "/"
+#endif
+
 static void Usage(void)
 {
   printf("\nUsage: %s reload DRIVE\n\n"
@@ -16,7 +20,7 @@ static void Usage(void)
 }
 
 int cmd_reload(int argc, char *argv[]) {
-  char *drive = { "/dev/block/mmcblk0" } ;
+  char *drive = { STORAGE_BASE_PATH } ;
   int fd;
   int c;
   int errorcnt = 0;

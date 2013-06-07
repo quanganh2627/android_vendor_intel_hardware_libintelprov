@@ -49,6 +49,9 @@
 
 #define IMG_RADIO "/radio.img"
 #define IMG_RADIO_RND "/radio_rnd.img"
+#define MCD_CTRL		"/dev/mdm_ctrl"
+#define MCD_CTRL_ON		1
+#define MCD_CTRL_OFF		0
 
 static int oem_write_osip_header(int argc, char **argv);
 
@@ -57,6 +60,70 @@ static int radio_flash_logs = 0;
 static int oem_partition_stop_handler(int argc, char **argv);
 
 #define INFO_MSG_LEN    (size_t)128
+
+static inline bool is_mcd_build()
+{
+	return  access(MCD_CTRL, F_OK) != -1 ? true : false;
+}
+
+static int modem_power(int cmd)
+{
+	int mcd_fd = -1;
+	int ret;
+	struct mdm_ctrl_cmd mdm_cmd;
+
+	/* Use 10 seconds as default time-out */
+	mdm_cmd.timeout = 10000;
+
+	/* MCD build. Modem needs to be powered */
+	/* Boot up the modem */
+	if ((mcd_fd = open(MCD_CTRL, O_RDWR)) == -1) {
+		pr_error("Unable to open MCD node or find HSI. ABORT.\n");
+		return -1;
+	}
+
+	if (cmd) {
+		if (ioctl(mcd_fd, MDM_CTRL_POWER_ON) == -1) {
+			pr_error("Unable to power on modem. ABORT.\n");
+			close(mcd_fd);
+			return -1;
+		} else {
+			/* Let modem time to boot */
+			pr_info("Modem will be powered up... ");
+			mdm_cmd.param = MDM_CTRL_STATE_IPC_READY;
+			if ((ret = ioctl(mcd_fd, MDM_CTRL_WAIT_FOR_STATE, &mdm_cmd)) <= 0) {
+				/* Note: return value of 0 means time-out */
+				pr_error("Power up failure (%d). ABORT.\n", ret);
+				close(mcd_fd);
+				return -1;
+			}
+			pr_info("Modem powered up.\n");
+			close(mcd_fd);
+			return 0;
+		}
+	} else {
+		if (ioctl(mcd_fd, MDM_CTRL_POWER_OFF) == -1) {
+			pr_info("Unable to power off modem. ABORT.\n");
+			close(mcd_fd);
+			return -1;
+		} else {
+			/* Let modem time to stop. */
+			pr_info("Modem will be powered down... ");
+			mdm_cmd.param = MDM_CTRL_STATE_OFF;
+			if ((ret = ioctl(mcd_fd, MDM_CTRL_WAIT_FOR_STATE, &mdm_cmd)) <= 0) {
+				/* Note: return value of 0 means time-out */
+				pr_error("Power down failure (%d). ABORT.\n", ret);
+				close(mcd_fd);
+				return -1;
+			}
+			pr_info("Modem powered down.\n");
+			close(mcd_fd);
+			/* Sanity sleep to avoid quick power OFF - ON loop */
+			sleep(3);
+			return 0;
+		}
+	}
+}
 
 static void miu_progress_cb(int progress, int total)
 {
@@ -169,6 +236,9 @@ static int flash_modem(void *data, unsigned sz)
 		}
 	}
 out:
+	if (is_mcd_build()) {
+		modem_power(MCD_CTRL_OFF);
+	}
 	miu_dispose();
 	unlink(IMG_RADIO);
 	return ret;
@@ -213,6 +283,9 @@ static int flash_modem_get_fuse(void *data, unsigned sz)
 		}
 	}
 out:
+	if (is_mcd_build()) {
+		modem_power(MCD_CTRL_OFF);
+	}
 	miu_dispose();
 	unlink(IMG_RADIO);
 	return ret;
@@ -236,6 +309,9 @@ static int flash_modem_get_fuse_only(void *data, unsigned sz)
 			ret = -1;
 		}
 		miu_dispose();
+	}
+	if (is_mcd_build()) {
+		modem_power(MCD_CTRL_OFF);
 	}
 	return ret;
 }
@@ -277,6 +353,9 @@ static int flash_modem_erase_all(void *data, unsigned sz)
 out:
 	miu_dispose();
 	unlink(IMG_RADIO);
+	if (is_mcd_build()) {
+		modem_power(MCD_CTRL_OFF);
+	}
 	return ret;
 }
 
@@ -320,6 +399,9 @@ static int flash_modem_read_rnd(void *data, unsigned sz)
 out:
 	miu_dispose();
 	unlink(IMG_RADIO);
+	if (is_mcd_build()) {
+		modem_power(MCD_CTRL_OFF);
+	}
 	return ret;
 }
 
@@ -358,6 +440,9 @@ out:
 	miu_dispose();
 	unlink(IMG_RADIO);
 	unlink(IMG_RADIO_RND);
+	if (is_mcd_build()) {
+		modem_power(MCD_CTRL_OFF);
+	}
 	return ret;
 }
 
@@ -390,6 +475,9 @@ static int flash_modem_erase_rnd(void *data, unsigned sz)
 out:
 	miu_dispose();
 	unlink(IMG_RADIO);
+	if (is_mcd_build()) {
+		modem_power(MCD_CTRL_OFF);
+	}
 	return ret;
 }
 
@@ -457,13 +545,10 @@ static int flash_ifwi(void *data, unsigned sz)
 #define PROXY_START		"1"
 #define PROXY_STOP		"0"
 #define HSI_PORT		"/sys/bus/hsi/devices/port0"
-#define MCD_CTRL		"/dev/mdm_ctrl"
 
 static int oem_manage_service_proxy(int argc, char **argv)
 {
 	int retval = 0;
-	int mcd_fd = -1;
-	int evt_type = 0;
 
 	if ((argc < 2) || (strcmp(argv[0], PROXY_SERVICE_NAME))) {
 		/* Should not pass here ! */
@@ -483,56 +568,18 @@ static int oem_manage_service_proxy(int argc, char **argv)
 		} else {
 			/* MCD build. Modem needs to be powered */
 			/* Boot up the modem */
-			if ((mcd_fd = open(MCD_CTRL, O_RDWR)) == -1) {
-				pr_error("Unable to open MCD node or find HSI. ABORT.\n");
-				return -1;
-			}
-			if (ioctl(mcd_fd, MDM_CTRL_POWER_ON) == -1) {
-				pr_info("Unable to power on modem. ABORT.\n");
-				close(mcd_fd);
-				return -1;
-			} else {
-				/* Let modem time to boot */
-				pr_info("Modem will be powered up... ");
-				evt_type = MDM_CTRL_STATE_IPC_READY;
-				if (ioctl(mcd_fd, MDM_CTRL_WAIT_FOR_STATE, &evt_type) == -1) {
-					pr_error("Power up failure. ABORT.\n");
-					close(mcd_fd);
-					return -1;
-				}
-				pr_info("Modem powered up.\n");
-				close(mcd_fd);
-				/* Start proxy service (at-proxy). */
+			if (is_mcd_build() && modem_power(MCD_CTRL_ON) != -1)
 				property_set(PROXY_PROP, PROXY_START);
-			}
+			else
+				return -1;
 		}
 
 	} else if (!strcmp(argv[1], "stop")) {
-		/* For MCD build, modem will be powered down */
-		if ((mcd_fd = open(MCD_CTRL, O_RDWR)) == -1) {
-			/* Stop proxy service (at-proxy). */
-			property_set(PROXY_PROP, PROXY_STOP);
-			return 0;
-		}
-		/* Stop proxy service (at-proxy) anyway. */
+		/* Stop proxy service (at-proxy). */
 		property_set(PROXY_PROP, PROXY_STOP);
-		if (ioctl(mcd_fd, MDM_CTRL_POWER_OFF) == -1) {
-			pr_info("Unable to power off modem. ABORT.\n");
-			close(mcd_fd);
-			return -1;
-		} else {
-			/* Let modem time to stop. */
-			pr_info("Modem will be powered down... ");
-			evt_type = MDM_CTRL_STATE_OFF;
-			if (ioctl(mcd_fd, MDM_CTRL_WAIT_FOR_STATE, &evt_type) == -1) {
-				pr_error("Power down failure. ABORT.\n");
-				close(mcd_fd);
-				return -1;
-			}
-			pr_info("Modem powered down.\n");
-			close(mcd_fd);
-			return 0;
-		}
+		if (is_mcd_build())
+			return modem_power(MCD_CTRL_OFF);
+		return 0;
 
 	} else {
 		pr_error("Unknown command. Use %s [start/stop].\n", PROXY_SERVICE_NAME);
@@ -667,13 +714,15 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 			pr_error("Failed to mount /system");
 			goto out;
 		}
+		if (is_mcd_build() && modem_power(MCD_CTRL_ON) == -1)
+			return -1;
 		if (!strcmp(argv[1], "apply") || !strcmp(argv[1], "applyzip")) {
 			pr_info("Applying nvm...");
 
 			if (argc < 3) {
 				pr_error("oem_nvm_cmd_handler called with wrong parameter!\n");
 				retval = -1;
-				return retval;
+				goto out;
 			}
 			nvm_path = argv[2];
 
@@ -702,6 +751,9 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 		}
 	}
 out:
+	if (is_mcd_build()) {
+		modem_power(MCD_CTRL_OFF);
+	}
 	miu_dispose();
 	return retval;
 }
@@ -791,6 +843,61 @@ static int oem_disable_radio_flash_logs(int argc, char **argv)
 {
 	radio_flash_logs = 0;
 	ui_print("Disable radio flash logs\n");
+	return 0;
+}
+
+static int wait_property(char *prop, char *value, int timeout_sec)
+{
+	int i;
+	char v[PROPERTY_VALUE_MAX];
+
+	for(i = 0; i < timeout_sec; i++) {
+		property_get(prop, v, NULL);
+		if(!strcmp(v, value))
+			return 0;
+		sleep(1);
+	}
+	return -1;
+}
+
+static int oem_backup_factory(int argc, char **argv)
+{
+	int len;
+	char value[PROPERTY_VALUE_MAX];
+
+	len = property_get("sys.backup_factory", value, NULL);
+	if (strcmp(value, "done") && len) {
+		fastboot_fail("Factory partition backing up failed!\n");
+		return -1;
+	}
+
+	property_set("sys.backup_factory", "backup");
+	ui_print("Backing up factory partition...\n");
+	if(wait_property("sys.backup_factory", "done", 60)) {
+		fastboot_fail("Factory partition backing up timeout!\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int oem_restore_factory(int argc, char **argv)
+{
+	char value[PROPERTY_VALUE_MAX];
+
+	property_get("sys.backup_factory", value, NULL);
+	if (strcmp(value, "done")) {
+		fastboot_fail("Factory partition restoration failed!\n");
+		return -1;
+	}
+
+	property_set("sys.backup_factory", "restore");
+	ui_print("Restoring factory partition...\n");
+	if(wait_property("sys.backup_factory", "done", 60)) {
+		fastboot_fail("Factory partition restore timeout!\n");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -1201,6 +1308,8 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
 	ret |= aboot_register_oem_cmd("enable_flash_logs", oem_enable_radio_flash_logs);
 	ret |= aboot_register_oem_cmd("disable_flash_logs", oem_disable_radio_flash_logs);
+	ret |= aboot_register_oem_cmd("backup_factory", oem_backup_factory);
+	ret |= aboot_register_oem_cmd("restore_factory", oem_restore_factory);
 #ifndef EXTERNAL
 	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
 	ret |= libintel_droidboot_token_init();

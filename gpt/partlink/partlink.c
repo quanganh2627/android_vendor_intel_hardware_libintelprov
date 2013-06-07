@@ -13,11 +13,15 @@
 #include "cmd_show.h"
 #include "cgpt_params.h"
 
+#ifndef STORAGE_BASE_PATH
+#define STORAGE_BASE_PATH "/dev/block/mmcblk0"
+#endif
 
+#ifndef STORAGE_PARTITION_FORMAT
+#define STORAGE_PARTITION_FORMAT "%sp%d"
+#endif
 
-#define BASE_BLOCK "/dev/block/"
-#define BASE_EMMC BASE_BLOCK "mmcblk0"
-#define BASE_PLATFORM BASE_BLOCK "platform"
+#define BASE_PLATFORM "/dev/block/platform"
 #define BASE_PLATFORM_INTEL BASE_PLATFORM "/intel"
 #define BASE_PLATFORM_INTEL_UUID BASE_PLATFORM_INTEL "/by-uuid"
 #define BASE_PLATFORM_INTEL_LABEL BASE_PLATFORM_INTEL "/by-label"
@@ -34,11 +38,11 @@ int main(int argc, char *argv[]) {
     uint8_t label[GPT_PARTNAME_LEN];
     char  uuid[GUID_STRLEN];
 
-    char from[sizeof(BASE_EMMC) + 4];
-    char to[sizeof(BASE_PLATFORM_INTEL_LABEL) + GUID_STRLEN + 4];
+    char from[BUFSIZ];
+    char to[BUFSIZ];
 
     memset(&params, 0, sizeof(params));
-    params.drive_name = BASE_EMMC;
+    params.drive_name = STORAGE_BASE_PATH;
 
     mkdir(BASE_PLATFORM, 0600);
     mkdir(BASE_PLATFORM_INTEL,0600);
@@ -63,12 +67,12 @@ int main(int argc, char *argv[]) {
 
         GuidToStr(&entry->unique, uuid, GUID_STRLEN);
 
-        snprintf(from, sizeof(from) - 1, "%sp%d", BASE_EMMC, i + 1);
+        snprintf(from, sizeof(from) - 1, STORAGE_PARTITION_FORMAT, STORAGE_BASE_PATH, i + 1);
 
-        snprintf(to,sizeof(to) - 1 , BASE_PLATFORM_INTEL_LABEL "/%s" , label);
+        snprintf(to, sizeof(to) - 1, BASE_PLATFORM_INTEL_LABEL "/%s" , label);
         link(from, to);
 
-        snprintf(to,sizeof(to) - 1 , BASE_PLATFORM_INTEL_UUID "/%s" , uuid);
+        snprintf(to, sizeof(to) - 1, BASE_PLATFORM_INTEL_UUID "/%s" , uuid);
         link(from, to);
 
     }

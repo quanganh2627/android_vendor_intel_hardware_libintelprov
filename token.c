@@ -64,6 +64,18 @@ static int flash_token(void *data, unsigned sz)
 
 	result = sep_sectoken_consume_token(data,sz);
 	pr_info("sep_sectoken_consume_token() == 0x%x\n",result);
+
+	/* if the file is too small, it assumes that this is the
+		dummy file sent by the Phone Flash Tool.
+		So, it returns a success result to continue with the
+		fastboot command that sends the FRU */
+	if(result == ST_FAIL_SECURE_TOKEN_SIZE_TOO_SMALL_FAILURE)
+	{
+		pr_info("Token is too small. Assuming it is a dummy token "
+				"for development, so return successful status.\n");
+		result = ST_SUCCESSFUL;
+	}
+
 	retval = ( result != ST_SUCCESSFUL );
 	DX_CC_HostFinish();
 	return retval;
