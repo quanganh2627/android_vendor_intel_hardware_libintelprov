@@ -667,7 +667,7 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 			pr_error("Failed to mount /system");
 			goto out;
 		}
-		if (!strcmp(argv[1], "apply") || !strcmp(argv[1], "applyzip")) {
+		if (!strcmp(argv[1], "apply")) {
 			pr_info("Applying nvm...");
 
 			if (argc < 3) {
