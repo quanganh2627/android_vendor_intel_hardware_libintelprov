@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <cutils/properties.h>
 
 #include "flash_ifwi.h"
 #include "util.h"
@@ -414,19 +415,119 @@ out:
 	return ret;
 }
 
+void dump_capsule(struct capsule *c) {
+	struct capsule_signature *sig;
+	struct capsule_version *ver;
+	struct capsule_refs *refs;
+
+	sig = &(c->header.sig);
+	ver = &(c->header.ver);
+	refs= &(c->header.refs);
+
+	if (!sig)
+			return;
+
+	if (!ver)
+			return;
+
+	if (!refs)
+			return;
+
+	printf("capsule header (0x%02x)\n", sig->signature);
+
+	printf("capsule version (0x%02x)\n", ver->signature);
+
+	printf("iafw_stage_1: version=0x%02x size=%d offset=0x%02x\n",
+				ver->iafw_stage1_version,
+				refs->iafw_stage1_size,
+				refs->iafw_stage1_offset);
+
+	printf("iafw_stage_2: version=0x%02x size=%d offset=0x%02x\n",
+				ver->iafw_stage2_version,
+				refs->iafw_stage2_size,
+				refs->iafw_stage2_offset);
+
+	printf("mcu: version=0x%02x\n",
+				ver->mcu_version);
+
+	printf("sec: version=0x%02x size=%d offset=0x%02x\n",
+				ver->sec_version,
+				refs->sec_size,
+				refs->sec_offset);
+
+}
+
+int check_capsule(struct capsule *c)
+{
+	/* TODO */
+	return 0;
+}
 
 int flash_capsule(void *data, unsigned sz)
 {
 	char capsule_trigger = '1';
+    struct capsule *c = NULL;
+	struct capsule_version *v = NULL;
+
+	char iafw_stage1_version_str[PROPERTY_VALUE_MAX];
+	u32 iafw_stage1_version = 0;
+
+	/*
+	 * disabled until fw update
+	 *char iafw_stage2_version_str[PROPERTY_VALUE_MAX];
+	 *u32 iafw_stage2_version = 0;
+	 */
+
+	char sec_version_str[PROPERTY_VALUE_MAX];
+	u32 sec_version = 0;
+
+	property_get("sys.ia32.version", iafw_stage1_version_str, "00.00");
+	property_get("sys.chaabi.version", sec_version_str, "00.00");
+
+	sscanf(iafw_stage1_version_str, "%*d.%d", &iafw_stage1_version);
+	sscanf(sec_version_str, "%*d.%d", &sec_version);
+
+	printf("current iafw version: %s (%d)\n",
+				iafw_stage1_version_str,
+				iafw_stage1_version);
+
+	printf("current sec version: %s (%d)\n",
+					sec_version_str,
+					sec_version);
+
+	if (!data || sz <= sizeof(struct capsule_header)) {
+		pr_perror("Capsule file is not valid\n");
+		return -1;
+	}
+
+	c = (struct capsule *) data;
+	if (check_capsule(c)) {
+		printf("Capsule file is not valid\n");
+		/* do not fail to avoid breaking flashing procedure */
+		return 0;
+	}
+
+	dump_capsule(c);
+
+	v = &(c->header.ver);
+
+	if (v->iafw_stage1_version == iafw_stage1_version &&
+				v->sec_version == sec_version) {
+			pr_perror("Capsule flashing disabled: same IAFW and SECFW\n");
+			return -1;
+	}
+
 
 	if (file_write(CAPSULE_PARTITION_NAME, data, sz)) {
 		pr_perror("Capsule flashing failed!\n");
 		return -1;
 	}
 
+
+
 	if (file_write(CAPSULE_UPDATE_FLAG_PATH,
 				&capsule_trigger, sizeof(capsule_trigger))) {
-		pr_perror("Capsule flashing failed!\n");
+		pr_perror("Can't set fw_update bit!\n");
 		return -1;
 	}
 

@@ -87,7 +87,10 @@ OPTIONS.omit_prereq = False
 OPTIONS.extra_script = None
 OPTIONS.aslr_mode = True
 OPTIONS.worker_threads = 3
+OPTIONS.no_modem = False
 OPTIONS.intel_ota = False
+OPTIONS.intel_capsule = False
+OPTIONS.intel_ulpmc = False
 
 # Following is a hack for release scripts to be able to create OTA packages
 # using the ABS targets, and not rely on invoking this script separately. This
@@ -413,11 +416,21 @@ def WriteFullOTAPackage(input_zip, output_zip):
   #  script.UndoRetouchBinaries(retouch_files)
 
   images = {}
-  for name in ["boot", "recovery", "fastboot", "uefi", "ifwi"]:
+  name_list = ["boot", "recovery", "fastboot", "uefi", "ifwi"]
+
+  if OPTIONS.intel_capsule == True:
+    name_list.append("capsule")
+  if OPTIONS.intel_ulpmc == True:
+    name_list.append("ulpmc")
+
+  for name in name_list:
     if name == "ifwi":
       filename = name + ".zip"
     else:
-      filename = name + ".img"
+      if name == "capsule" or name == "ulpmc":
+        filename = name + ".bin"
+      else:
+        filename = name + ".img"
     if name != "uefi":
       img = common.GetBootableImage(filename, filename,
               OPTIONS.input_tmp, name.upper())
@@ -429,27 +442,34 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   progress_increment = 0.4 / len(images)
   for name, img in images.iteritems():
+    script.ShowProgress(progress_increment, 0)
     if name == "recovery":
       MakeRecoveryPatch(output_zip, img, images["boot"])
       continue
     common.CheckSize(img.data, img.name, OPTIONS.info_dict)
     common.ZipWriteStr(output_zip, img.name, img.data)
-    script.ShowProgress(progress_increment, 0)
     script.PackageExtract(img.name)
     if name == "ifwi":
       script.FlashIfwi("ifwi.zip")
     else:
-      script.FlashOsip(name)
-    script.DeleteTmpImage(img.name)
+      if name != "capsule" and name != "ulpmc":
+        script.FlashOsip(name)
+        script.DeleteTmpImage(img.name)
 
   Item.GetMetadata(input_zip)
   Item.Get("system").SetPermissions(script)
 
-  script.ShowProgress(0.2, 0)
-  device_specific.FullOTA_InstallEnd()
+  script.ShowProgress(0.1, 0)
+  if OPTIONS.no_modem == False:
+    device_specific.FullOTA_InstallEnd()
 
   if OPTIONS.extra_script is not None:
     script.AppendExtra(OPTIONS.extra_script)
+
+  if OPTIONS.intel_capsule == True:
+    script.FlashCapsule("capsule.bin")
+  if OPTIONS.intel_ulpmc == True:
+    script.FlashUlpmc("ulpmc.bin")
 
   script.UnmountAll()
   script.RestoreOs("boot")
@@ -595,21 +615,34 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   script.Mount("/system")
   script.AssertSomeFingerprint(source_fp, target_fp)
 
+  updating_recovery = False
+
   # Get the set of images we need to patch in the OSIP
   all_images = {} # Set of all images (source, target)
   images = {} # Set of images to update (source, target)
   full_images = {} # Set of images to create (target) (no source)
 
-  for name in ["boot", "recovery", "fastboot", "uefi", "ifwi"]:
+  name_list = ["boot", "recovery", "fastboot", "uefi", "ifwi", "capsule", "ulpmc"]
+
+  for name in name_list:
     if name == "ifwi":
       filename = name + ".zip"
     else:
-      filename = name + ".img"
+      if name == "capsule" or name == "ulpmc":
+        filename = name + ".bin"
+      else:
+        filename = name + ".img"
     if name != "uefi":
-      src_img = common.GetBootableImage(filename, filename, OPTIONS.source_tmp,
-              name.upper())
-      tgt_img = common.GetBootableImage(filename, filename, OPTIONS.target_tmp,
-              name.upper())
+      if name == "capsule" or name == "ulpmc":
+          src_img = common.GetFirmwareImage(filename, filename, OPTIONS.source_tmp,
+                  name.upper())
+          tgt_img = common.GetFirmwareImage(filename, filename, OPTIONS.target_tmp,
+                  name.upper())
+      else:
+          src_img = common.GetBootableImage(filename, filename, OPTIONS.source_tmp,
+                  name.upper())
+          tgt_img = common.GetBootableImage(filename, filename, OPTIONS.target_tmp,
+                  name.upper())
     else:
       src_img = common.GetStitchedImage(filename, OPTIONS.source_tmp,
               "MFLD_IMAGES/uefi.fv")
@@ -617,10 +650,10 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
               "MFLD_IMAGES/uefi.fv")
     all_images[name] = (src_img, tgt_img)
     if not tgt_img:
-      print "%s OSIP image not present, skipping" % name
+      print "%s image not present, skipping" % name
       continue
     if src_img and tgt_img.data == src_img.data:
-      print "%s OSIP image unchanged, skipping" % name
+      print "%s image unchanged, skipping" % name
       continue
     if name == "recovery":
       # recovery console is a special case
@@ -630,7 +663,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
       # skip the ifwi flashing if it is the same as src targetfiles
       if not common.IfwiDiffers(src_img, tgt_img):
         continue
-    if name == "ifwi" or metadata["fromgb"]:
+    if name == "ifwi" or metadata["fromgb"] or name == "capsule" or name == "ulpmc":
       # we dont make incremental images from GB
       full_images[name] = tgt_img
       continue
@@ -716,7 +749,13 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
     if name == "ifwi":
       script.FlashIfwi("ifwi.zip")
     else:
-      script.FlashOsip(name)
+      if name == "capsule":
+        script.FlashCapsule("capsule.bin")
+      else:
+        if name == "ulpmc":
+          script.FlashUlpmc("ulpmc.bin")
+        else:
+          script.FlashOsip(name)
     script.DeleteTmpImage(img.name)
     so_far += tgt_img.size
     script.SetProgress(so_far / total_patch_size)
@@ -867,6 +906,10 @@ def main(argv):
       OPTIONS.worker_threads = int(a)
     elif o in ("--intel_ota"):
       OPTIONS.intel_ota = True
+    elif o in ("--intel_capsule"):
+      OPTIONS.intel_capsule = True
+    elif o in ("--intel_ulpmc"):
+      OPTIONS.intel_ulpmc = True
     else:
       return False
     return True
@@ -882,6 +925,8 @@ def main(argv):
                                               "worker_threads=",
                                               "aslr_mode=",
                                               "intel_ota",
+                                              "intel_capsule",
+                                              "intel_ulpmc",
                                               ],
                              extra_option_handler=option_handler)
 

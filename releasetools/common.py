@@ -279,6 +279,8 @@ def TryHardToFindImage(name, unpack_dir, prebuilt_name):
     "boot.img": [ "BOOT/boot.bin" ],
     "recovery.img": ["RECOVERY/recovery.img"],
     "fastboot.img": ["RECOVERY/fastboot.img", "RECOVERY/droidboot.img"],
+    "capsule.bin": ["FIRMWARE/capsule.bin"],
+    "ulpmc.bin": ["FIRMWARE/ulpmc.bin"],
     "ifwi.zip":     ["FIRMWARE/ifwi.zip"]
     }[prebuilt_name]
   for p in known_paths:
@@ -287,6 +289,21 @@ def TryHardToFindImage(name, unpack_dir, prebuilt_name):
       print "using prebuilt %s..." % (prebuilt_name,)
       return File.FromLocalFile(name, prebuilt_path)
   return None
+
+def GetFirmwareImage(name, prebuilt_name, unpack_dir, tree_subdir):
+  """Return a File object (with name 'name') with the desired bootable
+  image.  Look for it in 'unpack_dir'/BOOTABLE_IMAGES under the name
+  'prebuilt_name', otherwise construct it from the source files in
+  'unpack_dir'/'tree_subdir'."""
+
+  prebuilt_path = os.path.join(unpack_dir, "FIRMWARE", prebuilt_name)
+  print "looking for bootable image",prebuilt_name
+  ret = TryHardToFindImage(name, unpack_dir,prebuilt_name)
+  if ret:
+    return ret
+  elif os.path.exists(prebuilt_path):
+    print "using prebuilt %s..." % (prebuilt_name,)
+    return File.FromLocalFile(name, prebuilt_path)
 
 def GetBootableImage(name, prebuilt_name, unpack_dir, tree_subdir):
   """Return a File object (with name 'name') with the desired bootable

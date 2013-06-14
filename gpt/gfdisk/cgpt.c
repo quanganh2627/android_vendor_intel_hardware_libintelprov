@@ -79,6 +79,7 @@ static int _oem_partition_gpt_sub_command(int argc, char **argv)
         {"prioritize", cmd_prioritize},
         {"legacy", cmd_legacy},
         {"start", cmd_start_partitioning},
+        {"reload", cmd_reload},
         {"end", cmd_stop_partitioning},
     };
 
@@ -156,7 +157,7 @@ int main(int argc, char **argv)
     FILE *fp;
 
     memset(buffer, 0, sizeof(buffer));
-    int j=100;
+    int j=1;
     int ret=-1;
     while (j--) {
         if (argc == 2) {
