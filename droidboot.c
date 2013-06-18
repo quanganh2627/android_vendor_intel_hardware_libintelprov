@@ -1258,6 +1258,13 @@ static void cmd_intel_reboot_bootloader(const char *arg, void *data, unsigned sz
 	pr_error("Reboot failed");
 }
 
+static void cmd_intel_boot(const char *arg, void *data, unsigned sz)
+{
+	ui_print("boot command stubbed on this platform!\n");
+	pr_info("boot command stubbed on this platform!\n");
+	fastboot_okay("");
+}
+
 void libintel_droidboot_init(void)
 {
 	int ret = 0;
@@ -1307,6 +1314,7 @@ void libintel_droidboot_init(void)
 	fastboot_register("continue", cmd_intel_reboot);
 	fastboot_register("reboot", cmd_intel_reboot);
 	fastboot_register("reboot-bootloader", cmd_intel_reboot_bootloader);
+	fastboot_register("boot", cmd_intel_boot);
 
 #ifdef USE_GUI
 	ret |= aboot_register_ui_cmd(UI_GET_SYSTEM_INFO, get_system_info);
