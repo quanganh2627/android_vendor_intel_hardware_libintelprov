@@ -484,14 +484,14 @@ int flash_capsule(void *data, unsigned sz)
 	property_get("sys.ia32.version", iafw_stage1_version_str, "00.00");
 	property_get("sys.chaabi.version", sec_version_str, "00.00");
 
-	sscanf(iafw_stage1_version_str, "%*d.%d", &iafw_stage1_version);
-	sscanf(sec_version_str, "%*d.%d", &sec_version);
+	sscanf(iafw_stage1_version_str, "%*d.%x", &iafw_stage1_version);
+	sscanf(sec_version_str, "%*d.%x", &sec_version);
 
-	printf("current iafw version: %s (%d)\n",
+	printf("current iafw version: %s (0x%02x)\n",
 				iafw_stage1_version_str,
 				iafw_stage1_version);
 
-	printf("current sec version: %s (%d)\n",
+	printf("current sec version: %s (0x%2x)\n",
 					sec_version_str,
 					sec_version);
 

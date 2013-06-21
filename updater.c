@@ -471,7 +471,7 @@ done:
 Value *FlashCapsuleFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
     char *filename = NULL;
-    void *data;
+    void *data = NULL;
     unsigned size;
 
 
@@ -498,8 +498,10 @@ Value *FlashCapsuleFn(const char *name, State *state, int argc, Expr *argv[]) {
     /* no error */
     ret = StringValue(strdup(""));
 done:
-    free(filename);
-    free(data);
+    if (filename)
+        free(filename);
+    if (data)
+        free(data);
 
     return ret;
 }
@@ -507,7 +509,7 @@ done:
 Value *FlashUlpmcFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
     char *filename = NULL;
-    void *data;
+    void *data = NULL;
     unsigned size;
 
     if (ReadArgs(state, argv, 1, &filename) < 0) {
@@ -534,8 +536,10 @@ Value *FlashUlpmcFn(const char *name, State *state, int argc, Expr *argv[]) {
     /* no error */
     ret = StringValue(strdup(""));
 done:
-    free(filename);
-    free(data);
+    if (filename)
+        free(filename);
+    if (data)
+        free(data);
 
     return ret;
 }

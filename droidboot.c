@@ -667,7 +667,7 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 			pr_error("Failed to mount /system");
 			goto out;
 		}
-		if (!strcmp(argv[1], "apply") || !strcmp(argv[1], "applyzip")) {
+		if (!strcmp(argv[1], "apply")) {
 			pr_info("Applying nvm...");
 
 			if (argc < 3) {
@@ -1075,6 +1075,46 @@ end:
 	return retval;
 }
 
+static int oem_retrieve_partitions(int argc, char **argv)
+{
+	int ret, len;
+	char value[PROPERTY_VALUE_MAX];
+	char drive[] = STORAGE_BASE_PATH;
+	char *boot_argv[3];
+	char boot_opt[] = "-p";
+	char *reload_argv[2];
+
+	if(argc != 1) {
+		fastboot_fail("oem retrieve_partitions does not require argument");
+		return -1;
+	}
+
+	len = property_get("sys.partitioning", value, NULL);
+	if (strcmp(value, "1")) {
+		fastboot_fail("Partitioning is not started\n");
+		return -1;
+	}
+
+	boot_argv[1] = boot_opt;
+	boot_argv[2] = drive;
+	printf("boot %s %s\n", boot_argv[1], boot_argv[2]);
+	ret = cmd_bootable(3, boot_argv);
+	if (ret) {
+		fastboot_fail("gpt boot command failed\n");
+		return ret;
+	}
+
+	reload_argv[1] = drive;
+	printf("reload %s\n", reload_argv[1]);
+	ret = cmd_reload(2, reload_argv);
+	if (ret) {
+		fastboot_fail("gpt reload command failed\n");
+		return ret;
+	}
+
+	return 0;
+}
+
 #ifndef EXTERNAL
 static int oem_fru_handler(int argc, char **argv)
 {
@@ -1252,6 +1292,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("write_osip_header", oem_write_osip_header);
 	ret |= aboot_register_oem_cmd("start_partitioning", oem_partition_start_handler);
 	ret |= aboot_register_oem_cmd("partition", oem_partition_cmd_handler);
+	ret |= aboot_register_oem_cmd("retrieve_partitions", oem_retrieve_partitions);
 	ret |= aboot_register_oem_cmd("stop_partitioning", oem_partition_stop_handler);
 	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
 	ret |= aboot_register_oem_cmd("enable_flash_logs", oem_enable_radio_flash_logs);
