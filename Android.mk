@@ -1,6 +1,13 @@
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
+common_pmdb_files := \
+	pmdb-access-sep.c \
+	pmdb.c
+
+token_implementation := \
+	token.c
+
 common_libintelprov_files := \
 	update_osip.c \
 	modem_fw.c \
@@ -12,6 +19,10 @@ common_libintelprov_files := \
 common_libintelprov_includes := \
 	hardware/intel/PRIVATE/cmfwdl/lib/cmfwdl \
 	bionic/libc/private
+
+chaabi_dir := $(TOP)/hardware/intel/PRIVATE/chaabi
+sep_lib_includes := $(chaabi_dir)/SepMW/VOS6/External/Linux/inc/
+
 
 # Plug-in library for AOSP updater
 include $(CLEAR_VARS)
@@ -83,11 +94,12 @@ LIBCGPT_FILES := \
 	gpt/lib/cmd_reload.c \
 	gpt/lib/cmd_show.c
 
-LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES)
+LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES) $(common_pmdb_files) $(token_implementation)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
+LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include $(sep_lib_includes)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter -Wno-unused-but-set-variable
+LOCAL_WHOLE_STATIC_LIBRARIES := libsecurity_sectoken libcrypto_static CC6_UMIP_ACCESS CC6_ALL_BASIC_LIB
 ifneq ($(DROIDBOOT_NO_GUI),true)
 LOCAL_CFLAGS += -DUSE_GUI
 endif
