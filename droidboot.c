@@ -64,7 +64,7 @@ static void miu_progress_cb(int progress, int total)
 
 	snprintf(buff, INFO_MSG_LEN, "Progress: %d / %d\n", progress, total);
 
-	pr_info(buff);
+	pr_info("%s\n", buff);
 
 	if (radio_flash_logs) {
 		fastboot_info(buff);
@@ -81,7 +81,7 @@ static void miu_log_cb(const char *msg, ...)
 
 		vsnprintf(buff, sizeof(buff), msg, ap);
 
-		pr_info(buff);
+		pr_info("%s\n", buff);
 		if (radio_flash_logs) {
 			fastboot_info(buff);
 		}
