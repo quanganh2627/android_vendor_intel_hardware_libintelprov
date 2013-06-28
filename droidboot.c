@@ -29,8 +29,7 @@
 #include <charger/charger.h>
 #include <linux/ioctl.h>
 #include <linux/mdm_ctrl.h>
-
-#include "volumeutils/ufdisk.h"
+#include <ufdisk.h>
 #include "update_osip.h"
 #include "util.h"
 #include "modem_fw.h"
@@ -1097,7 +1096,7 @@ static int oem_erase_partition(int argc, char **argv)
 	}
 
 	ui_print("ERASE step 2/2...\n");
-	retval = format_volume(mnt_point);
+	retval = format_volume(mnt_point, NULL);
 	if (retval != 0) {
 		pr_error("format_volume failed: %s\n", mnt_point);
 	} else {
