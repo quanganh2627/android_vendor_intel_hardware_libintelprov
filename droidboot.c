@@ -64,7 +64,7 @@ static void miu_progress_cb(int progress, int total)
 
 	snprintf(buff, INFO_MSG_LEN, "Progress: %d / %d\n", progress, total);
 
-	pr_info(buff);
+	pr_info("%s\n", buff);
 
 	if (radio_flash_logs) {
 		fastboot_info(buff);
@@ -81,7 +81,7 @@ static void miu_log_cb(const char *msg, ...)
 
 		vsnprintf(buff, sizeof(buff), msg, ap);
 
-		pr_info(buff);
+		pr_info("%s\n", buff);
 		if (radio_flash_logs) {
 			fastboot_info(buff);
 		}
@@ -1156,6 +1156,12 @@ out:
 }
 #endif
 
+static int oem_fastboot2adb(int argc, char **argv)
+{
+	fastboot_okay("");
+	return property_set("sys.adb.config", "adb");
+}
+
 #ifdef USE_GUI
 #define PROP_FILE					"/default.prop"
 #define SERIAL_NUM_FILE			"/sys/class/android_usb/android0/iSerial"
@@ -1306,6 +1312,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("disable_flash_logs", oem_disable_radio_flash_logs);
 	ret |= aboot_register_oem_cmd("backup_factory", oem_backup_factory);
 	ret |= aboot_register_oem_cmd("restore_factory", oem_restore_factory);
+	ret |= aboot_register_oem_cmd("fastboot2adb", oem_fastboot2adb);
 #ifndef EXTERNAL
 	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
 	ret |= libintel_droidboot_token_init();
