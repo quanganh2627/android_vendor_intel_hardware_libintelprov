@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Intel Corporation
+ * Copyright 2011-2013 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,11 @@
 #include <unistd.h>
 #include "util.h"
 #include "fastboot.h"
+#ifdef MRFLD
+#include "tee_connector.h"
+#endif	/* MRFLD */
 
+#ifndef MRFLD
 static int oem_uniqueid_handler(int argc, char **argv)
 {
 	int retval = -1;
@@ -80,11 +84,29 @@ static int flash_token(void *data, unsigned sz)
 	DX_CC_HostFinish();
 	return retval;
 }
+#endif	/* MRFLD */
 
 int libintel_droidboot_token_init(void)
 {
 	int ret = 0;
+
+#ifndef MRFLD
 	ret |= aboot_register_flash_cmd("token", flash_token);
 	ret |= aboot_register_oem_cmd("uniqueid", oem_uniqueid_handler);
+#else
+	print_fun = fastboot_info;
+	error_fun = fastboot_fail;
+
+	ret |= aboot_register_oem_cmd("get-spid", get_spid);
+	ret |= aboot_register_oem_cmd("get-fru", get_fru);
+	ret |= aboot_register_oem_cmd("get-part-id", get_part_id);
+	ret |= aboot_register_oem_cmd("get-lifetime", get_lifetime);
+	ret |= aboot_register_oem_cmd("start-update", start_update);
+	ret |= aboot_register_oem_cmd("cancel-update", cancel_update);
+	ret |= aboot_register_oem_cmd("finalize-update", finalize_update);
+	ret |= aboot_register_oem_cmd("remove-token", remove_token);
+	ret |= aboot_register_flash_cmd("token", write_token);
+#endif	/* MRFLD */
+
 	return ret;
 }

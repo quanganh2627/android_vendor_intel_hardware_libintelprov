@@ -148,11 +148,6 @@ static int flash_modem(void *data, unsigned sz)
 		pr_error("%s failed at %s\n", __func__,
 			 "miu_initialize failed");
 	} else {
-		/* modem flashing needs write access to /system partition */
-		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
-		    pr_error("Failed to mount /system");
-		    goto out;
-		}
 		/* Update modem SW. */
 		if (miu_flash_modem_fw(IMG_RADIO,
 				       flash_options) == E_MIU_ERR_SUCCESS) {
@@ -163,12 +158,7 @@ static int flash_modem(void *data, unsigned sz)
 				 "miu_flash_modem_fw");
 			ret = -1;
 		}
-		if (umount("/system") < 0) {
-		    pr_error("Failed to umount /system");
-			goto out;
-		}
 	}
-out:
 	miu_dispose();
 	unlink(IMG_RADIO);
 	return ret;
@@ -192,11 +182,6 @@ static int flash_modem_get_fuse(void *data, unsigned sz)
 		pr_error("%s failed at %s\n", __func__,
 			 "miu_initialize failed");
 	} else {
-		/* modem flashing needs write access to /system partition */
-		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
-			pr_error("Failed to mount /system");
-			goto out;
-		}
 		/* Update modem SW. */
 		if (miu_flash_modem_fw(IMG_RADIO,
 				       flash_options) == E_MIU_ERR_SUCCESS) {
@@ -207,12 +192,7 @@ static int flash_modem_get_fuse(void *data, unsigned sz)
 				 "miu_flash_modem_fw");
 			ret = -1;
 		}
-		if (umount("/system") < 0) {
-			pr_error("Failed to umount /system");
-			goto out;
-		}
 	}
-out:
 	miu_dispose();
 	unlink(IMG_RADIO);
 	return ret;
@@ -254,11 +234,6 @@ static int flash_modem_erase_all(void *data, unsigned sz)
 		pr_error("%s failed at %s\n", __func__,
 			 "miu_initialize failed");
 	} else {
-		/* modem flashing needs write access to /system partition */
-		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
-			pr_error("Failed to mount /system");
-			goto out;
-		}
 		/* Update modem SW. */
 		if (miu_flash_modem_fw(IMG_RADIO,
 				       flash_options) == E_MIU_ERR_SUCCESS) {
@@ -269,12 +244,7 @@ static int flash_modem_erase_all(void *data, unsigned sz)
 				 "miu_flash_modem_fw");
 			ret = -1;
 		}
-		if (umount("/system") < 0) {
-			pr_error("Failed to umount /system");
-			goto out;
-		}
 	}
-out:
 	miu_dispose();
 	unlink(IMG_RADIO);
 	return ret;
@@ -299,11 +269,6 @@ static int flash_modem_read_rnd(void *data, unsigned sz)
 		pr_error("%s failed at %s\n", __func__,
 			 "miu_initialize failed");
 	} else {
-		/* modem rnd read needs read access to /system partition */
-		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
-			pr_error("Failed to mount /system");
-			goto out;
-		}
 		/* Get RND Cert (print out in stdout) */
 		if (miu_read_modem_rnd_cert(IMG_RADIO) == E_MIU_ERR_SUCCESS) {
 			ret = 0;
@@ -312,12 +277,7 @@ static int flash_modem_read_rnd(void *data, unsigned sz)
 			pr_error("%s failed at %s\n", __func__,
 				 "miu_read_modem_rnd_cert");
 		}
-		if (umount("/system") < 0) {
-			pr_error("Failed to umount /system");
-			goto out;
-		}
 	}
-out:
 	miu_dispose();
 	unlink(IMG_RADIO);
 	return ret;
@@ -335,11 +295,6 @@ static int flash_modem_write_rnd(void *data, unsigned sz)
 		pr_error("%s failed at %s\n", __func__,
 			 "miu_initialize failed");
 	} else {
-		/* modem rnd write needs write access to /system partition */
-		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
-			pr_error("Failed to mount /system");
-			goto out;
-		}
 		/* Flash RND Cert */
 		if (miu_write_modem_rnd_cert(IMG_RADIO, IMG_RADIO_RND) ==
 		    E_MIU_ERR_SUCCESS) {
@@ -349,12 +304,7 @@ static int flash_modem_write_rnd(void *data, unsigned sz)
 			pr_error("%s failed at %s\n", __func__,
 				 "miu_read_modem_rnd_cert");
 		}
-		if (umount("/system") < 0) {
-			pr_error("Failed to umount /system");
-			goto out;
-		}
 	}
-out:
 	miu_dispose();
 	unlink(IMG_RADIO);
 	unlink(IMG_RADIO_RND);
@@ -369,11 +319,6 @@ static int flash_modem_erase_rnd(void *data, unsigned sz)
 		pr_error("%s failed at %s\n", __func__,
 			 "miu_initialize failed");
 	} else {
-		/* modem rnd erase needs write access to /system partition */
-		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
-			pr_error("Failed to mount /system");
-			goto out;
-		}
 		/* Erase RND Cert */
 		if (miu_erase_modem_rnd_cert(IMG_RADIO) == E_MIU_ERR_SUCCESS) {
 			ret = 0;
@@ -382,12 +327,7 @@ static int flash_modem_erase_rnd(void *data, unsigned sz)
 			pr_error("%s failed at %s\n", __func__,
 				 "miu_read_modem_rnd_cert");
 		}
-		if (umount("/system") < 0) {
-			pr_error("Failed to umount /system");
-			goto out;
-		}
 	}
-out:
 	miu_dispose();
 	unlink(IMG_RADIO);
 	return ret;
@@ -662,11 +602,6 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 		pr_error("%s failed at %s\n", __func__,
 				 "miu_initialize failed");
 	} else {
-		/* modem rnd write needs write access to /system partition */
-		if (mount("/dev/block/platform/intel/by-label/system", "/system", "ext4", 0, NULL) < 0) {
-			pr_error("Failed to mount /system");
-			goto out;
-		}
 		if (!strcmp(argv[1], "apply")) {
 			pr_info("Applying nvm...");
 
@@ -701,7 +636,6 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 			retval = -1;
 		}
 	}
-out:
 	miu_dispose();
 	return retval;
 }
