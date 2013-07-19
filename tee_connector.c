@@ -260,6 +260,7 @@ int read_token(int argc, char **argv)
 	if (datagroup_id == -1)
 		return EXIT_FAILURE;
 
+	bzero(&info, sizeof(info));
 	ret = tee_token_info_get(datagroup_id, &info, 0);
 	if (ret != 0)
 	{

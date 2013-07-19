@@ -29,7 +29,7 @@ common_libintelprov_files := \
 	flash_ifwi.c
 
 common_libintelprov_includes := \
-	bionic/libc/private \
+	$(call include-path-for, libc-private) \
 	$(TARGET_OUT_HEADERS)/IFX-modem
 
 chaabi_dir := $(TOP)/vendor/intel/hardware/PRIVATE/chaabi
@@ -56,7 +56,7 @@ LOCAL_MODULE := libintel_updater
 LOCAL_SRC_FILES := updater.c $(common_libintelprov_files)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-LOCAL_C_INCLUDES := bootable/recovery $(common_libintelprov_includes)
+LOCAL_C_INCLUDES := $(call include-path-for, recovery) $(common_libintelprov_includes)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
@@ -71,7 +71,7 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES := recovery_ui.cpp
 LOCAL_MODULE_TAGS := optional
-LOCAL_C_INCLUDES := bootable/recovery bionic/libc/private
+LOCAL_C_INCLUDES := $(call include-path-for, recovery) $(call include-path-for, libc-private)
 LOCAL_MODULE := libintel_recovery_ui
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifeq ($(REF_DEVICE_NAME), mfld_pr2)
@@ -128,7 +128,7 @@ LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter -Wno-unused-but-set-variable
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
-LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
+LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils $(call include-path-for, recovery) $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
 
 LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES)
 
@@ -165,7 +165,7 @@ LOCAL_MODULE := flashtool
 LOCAL_SHARED_LIBRARIES := liblog libcutils
 LOCAL_STATIC_LIBRARIES := libmiu
 
-LOCAL_C_INCLUDES := $(common_libintelprov_includes) bootable/recovery
+LOCAL_C_INCLUDES := $(common_libintelprov_includes) $(call include-path-for, recovery)
 LOCAL_SRC_FILES := flashtool.c $(common_libintelprov_files)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
@@ -183,7 +183,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := update_recovery
 LOCAL_SRC_FILES:= update_recovery.c util.c update_osip.c
-LOCAL_C_INCLUDES := $(common_libintelprov_includes) bootable/recovery/applypatch bootable/recovery
+LOCAL_C_INCLUDES := $(common_libintelprov_includes) $(call include-path-for, recovery)/applypatch $(call include-path-for, recovery)
 LOCAL_CFLAGS := -Wall -Wno-unused-parameter
 LOCAL_SHARED_LIBRARIES := liblog libcutils libz
 LOCAL_STATIC_LIBRARIES := libmincrypt libapplypatch libbz
