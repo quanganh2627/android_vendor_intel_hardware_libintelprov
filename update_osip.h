@@ -98,7 +98,7 @@ int verify_osip_sizes(struct OSIP_header *osip);
 #define ATTR_SIGNED_SPLASHSCREEN  0x04
 
 #define LBA_SIZE	512
-#define OS_MAX_LBA	22000
+#define OS_MAX_LBA	32000
 #define MMC_DEV_POS STORAGE_BASE_PATH
 
 #endif
