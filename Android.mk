@@ -104,7 +104,7 @@ LIBCGPT_FILES := \
 LOCAL_CFLAG := -Wall -nerror -Wno-unused-parameter -Wno-unused-but-set-variable
 
 LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES)
-LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
+LOCAL_C_INCLUDES := bootable/droidboot system/core/libvolumeutils bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
 
 ifeq ($(external_release),no)
 LOCAL_SRC_FILES += $(common_pmdb_files) $(token_implementation)
@@ -125,6 +125,7 @@ endif
 ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
   LOCAL_CFLAGS += -DMRFLD
 endif
+LOCAL_SHARED_LIBRARIES := libvolumeutils
 
 include $(BUILD_STATIC_LIBRARY)
 
