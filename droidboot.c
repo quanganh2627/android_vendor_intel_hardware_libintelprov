@@ -1092,8 +1092,43 @@ out:
 
 static int oem_fastboot2adb(int argc, char **argv)
 {
+	char value[PROPERTY_VALUE_MAX];
+	int len = 0;
+	int ret = -1;
+
+	len = property_get("ro.debuggable", value, NULL);
+	if ((len != 0) && (strcmp(value, "1") == 0)) {
+		fastboot_okay("");
+		ret = property_set("sys.adb.config", "adb");
+	} else {
+		fastboot_fail("property ro.debuggable must be set to activate adb.");
+	}
+	return ret;
+}
+
+static int oem_reboot(int argc, char **argv)
+{
+	char *target_os;
+
+	switch (argc) {
+	case 1:
+		target_os = "android";
+		break;
+	case 2:
+		target_os = argv[1];
+		break;
+	default:
+		LOGE("reboot command take zero on one argument only\n");
+		fastboot_fail("Usage: reboot [target_os]");
+		return -EINVAL;
+	}
+
 	fastboot_okay("");
-	return property_set("sys.adb.config", "adb");
+	sync();
+
+	ui_print("REBOOT in %s...\n", target_os);
+	pr_info("Rebooting in %s !\n", target_os);
+	return android_reboot(ANDROID_RB_RESTART2, 0, target_os);
 }
 
 #ifdef USE_GUI
@@ -1247,6 +1282,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("backup_factory", oem_backup_factory);
 	ret |= aboot_register_oem_cmd("restore_factory", oem_restore_factory);
 	ret |= aboot_register_oem_cmd("fastboot2adb", oem_fastboot2adb);
+	ret |= aboot_register_oem_cmd("reboot", oem_reboot);
 #ifndef EXTERNAL
 	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
 	ret |= libintel_droidboot_token_init();

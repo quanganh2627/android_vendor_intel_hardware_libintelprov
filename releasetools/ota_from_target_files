@@ -906,6 +906,8 @@ def main(argv):
       OPTIONS.worker_threads = int(a)
     elif o in ("--intel_ota"):
       OPTIONS.intel_ota = True
+    elif o in ("--no_modem"):
+      OPTIONS.no_modem = True
     elif o in ("--intel_capsule"):
       OPTIONS.intel_capsule = True
     elif o in ("--intel_ulpmc"):
@@ -925,6 +927,7 @@ def main(argv):
                                               "worker_threads=",
                                               "aslr_mode=",
                                               "intel_ota",
+                                              "no_modem",
                                               "intel_capsule",
                                               "intel_ulpmc",
                                               ],

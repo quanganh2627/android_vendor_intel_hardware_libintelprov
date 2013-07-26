@@ -315,7 +315,7 @@ def TryHardToFindImage(name, unpack_dir, prebuilt_name):
   """ in order to support backward compatibility with old targetfiles
   we try to search several path for each image we want to get from target files"""
   known_paths = {
-    "boot.img": [ "BOOT/boot.bin" ],
+    "boot.img": ["BOOT/boot.bin", "BOOT/boot.img"],
     "recovery.img": ["RECOVERY/recovery.img"],
     "fastboot.img": ["RECOVERY/fastboot.img", "RECOVERY/droidboot.img"],
     "capsule.bin": ["FIRMWARE/capsule.bin"],
