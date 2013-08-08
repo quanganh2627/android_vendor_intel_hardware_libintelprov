@@ -160,7 +160,7 @@ include $(BUILD_STATIC_LIBRARY)
 
 # a test flashtool for testing the intelprov library
 include $(CLEAR_VARS)
-LOCAL_MODULE_TAGS := eng
+LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := flashtool
 LOCAL_SHARED_LIBRARIES := liblog libcutils
 LOCAL_STATIC_LIBRARIES := libmiu
