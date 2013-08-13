@@ -134,7 +134,7 @@ LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $
 
 LOCAL_WHOLE_STATIC_LIBRARIES := libmiu
 
-ifeq ($(external_release),no)
+ifneq ($(external_release),no)
 LOCAL_SRC_FILES += $(common_pmdb_files) $(token_implementation)
 LOCAL_C_INCLUDES += $(sep_lib_includes)
 LOCAL_WHOLE_STATIC_LIBRARIES += libsecurity_sectoken libcrypto_static CC6_UMIP_ACCESS CC6_ALL_BASIC_LIB
