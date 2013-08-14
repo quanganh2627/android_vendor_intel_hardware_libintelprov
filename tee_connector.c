@@ -274,7 +274,7 @@ int read_token(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	buf = (uint8_t *)malloc(info.lifetime.token_size * sizeof(uint8_t));
+	buf = (uint8_t *)malloc(info.lifetime.token_size * sizeof(uint32_t));
 	if (buf == NULL)
 	{
 		raise_error("Failed to alloc the buffer to retrieve the token data, error=%s", strerror(ENOMEM));
