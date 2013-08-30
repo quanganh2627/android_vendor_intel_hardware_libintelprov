@@ -143,7 +143,7 @@ int main(int argc, char **argv)
 	error_fun = teeprov_error;
 	atexit(close_output_file_when_open);
 
-	while ((c = getopt_long (argc, argv, "sfpluczw:ro:hm:", long_options, NULL)) != -1)
+	while ((c = getopt_long (argc, argv, "sfpluczw:r:o:hm:", long_options, NULL)) != -1)
 	{
 		switch (c)
 		{
