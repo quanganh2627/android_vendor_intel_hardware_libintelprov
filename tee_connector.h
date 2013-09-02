@@ -32,15 +32,16 @@ extern int get_spid(int argc, char **argv);
 extern int get_fru(int argc, char **argv);
 extern int get_part_id(int argc, char **argv);
 extern int get_lifetime(int argc, char **argv);
+extern int get_ssn(int argc, char **argv);
 extern int start_update(int argc, char **argv);
 extern int cancel_update(int argc, char **argv);
 extern int finalize_update(int argc, char **argv);
 extern int write_token(void *data, size_t size);
 extern int remove_token(int argc, char **argv);
 extern int read_token(int argc, char **argv);
+extern int read_token_payload(int argc, char **argv);
 
 extern int set_output_file(const char *path);
 extern void close_output_file_when_open();
-extern int parse_datagroup_id();
 
 #endif	/* TEE_CONNECTOR_H */
