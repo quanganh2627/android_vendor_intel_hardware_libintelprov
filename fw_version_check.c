@@ -32,6 +32,7 @@
 #define FIP_PATTERN	0x50494624
 #define SCU_IPC_VERSION_LEN 16
 #define SCU_IPC_VERSION_LEN_LONG 32
+#define READ_SZ 256
 
 #define SMIP_PATTERN	    0x50494D53
 #define PTI_FIELD_OFFSET    0x030C
@@ -120,6 +121,45 @@ struct FIP_header_long {
 	struct fip_version_block_long ifwi_rev;
 };
 
+static int read_fw_revision(unsigned int *fw_revision, int len)
+{
+	int i, fw_info, ret;
+	const char *sep = " ";
+	char *p, *save;
+	char buf[READ_SZ];
+
+	fw_info = open(DEVICE_NAME, O_RDONLY);
+	if (fw_info < 0) {
+		fw_info = open(DEVICE_NAME_ALT, O_RDONLY);
+		if (fw_info < 0) {
+			fprintf(stderr, "failed to open %s or %s", DEVICE_NAME, DEVICE_NAME_ALT);
+			return fw_info;
+		}
+	}
+
+	ret = read(fw_info, buf, READ_SZ - 1);
+	if (ret < 0) {
+		fprintf(stderr, "failed to read fw_revision, ret = %d\n", ret);
+		goto err;
+	}
+
+	buf[ret] = 0;
+	p = strtok_r(buf, sep, &save);
+	for(i = 0; p && i < len; i++) {
+		ret = sscanf(p, "%x", &fw_revision[i]);
+		if (ret != 1) {
+			fprintf(stderr, "failed to parse fw_revision, ret = %d\n", ret);
+			goto err;
+		}
+		p = strtok_r(NULL, sep, &save);
+	}
+	ret = 0;
+
+err:
+	close(fw_info);
+	return ret;
+}
+
 /* Bytes in scu_ipc_version after the ioctl():
  * 00 SCU RT Firmware Minor Revision
  * 01 SCU RT Firmware Major Revision
@@ -140,23 +180,12 @@ struct FIP_header_long {
  */
 int get_current_fw_rev(struct firmware_versions *v)
 {
-	int i;
-	FILE *fw_info;
-	unsigned int fw_revision[SCU_IPC_VERSION_LEN];
+	int ret;
+	unsigned int fw_revision[SCU_IPC_VERSION_LEN] = { 0 };
 
-	fw_info = fopen(DEVICE_NAME, "r");
-	if (fw_info == NULL) {
-		fw_info = fopen(DEVICE_NAME_ALT, "r");
-		if (fw_info == NULL) {
-			fprintf(stderr, "fopen: failed to open %s or %s", DEVICE_NAME, DEVICE_NAME_ALT);
-			return -1;
-		}
-	}
-
-	memset(fw_revision, 0, SCU_IPC_VERSION_LEN);
-	for (i = 0; i < SCU_IPC_VERSION_LEN; i++)
-		fscanf(fw_info, "%x", &fw_revision[i]);
-	fclose(fw_info);
+	ret = read_fw_revision(fw_revision, SCU_IPC_VERSION_LEN);
+	if (ret)
+		return ret;
 
 	v->ifwi.major = fw_revision[15];
 	v->ifwi.minor = fw_revision[14];
@@ -177,7 +206,8 @@ int get_current_fw_rev(struct firmware_versions *v)
 	v->chaabi_res.minor = 0;
 	v->chaabi_ext.major = 0;
 	v->chaabi_ext.minor = 0;
-	return 0;
+
+	return ret;
 }
 
 /* Bytes in scu_ipc_version after the ioctl():
@@ -220,23 +250,12 @@ int get_current_fw_rev(struct firmware_versions *v)
  */
 int get_current_fw_rev_long(struct firmware_versions_long *v)
 {
-	int i;
-	FILE *fw_info;
-	unsigned int fw_revision[SCU_IPC_VERSION_LEN_LONG];
+	int ret;
+	unsigned int fw_revision[SCU_IPC_VERSION_LEN_LONG] = { 0 };
 
-	fw_info = fopen(DEVICE_NAME, "r");
-	if (fw_info == NULL) {
-		fw_info = fopen(DEVICE_NAME_ALT, "r");
-		if (fw_info == NULL) {
-			fprintf(stderr, "fopen: failed to open %s or %s", DEVICE_NAME, DEVICE_NAME_ALT);
-			return -1;
-		}
-	}
-
-	memset(fw_revision, 0, SCU_IPC_VERSION_LEN_LONG);
-	for (i = 0; i < SCU_IPC_VERSION_LEN_LONG; i++)
-		fscanf(fw_info, "%x", &fw_revision[i]);
-	fclose(fw_info);
+	ret = read_fw_revision(fw_revision, SCU_IPC_VERSION_LEN_LONG);
+	if (ret)
+		return ret;
 
 	v->scubootstrap.minor = fw_revision[1] << 8 | fw_revision[0];
 	v->scubootstrap.major = fw_revision[3] << 8 | fw_revision[2];
@@ -253,7 +272,7 @@ int get_current_fw_rev_long(struct firmware_versions_long *v)
 	v->mia.minor = fw_revision[25] << 8 | fw_revision[24];
 	v->mia.major = fw_revision[27] << 8 | fw_revision[26];
 
-	return 0;
+	return ret;
 }
 
 int fw_vercmp(struct firmware_versions *v1, struct firmware_versions *v2)
