@@ -80,7 +80,6 @@ endif
 include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := releasetools
 LOCAL_MODULE_TAGS := optional
 LOCAL_PREBUILT_EXECUTABLES := \
     releasetools.py \
