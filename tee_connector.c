@@ -32,8 +32,13 @@ struct data_items {
 	const size_t size;
 };
 
-/* SPID datagroup and item IDs.  */
+static const uint32_t PAYLOAD_MAX_SIZE = 32;
+static const uint32_t PRINT_BUFFER_SIZE = 1024;
+
+/* Datagroups and item IDs.  */
 static const uint32_t SPID_DATAGROUP = 1;
+static const uint32_t SERIAL_NUMBER_DATAGROUP = 5;
+static const uint32_t FRU_DATAGROUP = 6;
 
 static const struct data_items SPID_ITEMS[] = { { "Customer ID",            11, 1, 2 },
 						{ "Vendor ID",              12, 1, 2 },
@@ -42,9 +47,7 @@ static const struct data_items SPID_ITEMS[] = { { "Customer ID",            11, 
 						{ "Product Line ID",        10, 2, 2 },
 						{ "Hardware Model ID",      10, 3, 2 } };
 
-/* FRU datagroup and item IDs.  */
-static const uint32_t FRU_DATAGROUP = 6;
-const struct data_items FRU_ITEM = { "FRU Value", 10, 1, 12 };
+static const struct data_items ssn_item = { "System Serial Number", 11, 1, 32 };
 
 /* Dummy print function. Should not be used.  */
 static void default_print(const char *msg)
@@ -115,7 +118,7 @@ void close_output_file_when_open()
 	output_fd = -1;
 }
 
-int parse_datagroup_id(char *arg)
+static int parse_datagroup_id(char *arg)
 {
 	int ret;
 	char *end;
@@ -127,6 +130,86 @@ int parse_datagroup_id(char *arg)
 		raise_error("Invalid datagroup ID, error: %s", strerror(EINVAL));
 		return -1;
 	}
+	return ret;
+}
+
+static int parse_token(int dg, int flags)
+{
+	uint32_t print_pos = 0;
+	uint32_t *sg_list = NULL;
+	uint32_t *item_list = NULL;
+	size_t sg_count = 0;
+	uint8_t print_data[PRINT_BUFFER_SIZE];
+
+	int ret = tee_token_sgids_get(dg, &sg_list, &sg_count, flags);
+	if (ret != 0)
+		goto end;
+
+	size_t s;
+	for (s = 0; s < sg_count; s++)
+	{
+		size_t it;
+		size_t item_count = 0;
+
+		ret = tee_token_itemids_get(dg, sg_list[s], &item_list, &item_count, flags);
+		if (ret != 0)
+		{
+			raise_error("tee_token_itemids_get call failed, return 0x%x\n", ret);
+			goto error;
+		}
+
+		for (it = 0; it < item_count; it++)
+		{
+			size_t payload_size = 0;
+			uint8_t payload[PAYLOAD_MAX_SIZE];
+
+			ret = tee_token_item_size_get(dg, sg_list[s], item_list[it], &payload_size, flags);
+			if (ret != 0)
+			{
+				raise_error("tee_token_item_size_get call failed, return 0x%x\n", ret);
+				free(item_list);
+				goto error;
+			}
+
+			if (payload_size > PAYLOAD_MAX_SIZE)
+			{
+				raise_error("Returned payload size ( %u ) is more than max size ( %u )\n",
+					payload_size, PAYLOAD_MAX_SIZE);
+				free(item_list);
+				ret = 1;
+				goto error;
+			}
+
+			ret = tee_token_item_read(dg, sg_list[s], item_list[it], 0, payload, payload_size, flags);
+			if (ret != 0)
+			{
+				raise_error("tee_token_item_read call failed, return 0x%x\n", ret);
+				free(item_list);
+				goto error;
+			}
+
+			if (print_pos + payload_size >= PRINT_BUFFER_SIZE)
+			{
+				raise_error("Print buffer full\n");
+				free(item_list);
+				ret = 1;
+				goto error;
+			}
+
+			memcpy(print_data + print_pos, payload, payload_size);
+			print_pos += payload_size;
+		}
+
+		free(item_list);
+	}
+
+error:
+	free(sg_list);
+
+end:
+	if (print_pos > 0)
+		output_data(print_data, print_pos);
+
 	return ret;
 }
 
@@ -151,6 +234,21 @@ int get_lifetime(int argc, char **argv)
 	return ret;
 }
 
+int get_ssn(int argc, char **argv)
+{
+	int ret;
+	uint8_t data[ssn_item.size];
+
+	ret = tee_token_item_read(SERIAL_NUMBER_DATAGROUP, ssn_item.subgroup_id,
+				ssn_item.item_id, 0, data, ssn_item.size, 0);
+	if (ret != 0)
+		raise_error("tee_token_item_read() call failed, return=0x%x", ret);
+	else
+		output_data(data, ssn_item.size);
+
+	return ret;
+}
+
 int start_update(int argc, char **argv)
 {
 	return tee_token_update_start(0);
@@ -170,7 +268,6 @@ int get_spid(int argc, char **argv)
 {
 	int ret;
 	size_t i, payload_size = 0;
-
 
 	for (i = 0 ; i < sizeof(SPID_ITEMS) / sizeof(struct data_items) ; i++)
 		payload_size += SPID_ITEMS[i].size;
@@ -206,17 +303,7 @@ exit:
 
 int get_fru(int argc, char **argv)
 {
-	int ret;
-	uint8_t payload[FRU_ITEM.size];
-
-	ret = tee_token_item_read(FRU_DATAGROUP, FRU_ITEM.subgroup_id,
-				  FRU_ITEM.item_id, 0, payload, FRU_ITEM.size, 0);
-	if (ret != 0)
-		raise_error("tee_token_item_read() call failed, return=0x%x", ret);
-	else
-		output_data(payload, FRU_ITEM.size);
-
-	return ret;
+	return parse_token(FRU_DATAGROUP, 0);
 }
 
 int get_part_id (int argc, char **argv)
@@ -281,15 +368,32 @@ int read_token(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	ret = tee_token_read(datagroup_id, buf, info.lifetime.token_size, 0);
+	ret = tee_token_read(datagroup_id, buf, info.lifetime.token_size * sizeof(uint32_t), 0);
 	if (ret != 0)
 		raise_error("tee_token_read() call failed, return=0x%x", ret);
 	else
-		output_data(buf, info.lifetime.token_size);
+		output_data(buf, info.lifetime.token_size * sizeof(uint32_t));
 
 	free(buf);
 
 	return EXIT_SUCCESS;
+}
+
+int read_token_payload(int argc, char **argv)
+{
+	int datagroup_id;
+
+	if (argc != 2)
+	{
+		raise_error("datagroup_id argument is missing");
+		return EXIT_FAILURE;
+	}
+
+	datagroup_id = parse_datagroup_id(argv[1]);
+	if (datagroup_id == -1)
+		return EXIT_FAILURE;
+
+	return parse_token(datagroup_id, 0);
 }
 
 int remove_token(int argc, char **argv)
