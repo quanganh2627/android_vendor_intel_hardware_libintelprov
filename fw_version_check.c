@@ -115,9 +115,14 @@ struct FIP_header_long {
 	struct fip_version_block_chxx_long ch08_rev;
 	struct fip_version_block_chxx_long ch09_rev;
 	struct fip_version_block_chxx_long ch10_rev;
-	struct fip_version_block_long dfrm_rev;
-	struct fip_version_block_long osrm_rev;
-	struct fip_version_block_long dxxm_rev;
+	struct fip_version_block_chxx_long ch11_rev;
+	struct fip_version_block_chxx_long ch12_rev;
+	struct fip_version_block_chxx_long ch13_rev;
+	struct fip_version_block_chxx_long ch14_rev;
+	struct fip_version_block_chxx_long ch15_rev;
+	struct fip_version_block_long dnx_rev;
+	struct fip_version_block_long reserved0_rev;
+	struct fip_version_block_long reserved1_rev;
 	struct fip_version_block_long ifwi_rev;
 };
 
