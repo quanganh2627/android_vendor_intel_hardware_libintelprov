@@ -75,7 +75,7 @@ static int check_recovery_header(const char *tgt_sha1, int *needs_patching)
 		return -1;
 	}
 	close(fd);
-	SHA(buf, SIG_SIZE, src_digest);
+	SHA_hash(buf, SIG_SIZE, src_digest);
 
 	*needs_patching = memcmp(src_digest, tgt_digest, SHA_DIGEST_SIZE);
 	return 0;
@@ -97,7 +97,7 @@ static int check_recovery_image(const char *tgt_sha1, int *needs_patching)
 		LOGE("failed to read recovery image");
 		return -1;
 	}
-	SHA(data, sz, tgt_digest);
+	SHA_hash(data, sz, tgt_digest);
 
 	*needs_patching = memcmp(tgt_digest, expected_tgt_digest,
 			SHA_DIGEST_SIZE);
@@ -161,7 +161,7 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 		LOGE("Failed to read OSIP entry");
 		return -1;
 	}
-	SHA(src_data, src_size, src_digest);
+	SHA_hash(src_data, src_size, src_digest);
 	if (memcmp(src_digest, expected_src_digest, SHA_DIGEST_SIZE)) {
 		LOGE("boot image digests don't match!");
 		goto out;
@@ -190,7 +190,7 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 		LOGE("Patching process failed");
 		goto out;
 	}
-	SHA(msi.buffer, msi.size, tgt_digest);
+	SHA_hash(msi.buffer, msi.size, tgt_digest);
 	if (memcmp(tgt_digest, expected_tgt_digest, SHA_DIGEST_SIZE)) {
 		LOGE("output recovery image digest mismatch");
 		goto out;
