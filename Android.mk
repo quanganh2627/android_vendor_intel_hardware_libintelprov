@@ -13,7 +13,7 @@ common_pmdb_files := \
 	pmdb-access-sep.c \
 	pmdb.c
 
-ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
+ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
 token_implementation := \
 	tee_connector.c \
 	token.c
@@ -37,12 +37,11 @@ sep_lib_includes := $(chaabi_dir)/SepMW/VOS6/External/Linux/inc/
 cc54_lib_includes := $(TOP)/vendor/intel/hardware/cc54/libcc54/include/export/
 
 # Provisionning CC54 tool
-ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
+ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
 include $(CLEAR_VARS)
 LOCAL_MODULE := teeprov
-LOCAL_SRC_FILES := teeprov.c tee_connector.c $(common_libintelprov_files)
+LOCAL_SRC_FILES := teeprov.c tee_connector.c util.c
 LOCAL_MODULE_TAGS := optional
-LOCAL_CFLAGS += -DMRFLD
 LOCAL_C_INCLUDES := $(common_libintelprov_includes) bootable/recovery
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 LOCAL_STATIC_LIBRARIES := libdx_cc7_static
@@ -138,7 +137,8 @@ ifeq ($(external_release),no)
 LOCAL_SRC_FILES += $(common_pmdb_files) $(token_implementation)
 LOCAL_C_INCLUDES += $(sep_lib_includes)
 LOCAL_WHOLE_STATIC_LIBRARIES += libsecurity_sectoken libcrypto_static CC6_UMIP_ACCESS CC6_ALL_BASIC_LIB
-ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
+ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
+LOCAL_CFLAGS += -DTEE_FRAMEWORK
 LOCAL_C_INCLUDES += $(cc54_lib_includes)
 LOCAL_WHOLE_STATIC_LIBRARIES += libdx_cc7_static
 endif
