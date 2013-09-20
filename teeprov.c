@@ -46,18 +46,20 @@ static void usage (int status, const char *program_name)
 Provide data to or retrieve data from Chaabi.\n\
 Mandatory arguments to long options are mandatory for short options too.\n\
 When used, -o option must the first.\n\
-  -o, --output-file=FILE           write data into FILE instead of printing it\n\
-  -s, --get-spid                   get SPID\n\
-  -f, --get-fru                    get FRU\n\
-  -p, --get-part-id                get Part Specific ID\n\
-  -l, --get-lifetime               get lifetime\n\
-  -u, --start-update               start the update\n\
-  -c, --cancel-update              cancel the update\n\
-  -z, --finalize-update            finalize the update\n\
-  -w, --write-token=FILE           write token FILE\n\
-  -r, --read-token=DATAGROUP_ID    read token\n\
-  -m, --remove-token=DATAGROUP_ID  remove token\n\
-  -h, --help                       display this help\n\
+  -o, --output-file=FILE                   write data into FILE instead of printing it\n\
+  -s, --get-spid                           get SPID\n\
+  -f, --get-fru                            get FRU\n\
+  -p, --get-part-id                        get Part Specific ID\n\
+  -l, --get-lifetime                       get lifetime\n\
+  -n, --get-ssn                            get system serial number\n\
+  -u, --start-update                       start the update\n\
+  -c, --cancel-update                      cancel the update\n\
+  -z, --finalize-update                    finalize the update\n\
+  -w, --write-token=FILE                   write token FILE\n\
+  -r, --read-token=DATAGROUP_ID            read token\n\
+  -R, --read-token-payload=DATAGROUP_ID    read token payload\n\
+  -m, --remove-token=DATAGROUP_ID          remove token\n\
+  -h, --help                               display this help\n\
 ");
 	exit(status);
 }
@@ -124,11 +126,13 @@ static struct option const long_options[] =
 	{"get-fru", no_argument, NULL, 'f'},
 	{"get-part-id", no_argument, NULL, 'p'},
 	{"get-lifetime", no_argument, NULL, 'l'},
+	{"get-ssn", no_argument, NULL, 'n'},
 	{"start-update", no_argument, NULL, 'u'},
 	{"cancel-update", no_argument, NULL, 'c'},
 	{"finalize-update", no_argument, NULL, 'z'},
 	{"write-token", required_argument, NULL, 'w'},
 	{"read-token", required_argument, NULL, 'r'},
+	{"read-token-payload", required_argument, NULL, 'R'},
 	{"remove-token", required_argument, NULL, 'm'},
 	{"output-file", required_argument, NULL, 'o'},
 	{"help", no_argument, NULL, 'h'},
@@ -143,7 +147,7 @@ int main(int argc, char **argv)
 	error_fun = teeprov_error;
 	atexit(close_output_file_when_open);
 
-	while ((c = getopt_long (argc, argv, "sfpluczw:r:o:hm:", long_options, NULL)) != -1)
+	while ((c = getopt_long (argc, argv, "sfplnuczw:r:R:o:hm:", long_options, NULL)) != -1)
 	{
 		switch (c)
 		{
@@ -159,6 +163,9 @@ int main(int argc, char **argv)
 		case 'l':
 			return get_lifetime(0, NULL);
 
+		case 'n':
+			return get_ssn(0, NULL);
+
 		case 'u':
 			return start_update(0, NULL);
 
@@ -173,6 +180,9 @@ int main(int argc, char **argv)
 
 		case 'r':
 			return read_token(2, &argv[optind - 2]);
+
+		case 'R':
+			return read_token_payload(2, &argv[optind - 2]);
 
 		case 'm':
 			return remove_token(2, &argv[optind - 2]);
