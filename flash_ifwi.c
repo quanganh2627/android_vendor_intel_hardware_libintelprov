@@ -77,6 +77,9 @@ int ifwi_downgrade_allowed(const char *ifwi)
 
 #define BOOT0 "/dev/block/mmcblk0boot0"
 #define BOOT1 "/dev/block/mmcblk0boot1"
+#define BOOT0_FORCE_RO "/sys/block/mmcblk0boot0/force_ro"
+#define BOOT1_FORCE_RO "/sys/block/mmcblk0boot1/force_ro"
+#define FORCE_RO_OPT "0"
 #define BOOT_PARTITION_SIZE 0x400000
 
 #define IFWI_TYPE_LSH 12
@@ -116,6 +119,26 @@ int write_image(int fd, char *image, unsigned size)
 	}
 
 	fsync(fd);
+	return 0;
+}
+
+static int force_ro(char *name) {
+	int ret, fd;
+
+	fd = open(name, O_WRONLY);
+	if (fd < 0) {
+		fprintf(stderr, "force_ro(): failed to open %s\n", name);
+		return fd;
+	}
+
+	ret = write(fd, FORCE_RO_OPT, sizeof(FORCE_RO_OPT));
+	if (ret <= 0) {
+		fprintf(stderr, "force_ro(): failed to write %s\n", name);
+		close(fd);
+		return ret;
+	}
+
+	close(fd);
 	return 0;
 }
 
@@ -160,6 +183,17 @@ int update_ifwi_file(void *data, unsigned size)
 		/* Since the last 144 bytes are the FUP header which are not required,*/
 		/* we truncate it to fit into the boot partition. */
 		size = BOOT_PARTITION_SIZE;
+	}
+
+	ret = force_ro(BOOT0_FORCE_RO);
+	if (ret) {
+		fprintf(stderr, "flash_ifwi(): unable to force_ro %s\n", BOOT0);
+		return -1;
+	}
+	ret = force_ro(BOOT1_FORCE_RO);
+	if (ret) {
+		fprintf(stderr, "flash_ifwi(): unable to force_ro %s\n", BOOT1);
+		return -1;
 	}
 
 	boot0_fd = open(BOOT0, O_RDWR);

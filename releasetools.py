@@ -43,7 +43,6 @@ def FullOTA_Assertions(dso, **kwargs):
 def FullOTA_InstallEnd(dso, **kwargs):
     FlashModem(dso, "/system/etc/firmware/modem/modem.zip");
     FlashNvmSpid(dso, "/system/etc/firmware/modem/modem_nvm.zip");
-    FlashModem(dso, "/system/etc/firmware/modem/modem_flashless.zip");
 
 def IncrementalOTA_Assertions(dso, **kwargs):
     pass
@@ -54,5 +53,4 @@ def IncrementalOTA_VerifyEnd(dso, **kwargs):
 def IncrementalOTA_InstallEnd(dso, **kwargs):
     FlashModem(dso, "/system/etc/firmware/modem/modem.zip");
     FlashNvmSpid(dso, "/system/etc/firmware/modem/modem_nvm.zip");
-    FlashModem(dso, "/system/etc/firmware/modem/modem_flashless.zip");
 
