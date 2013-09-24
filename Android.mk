@@ -69,6 +69,14 @@ ifeq ($(HAS_SPINOR),true)
   LOCAL_CFLAGS += -DHAS_SPINOR
 endif
 LOCAL_WHOLE_STATIC_LIBRARIES := libmiu
+ifeq ($(external_release),no)
+ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
+LOCAL_SRC_FILES += tee_connector.c
+LOCAL_C_INCLUDES += $(cc54_lib_includes)
+LOCAL_WHOLE_STATIC_LIBRARIES += libdx_cc7_static
+LOCAL_CFLAGS += -DWRITE_BOM_TOKEN
+endif
+endif
 include $(BUILD_STATIC_LIBRARY)
 
 # plugin for recovery_ui

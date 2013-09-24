@@ -375,7 +375,13 @@ static int flash_dnx(void *data, unsigned sz)
 
 static int flash_ifwi(void *data, unsigned size)
 {
-	return update_ifwi_file(data, size);
+	int ret;
+
+	ret = check_ifwi_file(data, size);
+	if (ret > 0)
+		return update_ifwi_file(data, size);
+
+	return ret;
 }
 
 #else

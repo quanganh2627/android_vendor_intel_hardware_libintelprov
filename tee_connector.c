@@ -253,17 +253,35 @@ int get_ssn(int argc, char **argv)
 
 int start_update(int argc, char **argv)
 {
-	return tee_token_update_start(0);
+	int ret;
+
+	ret = tee_token_update_start(0);
+	if (ret != 0)
+		raise_error("tee_token_update_start() call failed, return=0x%x", ret);
+
+	return ret;
 }
 
 int cancel_update(int argc, char **argv)
 {
-	return tee_token_update_cancel(0);
+	int ret;
+
+	ret = tee_token_update_cancel(0);
+	if (ret != 0)
+		raise_error("tee_token_update_cancel() call failed, return=0x%x", ret);
+
+	return ret;
 }
 
 int finalize_update(int argc, char **argv)
 {
-	return tee_token_update_end(0);
+	int ret;
+
+	ret = tee_token_update_end(0);
+	if (ret != 0)
+		raise_error("tee_token_update_end() call failed, return=0x%x", ret);
+
+	return ret;
 }
 
 int get_spid(int argc, char **argv)
