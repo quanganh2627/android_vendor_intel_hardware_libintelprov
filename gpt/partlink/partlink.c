@@ -6,12 +6,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
 
 #include "cgpt.h"
 #include "cmd_show.h"
 #include "cgpt_params.h"
+#include "partlink.h"
 
 #ifndef STORAGE_BASE_PATH
 #define STORAGE_BASE_PATH "/dev/block/mmcblk0"
@@ -20,11 +22,6 @@
 #ifndef STORAGE_PARTITION_FORMAT
 #define STORAGE_PARTITION_FORMAT "%sp%d"
 #endif
-
-#define BASE_PLATFORM "/dev/block/platform"
-#define BASE_PLATFORM_INTEL BASE_PLATFORM "/intel"
-#define BASE_PLATFORM_INTEL_UUID BASE_PLATFORM_INTEL "/by-uuid"
-#define BASE_PLATFORM_INTEL_LABEL BASE_PLATFORM_INTEL "/by-label"
 
 int main(int argc, char *argv[]) {
 
