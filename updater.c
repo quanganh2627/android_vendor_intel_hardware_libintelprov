@@ -309,8 +309,7 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
             close(ifwi_bin_fd);
             goto error;
         }
-        strcpy(dnx_name, "dnx_fwr");
-        strncat(dnx_name, &(ifwi_name[strlen(IFWI_NAME)]), sizeof(dnx_name) - strlen("dnx_fwr") -1);
+        strcpy(dnx_name, "dnx_fwr.bin");
         dnx_entry = mzFindZipEntry(&ifwi_za, dnx_name);
 
         if (dnx_entry == NULL) {
