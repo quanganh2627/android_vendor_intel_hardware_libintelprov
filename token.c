@@ -24,11 +24,11 @@
 #include <unistd.h>
 #include "util.h"
 #include "fastboot.h"
-#ifdef MRFLD
+#ifdef TEE_FRAMEWORK
 #include "tee_connector.h"
-#endif	/* MRFLD */
+#endif	/* TEE_FRAMEWORK */
 
-#ifndef MRFLD
+#ifndef TEE_FRAMEWORK
 static int oem_uniqueid_handler(int argc, char **argv)
 {
 	int retval = -1;
@@ -84,13 +84,13 @@ static int flash_token(void *data, unsigned sz)
 	DX_CC_HostFinish();
 	return retval;
 }
-#endif	/* MRFLD */
+#endif	/* TEE_FRAMEWORK */
 
 int libintel_droidboot_token_init(void)
 {
 	int ret = 0;
 
-#ifndef MRFLD
+#ifndef TEE_FRAMEWORK
 	ret |= aboot_register_flash_cmd("token", flash_token);
 	ret |= aboot_register_oem_cmd("uniqueid", oem_uniqueid_handler);
 #else
@@ -106,7 +106,7 @@ int libintel_droidboot_token_init(void)
 	ret |= aboot_register_oem_cmd("finalize-update", finalize_update);
 	ret |= aboot_register_oem_cmd("remove-token", remove_token);
 	ret |= aboot_register_flash_cmd("token", write_token);
-#endif	/* MRFLD */
+#endif	/* TEE_FRAMEWORK */
 
 	return ret;
 }

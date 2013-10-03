@@ -163,6 +163,8 @@ static int parse_token(int dg, int flags)
 			size_t payload_size = 0;
 			uint8_t payload[PAYLOAD_MAX_SIZE];
 
+			memset(payload, 0, PAYLOAD_MAX_SIZE);
+
 			ret = tee_token_item_size_get(dg, sg_list[s], item_list[it], &payload_size, flags);
 			if (ret != 0)
 			{
