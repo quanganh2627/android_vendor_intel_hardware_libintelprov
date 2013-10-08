@@ -60,7 +60,7 @@ LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
 endif
-ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
+ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
   LOCAL_CFLAGS += -DMRFLD
 endif
 LOCAL_WHOLE_STATIC_LIBRARIES := libmiu
@@ -149,10 +149,9 @@ ifneq ($(DROIDBOOT_NO_GUI),true)
 LOCAL_CFLAGS += -DUSE_GUI
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
-  LOCAL_CFLAGS += -DCLVT
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
-  LOCAL_CFLAGS += -DMRFLD
+LOCAL_CFLAGS += -DCLVT
+else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
+LOCAL_CFLAGS += -DMRFLD
 endif
 
 include $(BUILD_STATIC_LIBRARY)
@@ -168,10 +167,9 @@ LOCAL_C_INCLUDES := $(common_libintelprov_includes) $(call include-path-for, rec
 LOCAL_SRC_FILES := flashtool.c $(common_libintelprov_files)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
-  LOCAL_CFLAGS += -DCLVT
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),merrifield)
-  LOCAL_CFLAGS += -DMRFLD
+LOCAL_CFLAGS += -DCLVT
+else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
+LOCAL_CFLAGS += -DMRFLD
 endif
 
 include $(BUILD_EXECUTABLE)
