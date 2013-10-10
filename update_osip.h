@@ -36,7 +36,7 @@
 #define DROIDBOOT_OS_NAME   "droidboot"
 #define TEST_OS_NAME        "testos"
 #define SPLASHSCREEN_NAME   "splashscreen"
-#define UEFI_FW_NAME        "uefi"
+#define ESP_PART_NAME       "ESP"
 #define MAX_OSIP_DESC 	    7
 /* mfld-structures section 2.7.1 mfld-fas v0.8*/
 #define OSIP_SIG 0x24534f24	/* $OS$ */

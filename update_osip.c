@@ -646,9 +646,6 @@ int get_named_osii_index(const char *destination)
 	if (!strcmp(destination, SPLASHSCREEN_NAME))
 		return ATTR_SIGNED_SPLASHSCREEN;
 
-	if (!strcmp(destination, UEFI_FW_NAME))
-		return UEFI_FW_IDX;
-
 	if (read_OSIP(&osip)) {
 		fprintf(stderr, "Can't read OSIP!\n");
 		return -1;

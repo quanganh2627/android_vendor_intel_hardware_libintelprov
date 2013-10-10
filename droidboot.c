@@ -115,24 +115,7 @@ static int flash_image(void *data, unsigned sz, const char *name)
 	strncpy(block_dev, base, sizeof(base));
 	strncpy(block_dev + sizeof(base) - 1, name, strlen(name) + 1);
 
-	int fd = open(block_dev, O_WRONLY | O_TRUNC);
-	if (fd < 0) {
-		pr_error("Failed to open block device.");
-		return -1;
-	}
-
-	ssize_t written = write(fd, data, sz);
-	if (written == -1 || (unsigned)written != sz) {
-		pr_error("Failed to write the image into block device.");
-		close(fd);
-		return -1;
-	}
-
-	int ret = close(fd);
-	if (ret == -1)
-		pr_error("Failed to close block device.");
-
-	return ret;
+	return file_write(block_dev, data, sz);
 #endif	/* FULL_GPT */
 }
 
@@ -162,9 +145,9 @@ static int flash_splashscreen_image(void *data, unsigned sz)
 	return flash_image(data, sz, SPLASHSCREEN_NAME);
 }
 
-static int flash_uefi_firmware(void *data, unsigned sz)
+static int flash_esp(void *data, unsigned sz)
 {
-	return flash_image(data, sz, UEFI_FW_NAME);
+	return flash_image(data, sz, ESP_PART_NAME);
 }
 
 static int flash_modem(void *data, unsigned sz)
@@ -1285,7 +1268,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd(ANDROID_OS_NAME, flash_android_kernel);
 	ret |= aboot_register_flash_cmd(RECOVERY_OS_NAME, flash_recovery_kernel);
 	ret |= aboot_register_flash_cmd(FASTBOOT_OS_NAME, flash_fastboot_kernel);
-	ret |= aboot_register_flash_cmd(UEFI_FW_NAME, flash_uefi_firmware);
+	ret |= aboot_register_flash_cmd(ESP_PART_NAME, flash_esp);
 	ret |= aboot_register_flash_cmd("splashscreen", flash_splashscreen_image);
 	ret |= aboot_register_flash_cmd("radio", flash_modem);
 	ret |= aboot_register_flash_cmd("radio_fuse", flash_modem_get_fuse);
