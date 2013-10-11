@@ -372,7 +372,11 @@ def ZipCRCs(src):
   return set([i.CRC for i in src.infolist()])
 
 def IfwiDiffers(src, dst):
-  return ZipCRCs(src) != ZipCRCs(dst)
+  # check if src exists
+  if hasattr(src, 'data'):
+    return ZipCRCs(src) != ZipCRCs(dst)
+  else:
+    return True
 
 def UnzipTemp(filename, pattern=None):
   """Unzip the given archive into a temporary directory and return the name.

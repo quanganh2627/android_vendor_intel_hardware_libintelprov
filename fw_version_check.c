@@ -402,7 +402,7 @@ int get_image_fw_rev_long(void *data, unsigned sz, struct firmware_versions_long
 		return -1;
 	}
 	else
-		memset((void *)v, 0, sizeof(struct firmware_versions));
+		memset((void *)v, 0, sizeof(struct firmware_versions_long));
 
 	while (sz >= sizeof(fip)){
 
