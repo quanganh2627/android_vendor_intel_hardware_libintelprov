@@ -79,7 +79,7 @@ int ifwi_downgrade_allowed(const char *ifwi)
 #define BOOT1 "/dev/block/mmcblk0boot1"
 #define BOOT0_FORCE_RO "/sys/block/mmcblk0boot0/force_ro"
 #define BOOT1_FORCE_RO "/sys/block/mmcblk0boot1/force_ro"
-#define FORCE_RO_OPT "0"
+#define FORCE_RW_OPT "0"
 #define BOOT_PARTITION_SIZE 0x400000
 
 #define IFWI_TYPE_LSH 12
@@ -122,7 +122,7 @@ int write_image(int fd, char *image, unsigned size)
 	return 0;
 }
 
-static int force_ro(char *name) {
+static int force_rw(char *name) {
 	int ret, fd;
 
 	fd = open(name, O_WRONLY);
@@ -131,7 +131,7 @@ static int force_ro(char *name) {
 		return fd;
 	}
 
-	ret = write(fd, FORCE_RO_OPT, sizeof(FORCE_RO_OPT));
+	ret = write(fd, FORCE_RW_OPT, sizeof(FORCE_RW_OPT));
 	if (ret <= 0) {
 		fprintf(stderr, "force_ro(): failed to write %s\n", name);
 		close(fd);
@@ -185,55 +185,46 @@ int update_ifwi_file(void *data, unsigned size)
 		size = BOOT_PARTITION_SIZE;
 	}
 
-	ret = force_ro(BOOT0_FORCE_RO);
+	ret = force_rw(BOOT0_FORCE_RO);
 	if (ret) {
 		fprintf(stderr, "flash_ifwi(): unable to force_ro %s\n", BOOT0);
 		return -1;
 	}
-	ret = force_ro(BOOT1_FORCE_RO);
-	if (ret) {
-		fprintf(stderr, "flash_ifwi(): unable to force_ro %s\n", BOOT1);
-		return -1;
-	}
-
 	boot0_fd = open(BOOT0, O_RDWR);
 	if (boot0_fd < 0) {
 		fprintf(stderr, "flash_ifwi(): failed to open %s\n", BOOT0);
 		return -1;
 	}
-	boot1_fd = open(BOOT1, O_RDWR);
-	if (boot1_fd < 0) {
-		fprintf(stderr, "flash_ifwi(): failed to open %s\n", BOOT1);
-		close(boot0_fd);
-		return -1;
-	}
-
 	if (lseek(boot0_fd, 0, SEEK_SET) < 0) { /* Seek to start of file */
 		fprintf(stderr, "flash_ifwi(): lseek failed on boot0");
 		close(boot0_fd);
-		close(boot1_fd);
 		return -1;
 	}
-
-	if (lseek(boot1_fd, 0, SEEK_SET) < 0) {
-		fprintf(stderr, "flash_ifwi(): lseek failed on boot1");
-		close(boot0_fd);
-		close(boot1_fd);
-		return -1;
-	}
-
 	ret = write_image(boot0_fd, (char*)data, size);
+	close(boot0_fd);
 	if (ret)
 		fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT0);
 	else {
+		ret = force_rw(BOOT1_FORCE_RO);
+		if (ret) {
+			fprintf(stderr, "flash_ifwi(): unable to force_ro %s\n", BOOT1);
+			return -1;
+		}
+		boot1_fd = open(BOOT1, O_RDWR);
+		if (boot1_fd < 0) {
+			fprintf(stderr, "flash_ifwi(): failed to open %s\n", BOOT1);
+			return -1;
+		}
+		if (lseek(boot1_fd, 0, SEEK_SET) < 0) {
+			fprintf(stderr, "flash_ifwi(): lseek failed on boot1");
+			close(boot1_fd);
+			return -1;
+		}
 		ret = write_image(boot1_fd, (char*)data, size);
+		close(boot1_fd);
 		if (ret)
 			fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT1);
 	}
-
-	close(boot0_fd);
-	close(boot1_fd);
-
 	return ret;
 }
 
