@@ -153,7 +153,9 @@ LOCAL_CFLAGS += -DCLVT
 else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
 LOCAL_CFLAGS += -DMRFLD
 endif
-
+ifeq ($(TARGET_PARTITIONING_SCHEME),"full-gpt")
+  LOCAL_CFLAGS += -DFULL_GPT
+endif
 include $(BUILD_STATIC_LIBRARY)
 
 # a test flashtool for testing the intelprov library

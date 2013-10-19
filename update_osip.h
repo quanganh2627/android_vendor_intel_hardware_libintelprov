@@ -33,9 +33,10 @@
 #define ANDROID_OS_NAME     "boot"
 #define RECOVERY_OS_NAME    "recovery"
 #define FASTBOOT_OS_NAME    "fastboot"
-#define DROIDBOOT_OS_NAME    "droidboot"
-#define TEST_OS_NAME      "testos"
-#define UEFI_FW_NAME        "uefi"
+#define DROIDBOOT_OS_NAME   "droidboot"
+#define TEST_OS_NAME        "testos"
+#define SPLASHSCREEN_NAME   "splashscreen"
+#define ESP_PART_NAME       "ESP"
 #define MAX_OSIP_DESC 	    7
 /* mfld-structures section 2.7.1 mfld-fas v0.8*/
 #define OSIP_SIG 0x24534f24	/* $OS$ */
@@ -78,7 +79,7 @@ void dump_OS_page(struct OSIP_header *osip, int os_index, int numpages);
 int read_osimage_data(void **data, size_t *size, int osii_index);
 int write_stitch_image(void *data, size_t size, int osii_index);
 int write_stitch_image_ex(void *data, size_t size, int osii_index, int large_image);
-int get_named_osii_index(char *destination);
+int get_named_osii_index(const char *destination);
 int invalidate_osii(char *destination);
 int restore_osii(char *destination);
 int get_attribute_osii_index(int attr);

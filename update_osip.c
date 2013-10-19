@@ -631,7 +631,7 @@ int write_stitch_image_ex(void *data, size_t size, int osii_index, int large_ima
 }
 
 
-int get_named_osii_index(char *destination)
+int get_named_osii_index(const char *destination)
 {
 	int index;
 	int offset;
@@ -643,8 +643,8 @@ int get_named_osii_index(char *destination)
 		return -1;
 	}
 
-	if (!strcmp(destination, UEFI_FW_NAME))
-		return UEFI_FW_IDX;
+	if (!strcmp(destination, SPLASHSCREEN_NAME))
+		return ATTR_SIGNED_SPLASHSCREEN;
 
 	if (read_OSIP(&osip)) {
 		fprintf(stderr, "Can't read OSIP!\n");

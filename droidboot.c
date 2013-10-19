@@ -39,6 +39,7 @@
 #include "fastboot.h"
 #include "droidboot_ui.h"
 #include "update_partition.h"
+#include "gpt/partlink/partlink.h"
 #include <cgpt.h>
 #include "miu.h"
 
@@ -90,18 +91,37 @@ static void miu_log_cb(const char *msg, ...)
 	}
 }
 
-static int flash_image(void *data, unsigned sz, int index)
+static int flash_image(void *data, unsigned sz, const char *name)
 {
+#ifndef FULL_GPT
+	int index;
+	index = get_named_osii_index(name);
+
 	if (index < 0) {
 		pr_error("Can't find OSII index!!");
 		return -1;
 	}
+
 	return write_stitch_image(data, sz, index);
+#else
+	char block_dev[BUFSIZ];
+	char base[] = BASE_PLATFORM_INTEL_LABEL"/";
+
+	if (strlen(name) > sizeof(block_dev) - sizeof(base)) {
+		pr_error("Buffer is not large enough to build block device path.");
+		return -1;
+	}
+
+	strncpy(block_dev, base, sizeof(base));
+	strncpy(block_dev + sizeof(base) - 1, name, strlen(name) + 1);
+
+	return file_write(block_dev, data, sz);
+#endif	/* FULL_GPT */
 }
 
 static int flash_android_kernel(void *data, unsigned sz)
 {
-	return flash_image(data, sz, get_named_osii_index(ANDROID_OS_NAME));
+	return flash_image(data, sz, ANDROID_OS_NAME);
 }
 
 static int flash_testos(void *data, unsigned sz)
@@ -112,22 +132,22 @@ static int flash_testos(void *data, unsigned sz)
 
 static int flash_recovery_kernel(void *data, unsigned sz)
 {
-	return flash_image(data, sz, get_named_osii_index(RECOVERY_OS_NAME));
+	return flash_image(data, sz, RECOVERY_OS_NAME);
 }
 
 static int flash_fastboot_kernel(void *data, unsigned sz)
 {
-	return flash_image(data, sz, get_named_osii_index(FASTBOOT_OS_NAME));
+	return flash_image(data, sz, FASTBOOT_OS_NAME);
 }
 
 static int flash_splashscreen_image(void *data, unsigned sz)
 {
-	return flash_image(data, sz, get_attribute_osii_index(ATTR_SIGNED_SPLASHSCREEN));
+	return flash_image(data, sz, SPLASHSCREEN_NAME);
 }
 
-static int flash_uefi_firmware(void *data, unsigned sz)
+static int flash_esp(void *data, unsigned sz)
 {
-	return flash_image(data, sz, get_named_osii_index(UEFI_FW_NAME));
+	return flash_image(data, sz, ESP_PART_NAME);
 }
 
 static int flash_modem(void *data, unsigned sz)
@@ -1243,13 +1263,12 @@ static void cmd_intel_boot(const char *arg, void *data, unsigned sz)
 void libintel_droidboot_init(void)
 {
 	int ret = 0;
-	struct OSIP_header osip;
 
 	ret |= aboot_register_flash_cmd(TEST_OS_NAME, flash_testos);
 	ret |= aboot_register_flash_cmd(ANDROID_OS_NAME, flash_android_kernel);
 	ret |= aboot_register_flash_cmd(RECOVERY_OS_NAME, flash_recovery_kernel);
 	ret |= aboot_register_flash_cmd(FASTBOOT_OS_NAME, flash_fastboot_kernel);
-	ret |= aboot_register_flash_cmd(UEFI_FW_NAME, flash_uefi_firmware);
+	ret |= aboot_register_flash_cmd(ESP_PART_NAME, flash_esp);
 	ret |= aboot_register_flash_cmd("splashscreen", flash_splashscreen_image);
 	ret |= aboot_register_flash_cmd("radio", flash_modem);
 	ret |= aboot_register_flash_cmd("radio_fuse", flash_modem_get_fuse);
@@ -1300,12 +1319,15 @@ void libintel_droidboot_init(void)
 	if (ret)
 		die();
 
+#ifndef FULL_GPT
+	struct OSIP_header osip;
 	/* Dump the OSIP to serial to assist debugging */
 	if (read_OSIP(&osip)) {
 		printf("OSIP read failure!\n");
 	} else {
 		dump_osip_header(&osip);
 	}
+#endif	/* FULL_GPT */
 
 #ifdef MRFLD
 	struct firmware_versions_long cur_fw_rev;
