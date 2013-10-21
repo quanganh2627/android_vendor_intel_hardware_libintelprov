@@ -91,32 +91,43 @@ static void miu_log_cb(const char *msg, ...)
 	}
 }
 
+static int full_gpt(void)
+{
+	struct stat buf;
+
+	return (stat(BASE_PLATFORM_INTEL_LABEL"/fastboot", &buf) == 0
+		&& S_ISBLK(buf.st_mode));
+}
+
 static int flash_image(void *data, unsigned sz, const char *name)
 {
-#ifndef FULL_GPT
-	int index;
-	index = get_named_osii_index(name);
+	if (full_gpt()) {
+		char block_dev[BUFSIZ];
+		char base[] = BASE_PLATFORM_INTEL_LABEL"/";
+		struct stat buf;
 
-	if (index < 0) {
-		pr_error("Can't find OSII index!!");
-		return -1;
+		if (strlen(name) > sizeof(block_dev) - sizeof(base)) {
+			pr_error("Buffer is not large enough to build block device path.");
+			return -1;
+		}
+
+		strncpy(block_dev, base, sizeof(base));
+		strncpy(block_dev + sizeof(base) - 1, name, strlen(name) + 1);
+
+		if (stat(block_dev, &buf) != 0 || !S_ISBLK(buf.st_mode))
+			return -1;
+
+		return file_write(block_dev, data, sz);
+	} else {
+		int index = get_named_osii_index(name);
+
+		if (index < 0) {
+			pr_error("Can't find OSII index!!");
+			return -1;
+		}
+
+		return write_stitch_image(data, sz, index);
 	}
-
-	return write_stitch_image(data, sz, index);
-#else
-	char block_dev[BUFSIZ];
-	char base[] = BASE_PLATFORM_INTEL_LABEL"/";
-
-	if (strlen(name) > sizeof(block_dev) - sizeof(base)) {
-		pr_error("Buffer is not large enough to build block device path.");
-		return -1;
-	}
-
-	strncpy(block_dev, base, sizeof(base));
-	strncpy(block_dev + sizeof(base) - 1, name, strlen(name) + 1);
-
-	return file_write(block_dev, data, sz);
-#endif	/* FULL_GPT */
 }
 
 static int flash_android_kernel(void *data, unsigned sz)
@@ -1319,15 +1330,15 @@ void libintel_droidboot_init(void)
 	if (ret)
 		die();
 
-#ifndef FULL_GPT
-	struct OSIP_header osip;
-	/* Dump the OSIP to serial to assist debugging */
-	if (read_OSIP(&osip)) {
-		printf("OSIP read failure!\n");
-	} else {
-		dump_osip_header(&osip);
+	if (full_gpt()) {
+		struct OSIP_header osip;
+		/* Dump the OSIP to serial to assist debugging */
+		if (read_OSIP(&osip)) {
+			printf("OSIP read failure!\n");
+		} else {
+			dump_osip_header(&osip);
+		}
 	}
-#endif	/* FULL_GPT */
 
 #ifdef MRFLD
 	struct firmware_versions_long cur_fw_rev;
