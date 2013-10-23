@@ -134,10 +134,9 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 	uint8_t expected_tgt_digest[SHA_DIGEST_SIZE];
 	uint8_t tgt_digest[SHA_DIGEST_SIZE];
 	SHA_CTX ctx;
-	int ret;
+
 	Value patchval;
 
-	ret = -1;
 	msi.buffer = NULL;
 	src_data = NULL;
 	patchval.data = NULL;
@@ -201,7 +200,7 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 		goto out;
 	}
 	LOGI("Recovery sucessfully patched from boot");
-	ret = 0;
+
 out:
 	free(src_data);
 	free(patchval.data);

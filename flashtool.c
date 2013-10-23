@@ -11,6 +11,8 @@
 #include "util.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
+#include "fpt.h"
+#include "txemanuf.h"
 #include "miu.h"
 
 #define PROP_BUILD_ID	"ro.build.display.id"
@@ -22,10 +24,11 @@ enum {
 	CMD_READ_OSIP,
 	CMD_DUMP,
 	CMD_WRITE_FW,
-	CMD_WRITE_3G_FW
+	CMD_WRITE_3G_FW,
+	CMD_WRITE_FPT_IFWI
 };
 
-void usage(void)
+static void usage(void)
 {
 	printf("\nusage: flashtool <options>\n"
 		"Available commands:\n"
@@ -37,12 +40,15 @@ void usage(void)
 		"-v <firmware file>    Dump the FW versions in an IFWI release\n"
 		"-f <firmware file>    Flash an IFWI image\n"
 		"-g <firmware file>    Flash 3G firmware\n"
+#ifdef HAS_SPINOR
+		"-p <firmware file>    Flash IFWI using FPT\n"
+#endif
 		"Run with no arguments to print out some system version information\n"
 		"and a dump of the OSIP\n"
 		);
 }
 
-void cmd_show_data(void)
+static void cmd_show_data(void)
 {
 	struct OSIP_header osip;
 	struct firmware_versions cur_fw_ver;
@@ -69,7 +75,7 @@ void cmd_show_data(void)
 	system("cat /proc/version");
 }
 
-void cmd_dump_fw(char *filename)
+static void cmd_dump_fw(char *filename)
 {
 	void *data;
 	size_t size;
@@ -88,7 +94,7 @@ void cmd_dump_fw(char *filename)
 	dump_fw_versions(&fv);
 }
 
-void cmd_write_fw(char *filename)
+static void cmd_write_fw(char *filename)
 {
 	void *data;
 	size_t size;
@@ -107,7 +113,7 @@ void cmd_write_fw(char *filename)
 	free(data);
 }
 
-void cmd_read_osip(char *entry, char *filename)
+static void cmd_read_osip(char *entry, char *filename)
 {
 	void *data;
 	size_t size;
@@ -131,7 +137,7 @@ void cmd_read_osip(char *entry, char *filename)
 	}
 }
 
-void cmd_write_osip(char *entry, char *filename)
+static void cmd_write_osip(char *entry, char *filename)
 {
 	int index;
 	size_t size;
@@ -176,7 +182,7 @@ static void miu_log_cb(const char *msg, ...)
 	}
 }
 
-void cmd_flash_modem_fw(char *filename)
+static void cmd_flash_modem_fw(char *filename)
 {
 	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
 		fprintf(stderr, "%s failed at %s\n", __func__,
@@ -198,7 +204,7 @@ int main(int argc, char ** argv)
 	char *filename = NULL;
 	int cmd = CMD_NONE;
 
-	while ( (c = getopt(argc, argv, "i:w:r:dv:hf:g:") ) != -1 ) {
+	while ( (c = getopt(argc, argv, "i:w:r:dv:hf:g:p:") ) != -1 ) {
 		switch (c) {
 		case 'i':
 			entry = strdup(optarg);
@@ -221,6 +227,10 @@ int main(int argc, char ** argv)
 			break;
 		case 'g':
 			cmd = CMD_WRITE_3G_FW;
+			filename = strdup(optarg);
+			break;
+		case 'p':
+			cmd = CMD_WRITE_FPT_IFWI;
 			filename = strdup(optarg);
 			break;
 		case 'h':
@@ -251,6 +261,11 @@ int main(int argc, char ** argv)
 	case CMD_WRITE_3G_FW:
 		cmd_flash_modem_fw(filename);
 		break;
+#ifdef HAS_SPINOR
+	case CMD_WRITE_FPT_IFWI:
+		flash_fpt_file_ifwi(filename);
+		break;
+#endif
 	}
 	return 0;
 }

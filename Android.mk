@@ -26,7 +26,9 @@ common_libintelprov_files := \
 	update_osip.c \
 	fw_version_check.c \
 	util.c \
-	flash_ifwi.c
+	flash_ifwi.c \
+	fpt.c \
+	txemanuf.c
 
 common_libintelprov_includes := \
 	$(call include-path-for, libc-private) \
@@ -62,6 +64,9 @@ ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
 endif
 ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
   LOCAL_CFLAGS += -DMRFLD
+endif
+ifeq ($(HAS_SPINOR),true)
+  LOCAL_CFLAGS += -DHAS_SPINOR
 endif
 LOCAL_WHOLE_STATIC_LIBRARIES := libmiu
 include $(BUILD_STATIC_LIBRARY)
@@ -158,6 +163,9 @@ ifeq ($(TARGET_PARTITIONING_SCHEME),"full-gpt")
   LOCAL_CFLAGS += -DFULL_GPT
 endif
 LOCAL_SHARED_LIBRARIES := libvolumeutils
+ifeq ($(HAS_SPINOR),true)
+  LOCAL_CFLAGS += -DHAS_SPINOR
+endif
 include $(BUILD_STATIC_LIBRARY)
 
 # a test flashtool for testing the intelprov library
@@ -174,6 +182,9 @@ ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
 LOCAL_CFLAGS += -DCLVT
 else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
 LOCAL_CFLAGS += -DMRFLD
+endif
+ifeq ($(HAS_SPINOR),true)
+  LOCAL_CFLAGS += -DHAS_SPINOR
 endif
 
 include $(BUILD_EXECUTABLE)
