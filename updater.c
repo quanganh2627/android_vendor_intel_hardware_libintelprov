@@ -652,19 +652,27 @@ Value *FlashTxemanuf(const char *name, State *state, int argc, Expr *argv[]) {
 Value *CommandFunction(int (*fun)(int, char **), const char *name, State *state,
                        int argc, Expr *argv[]) {
     Value *ret = NULL;
-    char *argv_str[argc];
-
+    char *argv_str[argc + 1];
     int i;
-    for (i = 0 ; i < argc ; i++)
-        if (ReadArgs(state, argv, i, &argv_str[i]) < 0) {
-            ErrorAbort(state, "%s parameter parsing failed.", name);
-            goto done;
-        }
 
-    if (fun(argc, argv_str) != EXIT_SUCCESS) {
+    char **argv_read = ReadVarArgs(state, argc, argv);
+    if (argv_read == NULL) {
+        ErrorAbort(state, "%s parameter parsing failed.", name);
+        goto done;
+    }
+
+    argv_str[0] = (char *)name;
+    for (i = 0 ; i < argc ; i++)
+        argv_str[i + 1] = argv_read[i];
+
+    if (fun(sizeof(argv_str) / sizeof(char *), argv_str) != EXIT_SUCCESS) {
             ErrorAbort(state, "%s failed.", name);
             goto done;
     }
+
+    for (i = 0 ; i < argc ; i++)
+        free(argv_read[i]);
+    free(argv_read);
 
     ret = StringValue(strdup(""));
 
