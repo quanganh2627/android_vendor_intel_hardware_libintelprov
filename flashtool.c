@@ -30,8 +30,8 @@ void usage(void)
 	printf("\nusage: flashtool <options>\n"
 		"Available commands:\n"
 		"-i <entry name>       OSIP entry to manipulate, used with -w and -r\n"
-		"   Valid entry names are " ANDROID_OS_NAME " " RECOVERY_OS_NAME 
-		" " FASTBOOT_OS_NAME " " UEFI_FW_NAME "\n"
+		"   Valid entry names are " ANDROID_OS_NAME " " RECOVERY_OS_NAME
+		" " FASTBOOT_OS_NAME "\n"
 		"-w <osupdate file>    Flash a file to the index, requires -i\n"
 		"-r <destination file> Read an osimage index into a file, requires -i\n"
 		"-v <firmware file>    Dump the FW versions in an IFWI release\n"
