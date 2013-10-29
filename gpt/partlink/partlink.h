@@ -8,7 +8,7 @@
 
 #define BASE_PLATFORM "/dev/block/platform"
 #define BASE_PLATFORM_INTEL BASE_PLATFORM "/intel"
-#define BASE_PLATFORM_INTEL_UUID BASE_PLATFORM_INTEL "/by-uuid"
+#define BASE_PLATFORM_INTEL_UUID BASE_PLATFORM_INTEL "/by-guid"
 #define BASE_PLATFORM_INTEL_LABEL BASE_PLATFORM_INTEL "/by-label"
 
 #endif	/* _PARTLINK_H_ */
