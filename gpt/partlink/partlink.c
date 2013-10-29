@@ -49,14 +49,14 @@ static int clean_directory(const char *path)
     return EXIT_SUCCESS;
 }
 
-int main(int argc, char *argv[]) {
-
+int partlink_populate()
+{
     CgptShowParams params;
     GptEntry *entry;
 
     struct drive drive;
     int gpt_retval;
-    int retval;
+    int ret = EXIT_FAILURE;
     uint32_t i;
     uint8_t label[GPT_PARTNAME_LEN];
     char  uuid[GUID_STRLEN];
@@ -74,13 +74,13 @@ int main(int argc, char *argv[]) {
 
     if (clean_directory(BASE_PLATFORM_INTEL_UUID"/") != EXIT_SUCCESS ||
         clean_directory(BASE_PLATFORM_INTEL_LABEL"/") != EXIT_SUCCESS)
-        goto error;
+        goto exit;
 
     if (CGPT_OK != DriveOpen(params.drive_name, &drive, O_RDONLY))
-        return CGPT_FAILED;
+        goto exit;
 
     if (GPT_SUCCESS != (gpt_retval = GptSanityCheck(&drive.gpt))) {
-        goto error;
+        goto close;
     }
 
     for (i = 0; i < GetNumberOfEntries(&drive.gpt); ++i) {
@@ -103,8 +103,11 @@ int main(int argc, char *argv[]) {
         link(from, to);
     }
 
-error:
+    ret = EXIT_SUCCESS;
+
+close:
     DriveClose(&drive, 0);
 
-    return 0;
+exit:
+    return ret;
 }

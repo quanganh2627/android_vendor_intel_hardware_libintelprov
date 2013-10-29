@@ -136,7 +136,7 @@ LOCAL_C_INCLUDES := bootable/droidboot system/core/libvolumeutils bootable/recov
 
 LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES)
 
-LOCAL_WHOLE_STATIC_LIBRARIES := libmiu
+LOCAL_WHOLE_STATIC_LIBRARIES := libmiu libpartlink
 
 ifeq ($(external_release),no)
 LOCAL_SRC_FILES += $(common_pmdb_files) $(token_implementation)
