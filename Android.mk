@@ -65,9 +65,6 @@ endif
 ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
   LOCAL_CFLAGS += -DMRFLD
 endif
-ifeq ($(HAS_SPINOR),true)
-  LOCAL_CFLAGS += -DHAS_SPINOR
-endif
 LOCAL_WHOLE_STATIC_LIBRARIES := libmiu
 ifeq ($(external_release),no)
 ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
@@ -168,9 +165,6 @@ endif
 ifeq ($(TARGET_PARTITIONING_SCHEME),"full-gpt")
   LOCAL_CFLAGS += -DFULL_GPT
 endif
-ifeq ($(HAS_SPINOR),true)
-  LOCAL_CFLAGS += -DHAS_SPINOR
-endif
 include $(BUILD_STATIC_LIBRARY)
 
 # a test flashtool for testing the intelprov library
@@ -187,9 +181,6 @@ ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
 LOCAL_CFLAGS += -DCLVT
 else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
 LOCAL_CFLAGS += -DMRFLD
-endif
-ifeq ($(HAS_SPINOR),true)
-  LOCAL_CFLAGS += -DHAS_SPINOR
 endif
 
 include $(BUILD_EXECUTABLE)

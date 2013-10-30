@@ -747,7 +747,6 @@ void Register_libintel_updater(void)
     RegisterFunction("flash_capsule", FlashCapsuleFn);
     RegisterFunction("flash_ulpmc", FlashUlpmcFn);
 
-#ifdef HAS_SPINOR
     RegisterFunction("flash_fpt_ifwi", FlashFptIfwi);
     RegisterFunction("flash_fpt_txe", FlashFptTxe);
     RegisterFunction("flash_fpt_pdr", FlashFptPdr);
@@ -760,6 +759,6 @@ void Register_libintel_updater(void)
     RegisterFunction("fpt_closemnf", FptCloseMnf);
     RegisterFunction("txemanuf_eof_test", TxemanufEofTest);
     RegisterFunction("txemanuf_bist_test", TxemanufBistTest);
-#endif  /* HAS_SPINOR */
+
     util_init(recovery_error, NULL);
 }

@@ -21,10 +21,10 @@ static const unsigned int	 TIMEOUT   = 120;
 static const char		*TEMP_FILE = "/tmp/temp.bin";
 static const char		*LOG_FILE  = "/tmp/fpt.log";
 
-static const char	*FPT_PROGRAM  = "/system/bin/FPT";
+static const char	*FPT_PROGRAM  = "/system/bin/fpttools/FPT";
 static const char	*FPT_PASS_STR = "FPT Operation Passed";
 
-#define FPT_START_OPTIONS	NULL, "-Y", "-P", "/system/etc/fparts.txt"
+#define FPT_START_OPTIONS	NULL
 
 static int call_FPT(char *argv[])
 {
@@ -44,7 +44,8 @@ static int flash_from_data(void *data, unsigned sz,
 /* Flash full ifwi.  */
 int flash_fpt_file_ifwi(char *filename)
 {
-	return call_FPT((char *[]){ FPT_START_OPTIONS, "-F", filename, NULL });
+	return call_FPT((char *[]){ FPT_START_OPTIONS, "-Y", "-F",
+				filename, NULL });
 }
 
 int flash_fpt_data_ifwi(void *data, unsigned sz)
@@ -55,8 +56,8 @@ int flash_fpt_data_ifwi(void *data, unsigned sz)
 /* Flash TXE region only.  */
 int flash_fpt_file_txe(char *filename)
 {
-	return call_FPT((char *[]){ FPT_START_OPTIONS, "-F", filename,
-				"-TXE", NULL });
+	return call_FPT((char *[]){ FPT_START_OPTIONS, "-Y", "-F",
+				filename, "-TXE", NULL });
 }
 
 int flash_fpt_data_txe(void *data, unsigned sz)
@@ -67,8 +68,8 @@ int flash_fpt_data_txe(void *data, unsigned sz)
 /* Flash PDR region only.  */
 int flash_fpt_file_pdr(char *filename)
 {
-	return call_FPT((char *[]){ FPT_START_OPTIONS, "-F", filename,
-				"-PDR", NULL });
+	return call_FPT((char *[]){ FPT_START_OPTIONS, "-Y", "-F",
+				filename, "-PDR", NULL });
 }
 
 int flash_fpt_data_pdr(void *data, unsigned sz)
@@ -79,8 +80,8 @@ int flash_fpt_data_pdr(void *data, unsigned sz)
 /* Flash IAFW region only.  */
 int flash_fpt_file_bios(char *filename)
 {
-	return call_FPT((char *[]){ FPT_START_OPTIONS, "-F", filename,
-				"-BIOS", NULL });
+	return call_FPT((char *[]){ FPT_START_OPTIONS, "-Y", "-F",
+				filename, "-BIOS", NULL });
 }
 
 int flash_fpt_data_bios(void *data, unsigned sz)
@@ -102,8 +103,8 @@ int fpt_writeitem(int argc, char **argv)
 /* Flash the fpfs with values set in FILENAME.  */
 int flash_fpt_file_fpfs(char *filename)
 {
-	return call_FPT((char *[]){ FPT_START_OPTIONS,
-				"-WRITEFPFBATCH", filename, NULL });
+	return call_FPT((char *[]){ FPT_START_OPTIONS,"-WRITEFPFBATCH", 
+				filename, NULL });
 }
 
 int flash_fpt_data_fpfs(void *data, unsigned sz)
