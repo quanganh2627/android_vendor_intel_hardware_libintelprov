@@ -127,7 +127,7 @@ LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter -Wno-unused-but-set-variable
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
-LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils $(call include-path-for, recovery) $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
+LOCAL_C_INCLUDES := bootable/droidboot system/core/libvolumeutils bootable/recovery $(call include-path-for, recovery) $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
 
 LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES)
 
@@ -157,6 +157,7 @@ endif
 ifeq ($(TARGET_PARTITIONING_SCHEME),"full-gpt")
   LOCAL_CFLAGS += -DFULL_GPT
 endif
+LOCAL_SHARED_LIBRARIES := libvolumeutils
 include $(BUILD_STATIC_LIBRARY)
 
 # a test flashtool for testing the intelprov library
