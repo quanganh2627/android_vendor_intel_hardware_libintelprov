@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <roots.h>
+#include "volumeutils/roots.h"
 
 // fill volume with 0xFFFFFFFFF such that no confidential data can be
 // recovered using a SW based attack.
