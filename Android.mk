@@ -27,6 +27,7 @@ common_libintelprov_files := \
 	fw_version_check.c \
 	util.c \
 	fpt.c \
+	flash_image.c \
 	txemanuf.c
 
 ifeq ($(TARGET_BIOS_TYPE), "uefi")
@@ -202,8 +203,8 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := update_recovery
-LOCAL_SRC_FILES:= update_recovery.c util.c update_osip.c
-LOCAL_C_INCLUDES := $(common_libintelprov_includes) $(call include-path-for, recovery)/applypatch $(call include-path-for, recovery)
+LOCAL_SRC_FILES:= update_recovery.c util.c update_osip.c flash_image.c
+LOCAL_C_INCLUDES := $(common_libintelprov_includes) $(call include-path-for, recovery)/applypatch $(call include-path-for, recovery) $(call include-path-for, mkbootimg)
 LOCAL_CFLAGS := -Wall -Wno-unused-parameter
 LOCAL_SHARED_LIBRARIES := liblog libcutils libz
 LOCAL_STATIC_LIBRARIES := libmincrypt libapplypatch libbz

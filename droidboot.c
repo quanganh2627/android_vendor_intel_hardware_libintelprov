@@ -35,6 +35,7 @@
 #include "util.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
+#include "flash_image.h"
 #include "fpt.h"
 #include "txemanuf.h"
 #include "fastboot.h"
@@ -53,74 +54,10 @@
 
 static int oem_write_osip_header(int argc, char **argv);
 
-static int full_gpt(void)
-{
-	struct stat buf;
-
-	return (stat(BASE_PLATFORM_INTEL_LABEL"/fastboot", &buf) == 0
-		&& S_ISBLK(buf.st_mode));
-}
-
-static int flash_image(void *data, unsigned sz, const char *name)
-{
-	if (full_gpt()) {
-		char block_dev[BUFSIZ];
-		char base[] = BASE_PLATFORM_INTEL_LABEL"/";
-		struct stat buf;
-
-		if (strlen(name) > sizeof(block_dev) - sizeof(base)) {
-			pr_error("Buffer is not large enough to build block device path.");
-			return -1;
-		}
-
-		strncpy(block_dev, base, sizeof(base));
-		strncpy(block_dev + sizeof(base) - 1, name, strlen(name) + 1);
-
-		if (stat(block_dev, &buf) != 0 || !S_ISBLK(buf.st_mode))
-			return -1;
-
-		return file_write(block_dev, data, sz);
-	} else {
-		int index = get_named_osii_index(name);
-
-		if (index < 0) {
-			pr_error("Can't find OSII index!!");
-			return -1;
-		}
-
-		return write_stitch_image(data, sz, index);
-	}
-}
-
-static int flash_android_kernel(void *data, unsigned sz)
-{
-	return flash_image(data, sz, ANDROID_OS_NAME);
-}
-
 static int flash_testos(void *data, unsigned sz)
 {
 	oem_write_osip_header(0,0);
 	return write_stitch_image_ex(data, sz, 0, 1);
-}
-
-static int flash_recovery_kernel(void *data, unsigned sz)
-{
-	return flash_image(data, sz, RECOVERY_OS_NAME);
-}
-
-static int flash_fastboot_kernel(void *data, unsigned sz)
-{
-	return flash_image(data, sz, FASTBOOT_OS_NAME);
-}
-
-static int flash_splashscreen_image(void *data, unsigned sz)
-{
-	return flash_image(data, sz, SPLASHSCREEN_NAME);
-}
-
-static int flash_esp(void *data, unsigned sz)
-{
-	return flash_image(data, sz, ESP_PART_NAME);
 }
 
 #ifdef MRFLD

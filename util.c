@@ -25,6 +25,9 @@
 #include <libgen.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/mman.h>
+
+#include "util.h"
 
 #define pr_perror(x)	fprintf(stderr, "%s failed: %s\n", x, strerror(errno))
 
@@ -112,6 +115,46 @@ int file_write(const char *filename, const void *data, size_t sz)
 	fsync(fd);
 	close(fd);
 	return 0;
+}
+
+int file_size(const char *filename)
+{
+	int ret;
+	struct stat stat_buf;
+
+	ret = stat(filename, &stat_buf);
+	if (ret == -1) {
+		error("Failed to get stat on %s file, %s.",
+		      filename, strerror(errno));
+		return -1;
+	}
+
+	return stat_buf.st_size;
+}
+
+void *file_mmap(const char *filename, size_t length)
+{
+	void *ret = NULL;
+	int fd;
+
+	fd = open(filename, O_RDONLY);
+	if (fd == -1) {
+		error("Failed to open %s file, %s.",
+		      filename, strerror(errno));
+		goto exit;
+	}
+
+	ret = mmap(NULL, length, PROT_READ, MAP_SHARED, fd, 0);
+	if (ret == MAP_FAILED) {
+		error("Failed to map %s file into memory, %s.",
+		      filename, strerror(errno));
+		goto close;
+	}
+
+close:
+	close(fd);
+exit:
+	return ret;
 }
 
 int file_string_write(const char *filename, const char *what)
