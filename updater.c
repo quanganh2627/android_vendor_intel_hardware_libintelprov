@@ -614,7 +614,7 @@ Value *FlashCallFunction(int (*fun)(char *), const char *name, State *state,
     if (ReadArgs(state, argv, 1, &filename) < 0)
             goto done;
 
-    if (flash_fpt_file_ifwi(filename) != EXIT_SUCCESS) {
+    if (fun(filename) != EXIT_SUCCESS) {
         ErrorAbort(state, "%s failed.", name);
         goto done;
     }
@@ -622,6 +622,8 @@ Value *FlashCallFunction(int (*fun)(char *), const char *name, State *state,
     ret = StringValue(strdup(""));
 
 done:
+    if (filename)
+	    free(filename);
     return ret;
 }
 
