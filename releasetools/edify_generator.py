@@ -325,3 +325,10 @@ class EdifyGenerator(object):
   def FinalizeUpdate(self):
     self.Print("Security finalize update \n");
     self.script.append('run_program("/system/bin/teeprov", "--finalize-update");');
+
+  # Use this function cautiously. See implementation comment for more
+  # details.
+  def FlashPartitionScheme(self, name):
+    self.Print("Flash new partition scheme...\n")
+    self.script.append('flash_partition("/tmp/%s");' % (name,))
+

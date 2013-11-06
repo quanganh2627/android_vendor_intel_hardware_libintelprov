@@ -1,9 +1,7 @@
- LOCAL_PATH:= $(call my-dir)
+LOCAL_PATH:= $(call my-dir)
 
- include $(CLEAR_VARS)
-
+include $(CLEAR_VARS)
 LOCAL_C_INCLUDES:=  $(LOCAL_PATH)/include/
-
 LOCAL_SRC_FILES:= \
 	cgpt_add.c \
 	cgpt_boot.c \
@@ -27,11 +25,6 @@ LOCAL_SRC_FILES:= \
 	cmd_reload.c \
 	cmd_show.c
 
-
-
-LOCAL_MODULE := libcgpt
-
+LOCAL_MODULE := libcgpt_static
 LOCAL_MODULE_TAGS := optional
-
 include $(BUILD_STATIC_LIBRARY)
-

@@ -56,6 +56,15 @@ LOCAL_SHARED_LIBRARIES := libc liblog
 include $(BUILD_EXECUTABLE)
 endif
 
+# Partitionning library
+include $(CLEAR_VARS)
+LOCAL_MODULE := liboempartitioning_static
+LOCAL_SRC_FILES := oem_partition.c
+LOCAL_MODULE_TAGS := optional
+LOCAL_C_INCLUDES := bootable/droidboot/volumeutils $(LOCAL_PATH)/gpt/lib/include
+LOCAL_WHOLE_STATIC_LIBRARIES := libpartlink_static libcgpt_static
+include $(BUILD_STATIC_LIBRARY)
+
 # Plug-in library for AOSP updater
 include $(CLEAR_VARS)
 LOCAL_MODULE := libintel_updater
@@ -70,7 +79,7 @@ endif
 ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
   LOCAL_CFLAGS += -DMRFLD
 endif
-LOCAL_WHOLE_STATIC_LIBRARIES := libmiu
+LOCAL_WHOLE_STATIC_LIBRARIES := libmiu liboempartitioning_static
 ifeq ($(external_release),no)
 ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
 LOCAL_SRC_FILES += tee_connector.c
@@ -113,38 +122,16 @@ ifeq ($(TARGET_USE_DROIDBOOT),true)
 # Plug-in libary for Droidboot
 include $(CLEAR_VARS)
 LOCAL_MODULE := libintel_droidboot
-LIBCGPT_FILES := \
-	gpt/lib/cgpt_add.c \
-	gpt/lib/cgpt_boot.c \
-	gpt/lib/cgpt_common.c \
-	gpt/lib/cgpt_create.c \
-	gpt/lib/cgpt_find.c \
-	gpt/lib/cgpt_legacy.c \
-	gpt/lib/cgptlib_internal.c \
-	gpt/lib/cgpt_prioritize.c \
-	gpt/lib/cgpt_repair.c \
-	gpt/lib/cgpt_show.c \
-	gpt/lib/crc32.c \
-	gpt/lib/utility_stub.c \
-	gpt/lib/cmd_add.c \
-	gpt/lib/cmd_boot.c \
-	gpt/lib/cmd_create.c \
-	gpt/lib/cmd_find.c \
-	gpt/lib/cmd_legacy.c \
-	gpt/lib/cmd_prioritize.c \
-	gpt/lib/cmd_repair.c \
-	gpt/lib/cmd_reload.c \
-	gpt/lib/cmd_show.c
 
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter -Wno-unused-but-set-variable
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
-LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils $(call include-path-for, recovery) $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
+LOCAL_C_INCLUDES := bootable/droidboot $(call include-path-for, recovery) $(common_libintelprov_includes)
 
-LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES)
+LOCAL_SRC_FILES := droidboot.c $(common_libintelprov_files)
 
-LOCAL_WHOLE_STATIC_LIBRARIES := libmiu libpartlink
+LOCAL_WHOLE_STATIC_LIBRARIES := libmiu liboempartitioning_static
 
 ifeq ($(external_release),no)
 LOCAL_SRC_FILES += $(common_pmdb_files) $(token_implementation)

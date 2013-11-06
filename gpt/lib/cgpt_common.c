@@ -32,12 +32,11 @@ const char* command = "cgpt";
 
 void uuid_generate(uint8_t* buffer) {
   int fd;
-  ssize_t c;
 
   memset(buffer, 0, 16);
 
   if ( (fd = open("/dev/urandom", O_RDONLY)) != -1) {
-    c = read(fd, buffer, 16);
+    read(fd, buffer, 16);
     close(fd);
   }
 }

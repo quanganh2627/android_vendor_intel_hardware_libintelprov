@@ -40,10 +40,9 @@
 #include "txemanuf.h"
 #include "fastboot.h"
 #include "droidboot_ui.h"
-#include "update_partition.h"
 #include "gpt/partlink/partlink.h"
-#include <cgpt.h>
 #include "miu.h"
+#include "oem_partition.h"
 
 #ifndef EXTERNAL
 #include "pmdb.h"
@@ -56,8 +55,6 @@
 static int oem_write_osip_header(int argc, char **argv);
 
 static int radio_flash_logs = 0;
-
-static int oem_partition_stop_handler(int argc, char **argv);
 
 #define INFO_MSG_LEN    (size_t)128
 
@@ -684,43 +681,6 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 	return retval;
 }
 
-static char **str_to_array(char *str, int *argc)
-{
-	char *str1, *token;
-	char *saveptr1;
-	int j;
-	int num_tokens;
-	char **tokens;
-
-	tokens=malloc(sizeof(char *) * K_MAX_ARGS);
-
-	if(tokens==NULL)
-	    return NULL;
-
-	num_tokens = 0;
-
-	for (j = 1, str1 = str; ; j++, str1 = NULL) {
-		token = strtok_r(str1, " ", &saveptr1);
-
-	if (token == NULL)
-		break;
-
-	tokens[num_tokens] = (char *) malloc(sizeof(char) * K_MAX_ARG_LEN+1);
-
-	if(tokens[num_tokens]==NULL)
-		break;
-
-	strncpy(tokens[num_tokens], token, K_MAX_ARG_LEN);
-	num_tokens++;
-
-	if (num_tokens == K_MAX_ARGS)
-		break;
-	}
-
-	*argc = num_tokens;
-	return tokens;
-}
-
 static int oem_write_osip_header(int argc, char **argv)
 {
 	static struct OSIP_header default_osip = {
@@ -740,21 +700,6 @@ static int oem_write_osip_header(int argc, char **argv)
 	restore_osii("boot");
 	restore_osii("recovery");
 	restore_osii("fastboot");
-	return 0;
-}
-
-static int oem_partition_start_handler(int argc, char **argv)
-{
-	property_set("sys.partitioning", "1");
-	ui_print("Start partitioning\n");
-	ufdisk_umount_all();
-	return 0;
-}
-
-static int oem_partition_stop_handler(int argc, char **argv)
-{
-	property_set("sys.partitioning", "0");
-	ui_print("Stop partitioning\n");
 	return 0;
 }
 
@@ -843,254 +788,6 @@ static int oem_get_batt_info_handler(int argc, char **argv)
 	fastboot_info(msg_buf);
 	// Display the result on the UI
 	ui_print("Battery level at %d%%\n", batt_level);
-
-	return 0;
-}
-
-static int _oem_partition_gpt_sub_command(int argc, char **argv)
-{
-	unsigned int i;
-	char *command = argv[0];
-	static struct {
-		const char *name;
-		int (*fp)(int argc, char *argv[]);
-	} cmds[] = {
-		{"create", cmd_create },
-		{"add", cmd_add},
-		{"dump", cmd_show},
-		{"repair", cmd_repair},
-		{"boot", cmd_bootable},
-		{"find", cmd_find},
-		{"prioritize", cmd_prioritize},
-		{"legacy", cmd_legacy},
-		{"reload", cmd_reload},
-	};
-
-	optind = 0;
-	for (i = 0; command && i < sizeof(cmds)/sizeof(cmds[0]); ++i)
-		if (0 == strncmp(cmds[i].name, command, strlen(command)))
-			return cmds[i].fp(argc, argv);
-
-	return -1;
-}
-
-static int oem_partition_gpt_handler(FILE *fp)
-{
-	int argc = 0;
-	int ret = 0;
-	int i;
-	char buffer[K_MAX_ARG_LEN];
-	char **argv = NULL;
-	char value[PROPERTY_VALUE_MAX] = {'\0'};
-
-	ui_print("Using GPT\n");
-
-	property_get("sys.partitioning", value, NULL);
-	if (strcmp(value, "1")) {
-		fastboot_fail("Partitioning is not started\n");
-		return -1;
-	}
-
-	uuid_generator = uuid_generate;
-	while (fgets(buffer, sizeof(buffer), fp)) {
-		if (buffer[strlen(buffer)-1] == '\n')
-			buffer[strlen(buffer)-1]='\0';
-		argv = str_to_array(buffer, &argc);
-
-		if(argv != NULL) {
-			ret = _oem_partition_gpt_sub_command(argc, argv);
-
-			for(i = 0; i < argc ; i++) {
-				if (argv[i]) {
-					free(argv[i]);
-					argv[i]=NULL;
-				}
-			}
-			free(argv);
-			argv=NULL;
-
-			if (ret) {
-				pr_error("gpt command failed: %s", buffer);
-				fastboot_fail("GPT command failed\n");
-				return -1;
-			}
-		}
-		else {
-			pr_error("GPT str_to_array error: %s", buffer);
-			fastboot_fail("GPT str_to_array error. Malformed string ?\n");
-			return -1;
-		}
-	}
-
-	partlink_populate();
-
-	return 0;
-}
-
-static int oem_partition_mbr_handler(FILE *fp)
-{
-	ui_print("Using MBR\n");
-
-	return ufdisk_create_partition();
-}
-
-int oem_partition_cmd_handler(int argc, char **argv)
-{
-	char buffer[K_MAX_ARG_LEN];
-	char partition_type[K_MAX_ARG_LEN];
-	FILE *fp;
-	int retval = -1;
-
-	memset(buffer, 0, sizeof(buffer));
-
-	if (argc == 2) {
-		fp = fopen(argv[1], "r");
-		if (!fp) {
-		      fastboot_fail("Can't open partition file");
-		      return -1;
-		}
-
-		if (!fgets(buffer, sizeof(buffer), fp)) {
-		      fastboot_fail("partition file is empty");
-		      return -1;
-		}
-
-		buffer[strlen(buffer)-1]='\0';
-
-		if (sscanf(buffer, "%*[^=]=%255s", partition_type) != 1) {
-		      fastboot_fail("partition file is invalid");
-		      return -1;
-		}
-
-		if (!strncmp("gpt", partition_type, strlen(partition_type)))
-		      retval = oem_partition_gpt_handler(fp);
-
-		if (!strncmp("mbr", partition_type, strlen(partition_type)))
-		      retval = oem_partition_mbr_handler(fp);
-
-		fclose(fp);
-	}
-
-	return retval;
-}
-
-#define ERASE_PARTITION     "erase"
-#define MOUNT_POINT_SIZE    50      /* /dev/<whatever> */
-#define BUFFER_SIZE         4000000 /* 4Mb */
-
-static int oem_erase_partition(int argc, char **argv)
-{
-	int retval = -1;
-	int size;
-	char mnt_point[MOUNT_POINT_SIZE] = "";
-
-	if ((argc != 2) || (strcmp(argv[0], ERASE_PARTITION))) {
-		/* Should not pass here ! */
-                fastboot_fail("oem erase called with wrong parameter!\n");
-		goto end;
-	}
-
-	if (argv[1][0] == '/') {
-		size = snprintf(mnt_point, MOUNT_POINT_SIZE, "%s", argv[1]);
-
-		if (size == -1 || size > MOUNT_POINT_SIZE-1) {
-		    fastboot_fail("Mount point parameter size exceeds limit");
-		    goto end;
-		}
-	} else {
-		if (!strcmp(argv[1], "userdata")) {
-		    strcpy(mnt_point, "/data");
-		} else {
-		    size = snprintf(mnt_point, MOUNT_POINT_SIZE, "/%s", argv[1]);
-
-		    if (size == -1 || size > MOUNT_POINT_SIZE-1) {
-			fastboot_fail("Mount point size exceeds limit");
-			goto end;
-		    }
-		}
-	}
-
-	pr_info("CMD '%s %s'...\n", ERASE_PARTITION, mnt_point);
-
-	ui_print("ERASE step 1/2...\n");
-	retval = nuke_volume(mnt_point, BUFFER_SIZE);
-	if (retval != 0) {
-		pr_error("format_volume failed: %s\n", mnt_point);
-		goto end;
-	} else {
-		pr_info("format_volume succeeds: %s\n", mnt_point);
-	}
-
-	ui_print("ERASE step 2/2...\n");
-	retval = format_volume(mnt_point);
-	if (retval != 0) {
-		pr_error("format_volume failed: %s\n", mnt_point);
-	} else {
-		pr_info("format_volume succeeds: %s\n", mnt_point);
-	}
-
-end:
-    return retval;
-}
-
-#define REPART_PARTITION	"repart"
-
-static int oem_repart_partition(int argc, char **argv)
-{
-	int retval = -1;
-
-	if (argc != 1) {
-		/* Should not pass here ! */
-		fastboot_fail("oem repart does not require argument");
-		goto end;
-	}
-
-	retval = ufdisk_create_partition();
-	if (retval != 0)
-		fastboot_fail("cannot write partition");
-	else
-		fastboot_okay("");
-
-end:
-	return retval;
-}
-
-static int oem_retrieve_partitions(int argc, char **argv)
-{
-	int ret, len;
-	char value[PROPERTY_VALUE_MAX];
-	char drive[] = STORAGE_BASE_PATH;
-	char *boot_argv[3];
-	char boot_opt[] = "-p";
-	char *reload_argv[2];
-
-	if(argc != 1) {
-		fastboot_fail("oem retrieve_partitions does not require argument");
-		return -1;
-	}
-
-	len = property_get("sys.partitioning", value, NULL);
-	if (strcmp(value, "1")) {
-		fastboot_fail("Partitioning is not started\n");
-		return -1;
-	}
-
-	boot_argv[1] = boot_opt;
-	boot_argv[2] = drive;
-	printf("boot %s %s\n", boot_argv[1], boot_argv[2]);
-	ret = cmd_bootable(3, boot_argv);
-	if (ret) {
-		fastboot_fail("gpt boot command failed\n");
-		return ret;
-	}
-
-	reload_argv[1] = drive;
-	printf("reload %s\n", reload_argv[1]);
-	ret = cmd_reload(2, reload_argv);
-	if (ret) {
-		fastboot_fail("gpt reload command failed\n");
-		return ret;
-	}
 
 	return 0;
 }
@@ -1291,7 +988,12 @@ void libintel_droidboot_init(void)
 	int ret = 0;
 	char platform_prop[PROPERTY_VALUE_MAX] = { '\0', };
 	char build_type_prop[PROPERTY_VALUE_MAX] = { '\0', };
+	struct ufdisk ufdisk = {
+		.umount_all = ufdisk_umount_all,
+		.create_partition = ufdisk_create_partition
+	};
 
+	oem_partition_init(&ufdisk);
 	util_init(fastboot_fail, fastboot_info);
 
 	ret |= aboot_register_flash_cmd(TEST_OS_NAME, flash_testos);
@@ -1338,8 +1040,8 @@ void libintel_droidboot_init(void)
 
 	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
 	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);
-	ret |= aboot_register_oem_cmd(ERASE_PARTITION, oem_erase_partition);
-	ret |= aboot_register_oem_cmd(REPART_PARTITION, oem_repart_partition);
+	ret |= aboot_register_oem_cmd("erase", oem_erase_partition);
+	ret |= aboot_register_oem_cmd("repart", oem_repart_partition);
 
 	ret |= aboot_register_oem_cmd("nvm", oem_nvm_cmd_handler);
 	ret |= aboot_register_oem_cmd("write_osip_header", oem_write_osip_header);
