@@ -915,9 +915,9 @@ static int oem_partition_gpt_handler(FILE *fp)
 			fastboot_fail("GPT str_to_array error. Malformed string ?\n");
 			return -1;
 		}
-
-		partlink_populate();
 	}
+
+	partlink_populate();
 
 	return 0;
 }
