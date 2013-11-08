@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Intel Corporation
+ * Copyright 2011-2013 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,14 @@
 #include <stdarg.h>
 #include <edify/expr.h>
 #include <updater/updater.h>
+#include <common.h>
 
 #include "update_osip.h"
 #include "util.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
+#include "fpt.h"
+#include "txemanuf.h"
 #include "miu.h"
 
 static void miu_progress_cb(int progress, int total)
@@ -543,6 +546,99 @@ done:
 
     return ret;
 }
+
+static void recovery_error(const char *msg)
+{
+    fprintf(stderr, "%s", msg);
+}
+
+Value *FlashCallFunction(int (*fun)(char *), const char *name, State *state,
+                         int argc, Expr *argv[])
+{
+    Value *ret = NULL;
+    char *filename = NULL;
+
+    if (ReadArgs(state, argv, 1, &filename) < 0)
+            goto done;
+
+    if (flash_fpt_file_ifwi(filename) != EXIT_SUCCESS) {
+        ErrorAbort(state, "%s failed.", name);
+        goto done;
+    }
+
+    ret = StringValue(strdup(""));
+
+done:
+    return ret;
+}
+
+Value *FlashFptIfwi(const char *name, State *state, int argc, Expr *argv[]) {
+    return FlashCallFunction(flash_fpt_file_ifwi, name, state, argc, argv);
+}
+
+Value *FlashFptTxe(const char *name, State *state, int argc, Expr *argv[]) {
+    return FlashCallFunction(flash_fpt_file_txe, name, state, argc, argv);
+}
+
+Value *FlashFptPdr(const char *name, State *state, int argc, Expr *argv[]) {
+    return FlashCallFunction(flash_fpt_file_pdr, name, state, argc, argv);
+}
+
+Value *FlashFptBios(const char *name, State *state, int argc, Expr *argv[]) {
+    return FlashCallFunction(flash_fpt_file_bios, name, state, argc, argv);
+}
+
+Value *FlashFptFpfs(const char *name, State *state, int argc, Expr *argv[]) {
+    return FlashCallFunction(flash_fpt_file_fpfs, name, state, argc, argv);
+}
+
+Value *FlashTxemanuf(const char *name, State *state, int argc, Expr *argv[]) {
+    return FlashCallFunction(flash_txemanuf_file, name, state, argc, argv);
+}
+
+Value *CommandFunction(int (*fun)(int, char **), const char *name, State *state,
+                       int argc, Expr *argv[]) {
+    Value *ret = NULL;
+    char *argv_str[argc];
+
+    int i;
+    for (i = 0 ; i < argc ; i++)
+        if (ReadArgs(state, argv, i, &argv_str[i]) < 0) {
+            ErrorAbort(state, "%s parameter parsing failed.", name);
+            goto done;
+        }
+
+    if (fun(argc, argv_str) != EXIT_SUCCESS) {
+            ErrorAbort(state, "%s failed.", name);
+            goto done;
+    }
+
+    ret = StringValue(strdup(""));
+
+done:
+    return ret;
+}
+
+Value *FptWriteItem(const char *name, State *state, int argc, Expr *argv[]) {
+    return CommandFunction(fpt_writeitem, name, state, argc, argv);
+}
+
+Value *FptWriteValidBit(const char *name, State *state, int argc, Expr *argv[]) {
+    return CommandFunction(fpt_writevalidbit, name, state, argc, argv);
+}
+
+Value *FptCloseMnf(const char *name, State *state, int argc, Expr *argv[]) {
+    return CommandFunction(fpt_closemnf, name, state, argc, argv);
+}
+
+Value *TxemanufEofTest(const char *name, State *state, int argc, Expr *argv[]) {
+    return CommandFunction(txemanuf_eof_test, name, state, argc, argv);
+}
+
+Value *TxemanufBistTest(const char *name, State *state, int argc, Expr *argv[]) {
+    return CommandFunction(txemanuf_bist_test, name, state, argc, argv);
+}
+
 void Register_libintel_updater(void)
 {
     RegisterFunction("flash_osip", FlashOsipFn);
@@ -556,4 +652,20 @@ void Register_libintel_updater(void)
 
     RegisterFunction("flash_capsule", FlashCapsuleFn);
     RegisterFunction("flash_ulpmc", FlashUlpmcFn);
+
+#ifdef HAS_SPINOR
+    RegisterFunction("flash_fpt_ifwi", FlashFptIfwi);
+    RegisterFunction("flash_fpt_txe", FlashFptTxe);
+    RegisterFunction("flash_fpt_pdr", FlashFptPdr);
+    RegisterFunction("flash_fpt_bios", FlashFptBios);
+    RegisterFunction("flash_fpt_fpfs", FlashFptFpfs);
+    RegisterFunction("flash_txemanuf", FlashTxemanuf);
+
+    RegisterFunction("fpt_writeite", FptWriteItem);
+    RegisterFunction("fpt_writevalidbit", FptWriteValidBit);
+    RegisterFunction("fpt_closemnf", FptCloseMnf);
+    RegisterFunction("txemanuf_eof_test", TxemanufEofTest);
+    RegisterFunction("txemanuf_bist_test", TxemanufBistTest);
+#endif  /* HAS_SPINOR */
+    util_init(recovery_error, NULL);
 }

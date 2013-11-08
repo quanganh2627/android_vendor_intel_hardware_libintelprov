@@ -36,6 +36,8 @@
 #include "util.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
+#include "fpt.h"
+#include "txemanuf.h"
 #include "fastboot.h"
 #include "droidboot_ui.h"
 #include "update_partition.h"
@@ -907,6 +909,8 @@ static int oem_partition_gpt_handler(FILE *fp)
 			fastboot_fail("GPT str_to_array error. Malformed string ?\n");
 			return -1;
 		}
+
+		partlink_populate();
 	}
 
 	return 0;
@@ -1275,6 +1279,8 @@ void libintel_droidboot_init(void)
 {
 	int ret = 0;
 
+	util_init(fastboot_fail, fastboot_info);
+
 	ret |= aboot_register_flash_cmd(TEST_OS_NAME, flash_testos);
 	ret |= aboot_register_flash_cmd(ANDROID_OS_NAME, flash_android_kernel);
 	ret |= aboot_register_flash_cmd(RECOVERY_OS_NAME, flash_recovery_kernel);
@@ -1294,6 +1300,21 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("rnd_read", flash_modem_read_rnd);
 	ret |= aboot_register_flash_cmd("rnd_write", flash_modem_write_rnd);
 	ret |= aboot_register_flash_cmd("rnd_erase", flash_modem_erase_rnd);
+
+#ifdef HAS_SPINOR
+	aboot_register_flash_cmd("fpt_ifwi", flash_fpt_data_ifwi);
+	aboot_register_flash_cmd("fpt_txe", flash_fpt_data_txe);
+	aboot_register_flash_cmd("fpt_pdr", flash_fpt_data_pdr);
+	aboot_register_flash_cmd("fpt_bios", flash_fpt_data_bios);
+	aboot_register_flash_cmd("fpt_fpfs", flash_fpt_data_fpfs);
+	aboot_register_flash_cmd("txemanuf", flash_txemanuf_data);
+
+	aboot_register_oem_cmd("fpt_writeitem", fpt_writeitem);
+	aboot_register_oem_cmd("fpt_writevalidbit", fpt_writevalidbit);
+	aboot_register_oem_cmd("fpt_closemnf", fpt_closemnf);
+	aboot_register_oem_cmd("txemanuf_eof_test", txemanuf_eof_test);
+	aboot_register_oem_cmd("txemanuf_bist_test", txemanuf_bist_test);
+#endif	/* HAS_SPINOR */
 
 	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
 	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);

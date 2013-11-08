@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Intel Corporation
+ * Copyright 2011-2013 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <errno.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -21,6 +22,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <libgen.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define pr_perror(x)	fprintf(stderr, "%s failed: %s\n", x, strerror(errno))
 
@@ -177,4 +181,165 @@ void twoscomplement(unsigned char *cs, unsigned char *buf, unsigned int size)
 
 int is_hex(char c) {
 	return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
+}
+
+/* Output stream management.  */
+static void (*error_fun)(const char *msg) = (void (*)(const char *))printf;
+static void (*print_fun)(const char *msg) = (void (*)(const char *))printf;
+
+#define MSG_BUF_LENGTH 256
+
+void error(const char *fmt, ...)
+{
+	char buf[MSG_BUF_LENGTH];
+
+	va_list argptr;
+	va_start(argptr, fmt);
+	vsnprintf(buf, sizeof(buf), fmt, argptr);
+	va_end(argptr);
+
+	error_fun(buf);
+}
+
+void print(const char *fmt, ...)
+{
+	char buf[MSG_BUF_LENGTH];
+
+	va_list argptr;
+	va_start(argptr, fmt);
+	vsnprintf(buf, sizeof(buf), fmt, argptr);
+	va_end(argptr);
+
+	print_fun(buf);
+}
+
+/* External program management.  */
+static int allocated_time_expired;
+
+static void sigalarm_handler(int signal)
+{
+	allocated_time_expired = 1;
+}
+
+static void run_program(const char *path, int output_fd, char *argv[])
+{
+	int ret;
+	int err_fd;
+
+	if ((err_fd = dup(STDERR_FILENO)) == -1) {
+		error("Failed to save stderr.");
+		goto exit;
+	}
+
+	if ((dup2(output_fd, STDOUT_FILENO) == -1) ||
+	    (dup2(output_fd, STDERR_FILENO) == -1)) {
+		error("Failed to redirect %s program output.", path);
+		goto exit;
+	}
+
+	argv[0] = basename(path);
+
+	ret = execv(path, argv);
+	if (ret != -1)
+		goto exit;
+
+
+	FILE *file = fdopen(err_fd, "w");
+	if (file == NULL)
+		goto exit;
+
+	fprintf(file, "execv failed on %s, %s\n", path, strerror(errno));
+	fclose(file);
+
+exit:
+	_exit(EXIT_FAILURE);
+}
+
+int call_program(const char *path, const char *log_file,
+		 const char *pass_string, unsigned int timeout, char *argv[])
+{
+	pid_t pid;
+	char buf[strlen(pass_string) + 1];
+	int fd, status, ret;
+	FILE *file = NULL;
+	int fun_ret = EXIT_FAILURE;
+
+	fd = open(log_file, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+
+	if (fd == -1) {
+		error("Failed to open %s file.", log_file);
+		return EXIT_FAILURE;
+	}
+
+	pid = fork();
+	if (pid == -1) {
+		error("Fork() systemcall failed, %s.", strerror(errno));
+		goto close;
+	}
+
+	if (pid == 0)
+		run_program(path, fd, argv);
+
+	const struct sigaction alarm_sigaction = {
+		.sa_handler = sigalarm_handler,
+	};
+	struct sigaction old_alarm_sigaction;
+	ret = sigaction(SIGALRM, &alarm_sigaction, &old_alarm_sigaction);
+	if (ret == -1) {
+		error("Failed to install SIGALRM handler.");
+		goto close;
+	}
+
+	alarm(timeout);
+	ret = waitpid(pid, &status, 0);
+	sigaction(SIGALRM, &old_alarm_sigaction, NULL);
+	if (ret == -1) {
+		if (allocated_time_expired) {
+			error("%s program takes too long, aborting.", path);
+			kill(pid, SIGTERM);
+		} else
+			error("Wait for %s program completion failed.", path);
+		goto close;
+	}
+
+	if (!WIFEXITED(status) || WEXITSTATUS(status) != EXIT_SUCCESS) {
+		error("%s program ended unexpectedly.", path);
+		goto close;
+	}
+
+	if (lseek(fd, 0, SEEK_SET) == -1) {
+		error("Seek failed on %s file, %s.", log_file, strerror(errno));
+		goto close;
+	}
+
+	file = fdopen(fd, "r+");
+	if (file == NULL) {
+		error("Failed to fdopen on %s (already opened via open), %s.",
+		      log_file, strerror(errno));
+		goto close;
+	}
+
+	while (fgets(buf, sizeof(buf), file) != NULL)
+		if (strstr(buf, pass_string)) {
+			fun_ret = EXIT_SUCCESS;
+			goto close;
+		}
+
+	error("The %s program failed to perform its task.", path);
+
+close:
+	if (file)
+		fclose(file);
+	else
+		close(fd);
+
+	return fun_ret;
+}
+
+
+/* Initialization.  */
+void util_init(void (*err_fun)(const char *), void (*pr_fun)(const char *))
+{
+	error_fun = err_fun ? err_fun : error_fun;
+	print_fun = pr_fun ? pr_fun : print_fun;
 }
