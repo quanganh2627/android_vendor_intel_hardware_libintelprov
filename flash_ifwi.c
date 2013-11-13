@@ -81,6 +81,8 @@ int ifwi_downgrade_allowed(const char *ifwi)
 #define BOOT1_FORCE_RO "/sys/block/mmcblk0boot1/force_ro"
 #define FORCE_RW_OPT "0"
 #define BOOT_PARTITION_SIZE 0x400000
+#define TOKEN_UMIP_AREA_ADDRESS 16384
+#define TOKEN_UMIP_AREA_SIZE 11264
 
 #define IFWI_TYPE_LSH 12
 
@@ -181,6 +183,13 @@ int check_ifwi_file(void *data, unsigned size)
 int update_ifwi_file(void *data, unsigned size)
 {
 	int boot0_fd, boot1_fd, ret = 0;
+	char *token_data;
+
+	token_data = malloc(TOKEN_UMIP_AREA_SIZE);
+	if (!token_data) {
+		fprintf(stderr, "flash_ifwi(): Malloc error\n");
+		return -1;
+	}
 
 	if (size > BOOT_PARTITION_SIZE) {
 		fprintf(stderr, "flash_ifwi(): Truncating last %d bytes from the IFWI\n",
@@ -193,46 +202,196 @@ int update_ifwi_file(void *data, unsigned size)
 	ret = force_rw(BOOT0_FORCE_RO);
 	if (ret) {
 		fprintf(stderr, "flash_ifwi(): unable to force_ro %s\n", BOOT0);
-		return -1;
+		goto err;
 	}
 	boot0_fd = open(BOOT0, O_RDWR);
 	if (boot0_fd < 0) {
 		fprintf(stderr, "flash_ifwi(): failed to open %s\n", BOOT0);
-		return -1;
+		goto err;
+	}
+	if (lseek(boot0_fd, TOKEN_UMIP_AREA_ADDRESS, SEEK_SET) < 0) {
+		fprintf(stderr, "flash_ifwi(): lseek failed on boot0\n");
+		goto err_boot0;
+	}
+	ret = read(boot0_fd, token_data, TOKEN_UMIP_AREA_SIZE);
+	if (ret <= 0 && errno != EINTR) {
+		fprintf(stderr, "flash_ifwi(): UMIP token area read failed with errno %d\n", errno);
+		goto err_boot0;
 	}
 	if (lseek(boot0_fd, 0, SEEK_SET) < 0) { /* Seek to start of file */
-		fprintf(stderr, "flash_ifwi(): lseek failed on boot0");
-		close(boot0_fd);
-		return -1;
+		fprintf(stderr, "flash_ifwi(): lseek failed on boot0\n");
+		goto err_boot0;
 	}
 	ret = write_image(boot0_fd, (char*)data, size);
+	if (ret) {
+		fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT0);
+		goto err_boot0;
+	}
+	if (lseek(boot0_fd, TOKEN_UMIP_AREA_ADDRESS, SEEK_SET) < 0) {
+		fprintf(stderr, "flash_ifwi: lseek failed on boot0\n");
+		goto err_boot0;
+	}
+	ret = write_image(boot0_fd, token_data, TOKEN_UMIP_AREA_SIZE);
 	close(boot0_fd);
 	if (ret)
-		fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT0);
+		fprintf(stderr, "flash_ifwi(): Restore UMIP token area to %s failed\n", BOOT0);
 	else {
 		ret = force_rw(BOOT1_FORCE_RO);
 		if (ret) {
 			fprintf(stderr, "flash_ifwi(): unable to force_ro %s\n", BOOT1);
-			return -1;
+			goto err;
 		}
 		boot1_fd = open(BOOT1, O_RDWR);
 		if (boot1_fd < 0) {
 			fprintf(stderr, "flash_ifwi(): failed to open %s\n", BOOT1);
-			return -1;
+			goto err;
+		}
+		if (lseek(boot1_fd, TOKEN_UMIP_AREA_ADDRESS, SEEK_SET) < 0) {
+			fprintf(stderr, "flash_ifwi(): lseek failed on boot1\n");;
+			goto err_boot1;
+		}
+		ret = read(boot1_fd, token_data, TOKEN_UMIP_AREA_SIZE);
+		if (ret <= 0 && errno != EINTR) {
+			fprintf(stderr, "flash_ifwi(): UMIP token area read failed with errno %d\n", errno);
+			goto err_boot1;
 		}
 		if (lseek(boot1_fd, 0, SEEK_SET) < 0) {
-			fprintf(stderr, "flash_ifwi(): lseek failed on boot1");
-			close(boot1_fd);
-			return -1;
+			fprintf(stderr, "flash_ifwi(): lseek failed on boot1\n");
+			goto err_boot1;
 		}
 		ret = write_image(boot1_fd, (char*)data, size);
+		if (ret) {
+			fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT1);
+			goto err_boot1;
+		}
+		if (lseek(boot1_fd, TOKEN_UMIP_AREA_ADDRESS, SEEK_SET) < 0) {
+			fprintf(stderr, "flash_ifwi: lseek failed on boot1\n");
+			goto err_boot1;
+		}
+		ret = write_image(boot1_fd, token_data, TOKEN_UMIP_AREA_SIZE);
 		close(boot1_fd);
 		if (ret)
 			fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT1);
 	}
+	free(token_data);
 	return ret;
+
+err_boot0:
+	close(boot0_fd);
+	goto err;
+
+err_boot1:
+	close(boot1_fd);
+	goto err;
+
+err:
+	free(token_data);
+	return -1;
 }
 
+int write_token_umip(void *data, size_t size)
+{
+	uint32_t *ptr = (uint32_t *) data;
+	int boot0_fd, boot1_fd, ret = 0;
+	int token_size = size;
+	uint32_t xor = 0;
+	int token_size32 = token_size / sizeof(uint32_t);
+	int i;
+	int padding_size = TOKEN_UMIP_AREA_SIZE - token_size - sizeof(uint32_t);
+	char *ptr_padding = calloc(1, padding_size);
+
+	if (!ptr_padding) {
+		fprintf(stderr, "write_token_umip: calloc failed\n");
+		return -1;
+	}
+	/* 32-bit XOR compensation calculation
+	 * The token just added shall avoid any effect on xor calculation (checksum)
+	 * 32-bit XOR compensation is written in UMIP just after the token
+	 */
+	for (i = 0; i < token_size32; i++) {
+		xor = xor ^ *ptr;
+		ptr++;
+	}
+
+	ret = force_rw(BOOT0_FORCE_RO);
+	if (ret) {
+		fprintf(stderr, "write_token_umip: unable to force_ro %s\n", BOOT0);
+		goto err;
+	}
+	boot0_fd = open(BOOT0, O_RDWR);
+	if (boot0_fd < 0) {
+		fprintf(stderr, "write_token_umip: failed to open %s\n", BOOT0);
+		goto err;
+	}
+	if (lseek(boot0_fd, TOKEN_UMIP_AREA_ADDRESS, SEEK_SET) < 0) {
+		fprintf(stderr, "write_token_umip: lseek failed on boot0\n");
+		goto err_boot0;
+	}
+	/* Write the token */
+	ret = write_image(boot0_fd, (char *)data, token_size);
+	if (ret) {
+		fprintf(stderr, "flash_token_umip(): write token to %s failed\n", BOOT0);
+		goto err_boot0;
+	}
+	/* Write the XOR Compensation */
+	ret = write_image(boot0_fd, (char *)&xor, sizeof(uint32_t));
+	if (ret) {
+		fprintf(stderr, "flash_token_umip(): write xor to %s failed\n", BOOT0);
+		goto err_boot0;
+	}
+	/* Write the padding bytes */
+	ret = write_image(boot0_fd, ptr_padding, padding_size);
+	close(boot0_fd);
+	if (ret)
+		fprintf(stderr, "flash_token_umip(): padding -- write to %s failed\n", BOOT0);
+	else {
+		ret = force_rw(BOOT1_FORCE_RO);
+		if (ret) {
+			fprintf(stderr, "write_token_umip: unable to force_ro %s\n", BOOT1);
+			goto err;
+		}
+		boot1_fd = open(BOOT1, O_RDWR);
+		if (boot1_fd < 0) {
+			fprintf(stderr, "write_token_umip: failed to open %s\n", BOOT1);
+			goto err;
+		}
+		if (lseek(boot1_fd, TOKEN_UMIP_AREA_ADDRESS, SEEK_SET) < 0) {
+			fprintf(stderr, "write_token_umip: lseek failed on boot1\n");
+			goto err_boot1;
+		}
+		/* Write the token */
+		ret = write_image(boot1_fd, (char *)data, token_size);
+		if (ret) {
+			fprintf(stderr, "flash_token_umip(): write token to %s failed\n", BOOT1);
+			goto err_boot1;
+		}
+		/* Write the XOR compensation */
+		ret = write_image(boot1_fd, (char *)&xor, sizeof(uint32_t));
+		if (ret) {
+			fprintf(stderr, "flash_token_umip(): write xor to %s failed\n", BOOT1);
+			goto err_boot1;
+		}
+		/* Write the padding bytes */
+		ret = write_image(boot1_fd, ptr_padding, padding_size);
+		close(boot1_fd);
+		if (ret)
+			fprintf(stderr, "flash_token_umip(): padding -- write to %s failed\n", BOOT1);
+	}
+	free(ptr_padding);
+	return ret;
+
+err_boot0:
+	close(boot0_fd);
+	goto err;
+
+err_boot1:
+	close(boot1_fd);
+	goto err;
+
+err:
+	free(ptr_padding);
+	return -1;
+}
 #else
 
 static int retry_write(char *buf, int cont, FILE *f)
