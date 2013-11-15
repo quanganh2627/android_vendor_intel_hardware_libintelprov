@@ -316,7 +316,7 @@ class EdifyGenerator(object):
   def StartUpdate(self):
     self.Print("Security start update \n");
     self.script.append('run_program("/system/bin/teeprov", "--cancel-update");');
-    self.script.append('assert(run_program("/system/bin/teeprov", "--start-update") == 0);');
+    self.script.append('run_program("/system/bin/teeprov", "--start-update");');
 
   def FinalizeUpdate(self):
     self.Print("Security finalize update \n");
