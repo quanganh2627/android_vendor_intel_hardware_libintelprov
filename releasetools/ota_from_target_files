@@ -91,6 +91,7 @@ OPTIONS.no_modem = False
 OPTIONS.intel_ota = False
 OPTIONS.intel_capsule = False
 OPTIONS.intel_ulpmc = False
+OPTIONS.intel_chaabi_token = False
 
 # Following is a hack for release scripts to be able to create OTA packages
 # using the ABS targets, and not rely on invoking this script separately. This
@@ -393,6 +394,9 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   script.ShowProgress(0.5, 0)
 
+  if OPTIONS.intel_chaabi_token == True:
+    script.StartUpdate()
+
   script.InvalidateOs("boot")
 
   if OPTIONS.wipe_user_data:
@@ -473,6 +477,10 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   script.UnmountAll()
   script.RestoreOs("boot")
+
+  if OPTIONS.intel_chaabi_token == True:
+    script.FinalizeUpdate()
+
   script.AddToZip(input_zip, output_zip)
   WriteMetadata(metadata, output_zip)
   if script.cur_progress < .9:
@@ -912,6 +920,8 @@ def main(argv):
       OPTIONS.intel_capsule = True
     elif o in ("--intel_ulpmc"):
       OPTIONS.intel_ulpmc = True
+    elif o in ("--intel_chaabi_token"):
+      OPTIONS.intel_chaabi_token = True
     else:
       return False
     return True
@@ -930,6 +940,7 @@ def main(argv):
                                               "no_modem",
                                               "intel_capsule",
                                               "intel_ulpmc",
+                                              "intel_chaabi_token",
                                               ],
                              extra_option_handler=option_handler)
 

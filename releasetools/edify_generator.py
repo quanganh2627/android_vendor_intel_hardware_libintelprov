@@ -312,3 +312,12 @@ class EdifyGenerator(object):
   def FlashUlpmc(self, name):
     self.Print("Updating ulpmc...\n");
     self.script.append('flash_ulpmc("/tmp/%s");' % (name,))
+
+  def StartUpdate(self):
+    self.Print("Security start update \n");
+    self.script.append('run_program("/system/bin/teeprov", "--cancel-update");');
+    self.script.append('run_program("/system/bin/teeprov", "--start-update");');
+
+  def FinalizeUpdate(self):
+    self.Print("Security finalize update \n");
+    self.script.append('run_program("/system/bin/teeprov", "--finalize-update");');

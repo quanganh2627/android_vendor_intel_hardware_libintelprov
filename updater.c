@@ -31,6 +31,9 @@
 #include "fpt.h"
 #include "txemanuf.h"
 #include "miu.h"
+#ifdef WRITE_BOM_TOKEN
+#include "tee_connector.h"
+#endif
 
 static void miu_progress_cb(int progress, int total)
 {
@@ -230,8 +233,8 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
             continue;
         buffsize = mzGetZipEntryUncompLen(ifwi_entry);
         if (buffsize <= 0) {
-              ErrorAbort(state, "Bad ifwi_entry size : %d.\n", buffsize);
-              goto error;
+            ErrorAbort(state, "Bad ifwi_entry size : %d.\n", buffsize);
+            goto error;
         }
         buffer = (unsigned char*)malloc(sizeof(unsigned char)*buffsize);
         if (buffer == NULL) {
@@ -244,6 +247,56 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
             free(buffer);
             goto error;
         }
+
+        if (check_ifwi_file(buffer, buffsize) < 1) {
+            free(buffer);
+            continue;
+        }
+
+#ifdef WRITE_BOM_TOKEN
+
+#define BOM_TOKEN_NAME "bom-token"
+
+        char bom_token_name[128];
+        const ZipEntry *bom_token_entry;
+        int bom_token_buffsize;
+        unsigned char *bom_token_buffer;
+
+        strcpy(bom_token_name, BOM_TOKEN_NAME);
+        strncat(bom_token_name, &(ifwi_name[strlen(IFWI_NAME)]), sizeof(bom_token_name) - strlen(BOM_TOKEN_NAME) - 1);
+        bom_token_entry = mzFindZipEntry(&ifwi_za, bom_token_name);
+
+        if (bom_token_entry != NULL) {
+            bom_token_buffsize = mzGetZipEntryUncompLen(bom_token_entry);
+            if (bom_token_buffsize <= 0) {
+                ErrorAbort(state, "Bad bom_token_entry size : %d.\n", bom_token_buffsize);
+                free(buffer);
+                goto error;
+            }
+            bom_token_buffer = (unsigned char*)malloc(sizeof(unsigned char)*bom_token_buffsize);
+            if (bom_token_buffer == NULL) {
+                ErrorAbort(state, "Unable to alloc bom token buffer of %d bytes.\n", bom_token_buffsize);
+                free(buffer);
+                goto error;
+            }
+            err = mzExtractZipEntryToBuffer(&ifwi_za, bom_token_entry, bom_token_buffer);
+            if (!err) {
+                ErrorAbort(state, "Failed to unzip %s.\n", IFWI_BIN_PATH);
+                free(bom_token_buffer);
+                free(buffer);
+                goto error;
+            }
+            if (write_token(bom_token_buffer, bom_token_buffsize) == 0) {
+                printf("BOM token written\n");
+            } else {
+                ErrorAbort(state, "Unable to write BOM token.\n");
+                cancel_update(0, NULL);
+                free(bom_token_buffer);
+                free(buffer);
+                goto error;
+            }
+        }
+#endif
         update_ifwi_file(buffer, buffsize);
 
         free(buffer);
@@ -561,7 +614,7 @@ Value *FlashCallFunction(int (*fun)(char *), const char *name, State *state,
     if (ReadArgs(state, argv, 1, &filename) < 0)
             goto done;
 
-    if (flash_fpt_file_ifwi(filename) != EXIT_SUCCESS) {
+    if (fun(filename) != EXIT_SUCCESS) {
         ErrorAbort(state, "%s failed.", name);
         goto done;
     }
@@ -569,6 +622,8 @@ Value *FlashCallFunction(int (*fun)(char *), const char *name, State *state,
     ret = StringValue(strdup(""));
 
 done:
+    if (filename)
+	    free(filename);
     return ret;
 }
 
@@ -599,19 +654,27 @@ Value *FlashTxemanuf(const char *name, State *state, int argc, Expr *argv[]) {
 Value *CommandFunction(int (*fun)(int, char **), const char *name, State *state,
                        int argc, Expr *argv[]) {
     Value *ret = NULL;
-    char *argv_str[argc];
-
+    char *argv_str[argc + 1];
     int i;
-    for (i = 0 ; i < argc ; i++)
-        if (ReadArgs(state, argv, i, &argv_str[i]) < 0) {
-            ErrorAbort(state, "%s parameter parsing failed.", name);
-            goto done;
-        }
 
-    if (fun(argc, argv_str) != EXIT_SUCCESS) {
+    char **argv_read = ReadVarArgs(state, argc, argv);
+    if (argv_read == NULL) {
+        ErrorAbort(state, "%s parameter parsing failed.", name);
+        goto done;
+    }
+
+    argv_str[0] = (char *)name;
+    for (i = 0 ; i < argc ; i++)
+        argv_str[i + 1] = argv_read[i];
+
+    if (fun(sizeof(argv_str) / sizeof(char *), argv_str) != EXIT_SUCCESS) {
             ErrorAbort(state, "%s failed.", name);
             goto done;
     }
+
+    for (i = 0 ; i < argc ; i++)
+        free(argv_read[i]);
+    free(argv_read);
 
     ret = StringValue(strdup(""));
 

@@ -21,6 +21,7 @@
 #include "capsule.h"
 
 #ifdef MRFLD
+int check_ifwi_file(void *data, unsigned size);
 int update_ifwi_file(void *data, unsigned size);
 #else
 int update_ifwi_file(const char *dnx, const char *ifwi);

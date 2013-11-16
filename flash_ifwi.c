@@ -141,10 +141,8 @@ static int force_rw(char *name) {
 	close(fd);
 	return 0;
 }
-
-int update_ifwi_file(void *data, unsigned size)
+int check_ifwi_file(void *data, unsigned size)
 {
-	int boot0_fd, boot1_fd, ret = 0;
 	struct firmware_versions_long dev_fw_rev, img_fw_rev;
 
 	if (get_image_fw_rev_long(data, size, &img_fw_rev)) {
@@ -176,6 +174,13 @@ int update_ifwi_file(void *data, unsigned size)
 		/* Not an error case. Let update continue to next IFWI versions. */
 		return 0;
 	}
+
+	return 1;
+}
+
+int update_ifwi_file(void *data, unsigned size)
+{
+	int boot0_fd, boot1_fd, ret = 0;
 
 	if (size > BOOT_PARTITION_SIZE) {
 		fprintf(stderr, "flash_ifwi(): Truncating last %d bytes from the IFWI\n",
