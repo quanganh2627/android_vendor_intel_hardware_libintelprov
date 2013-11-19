@@ -48,6 +48,12 @@
 #define CAPSULE_UPDATE_FLAG_PATH "/sys/firmware/osnib/fw_update"
 #define ULPMC_PATH "/dev/ulpmc-fwupdate"
 
+#define CAPSULE_HEADER "capsule header "
+#define MN2_VER_BYTESREORDER(data) data[1]<< 24 | data[0] << 16 | data[3] << 8 | data[2];
+#define CAPSULE_FW_VERSION_TAG 0x244d4e32 /* $MN2 */
+/* Offset in byte to apply from the last $MN2 TAG byte to found the version value */
+#define CAPSULE_FW_VERSION_OFFSET 5
+
 struct update_info{
 	uint32_t ifwi_size;
 	uint32_t reset_after_update;
@@ -604,123 +610,195 @@ out:
 	return ret;
 }
 
-void dump_capsule(struct capsule *c) {
+bool get_fw_version_tag_offset(u8** data_ptr, u8* end_ptr)
+{
+	u32 patt = 0;
+
+	for (;*data_ptr < end_ptr; (*data_ptr)++) {
+		patt = patt << 8 | **data_ptr;
+		if (patt == CAPSULE_FW_VERSION_TAG) {
+			*data_ptr += CAPSULE_FW_VERSION_OFFSET;
+			return true;
+		}
+	}
+
+	/* no $MN2 found return 0 */
+	return false;
+}
+
+void print_capsule_header(struct capsule *c) {
 	struct capsule_signature *sig;
 	struct capsule_version *ver;
 	struct capsule_refs *refs;
+
+	if (!c)
+		return;
 
 	sig = &(c->header.sig);
 	ver = &(c->header.ver);
 	refs= &(c->header.refs);
 
-	if (!sig)
-			return;
-
-	if (!ver)
-			return;
-
-	if (!refs)
-			return;
-
-	printf("capsule header (0x%02x)\n", sig->signature);
-
-	printf("capsule version (0x%02x)\n", ver->signature);
-
-	printf("iafw_stage_1: version=0x%02x size=%d offset=0x%02x\n",
+	printf(CAPSULE_HEADER "(0x%02x)\n", sig->signature);
+	printf(CAPSULE_HEADER "version (0x%02x) length 0x%02x\n", ver->signature, ver->length);
+	printf(CAPSULE_HEADER "iafw_stage_1: version=0x%x size=0x%02x offset=0x%02x\n",
 				ver->iafw_stage1_version,
 				refs->iafw_stage1_size,
-				refs->iafw_stage1_offset);
-
-	printf("iafw_stage_2: version=0x%02x size=%d offset=0x%02x\n",
+				refs->iafw_stage1_offset + sizeof(*sig));
+	printf(CAPSULE_HEADER "iafw_stage_2: version=0x%x size=0x%02x offset=0x%02x\n",
 				ver->iafw_stage2_version,
 				refs->iafw_stage2_size,
-				refs->iafw_stage2_offset);
-
-	printf("mcu: version=0x%02x\n",
+				refs->iafw_stage2_offset + sizeof(*sig));
+	printf(CAPSULE_HEADER "mcu: version=0x%x\n",
 				ver->mcu_version);
-
-	printf("sec: version=0x%02x size=%d offset=0x%02x\n",
+	printf(CAPSULE_HEADER "pdr:  size=0x%02x offset=0x%02x\n",
+				refs->pdr_size,
+				refs->pdr_offset + sizeof(*sig));
+	printf(CAPSULE_HEADER "sec: version=0x%02x (%d) size=0x%02x offset=0x%02x\n",
 				ver->sec_version,
+				(ver->sec_version & 0xFFFF),
 				refs->sec_size,
-				refs->sec_offset);
-
+				refs->sec_offset + sizeof(*sig));
 }
 
-int check_capsule(struct capsule *c)
+bool check_capsule(struct capsule *c, u32 iafw_version, u32 sec_version, u32 pdr_version)
 {
-	/* TODO */
-	return 0;
+	u8* cdata = (u8*)c;
+	struct capsule_signature *sig = &(c->header.sig);
+	struct capsule_refs *refs = &(c->header.refs);
+
+	/*  Check PDR region if present request capsule update without condition */
+	if (refs->pdr_size) {
+		u8* pdr_data = cdata + refs->pdr_offset + sizeof(*sig);
+
+		if (get_fw_version_tag_offset(&pdr_data, pdr_data + refs->pdr_size))
+		{
+			u32 pdr_mn2_version = MN2_VER_BYTESREORDER(pdr_data);
+			printf("PDR $MN2 at offset 0x%02x version 0x%02x \n", pdr_data - cdata, pdr_mn2_version);
+
+			if (pdr_mn2_version != pdr_version)
+			{
+				printf("PDR version mismatch current 0x%02x capsule $MN2 0x%02x \n", pdr_version, pdr_mn2_version);
+				printf("Capsule update requested \n");
+				return true;
+			}
+		}
+	}
+
+	/* Get IAFW $MN2 capsule version and compare it with current one */
+	if (refs->iafw_stage2_size) {
+		u8* iafw_data = cdata + refs->iafw_stage2_offset + sizeof(*sig);
+
+		if (get_fw_version_tag_offset(&iafw_data, iafw_data + refs->iafw_stage2_size))
+		{
+			u32 iafw_mn2_version = MN2_VER_BYTESREORDER(iafw_data);
+			printf("IAFW $MN2 at offset 0x%02x version 0x%02x \n", iafw_data - cdata, iafw_mn2_version);
+
+			if (iafw_mn2_version != iafw_version)
+			{
+				printf("IAFW version mismatch current 0x%02x capsule $MN2 0x%02x \n", iafw_version, iafw_mn2_version);
+				printf("Capsule update requested \n");
+				return true;
+			}
+		}
+	}
+
+	/* Get SECFW $MN2 capsule versions (several $MN2 can be found in SEC image) */
+	if (refs->sec_size) {
+		u8* sec_data = cdata + refs->sec_offset + sizeof(*sig);
+
+		/* Check $MN2 version */
+		while (get_fw_version_tag_offset(&sec_data, cdata + refs->sec_size))
+		{
+			/* Endianess reordering to get SECFW version needed info */
+			u32 sec_mn2_version_msb = MN2_VER_BYTESREORDER(sec_data);;
+			u32 sec_mn2_version_lsb = MN2_VER_BYTESREORDER((sec_data + 4));;
+			printf("SEC $MN2 at offset 0x%02x version %d.%d\n", sec_data - cdata, sec_mn2_version_msb, sec_mn2_version_lsb);
+
+			if (sec_mn2_version_lsb != sec_version)
+			{
+				printf("SECFW version mismatch current %d capsule $MN2 %d\n", sec_version, sec_mn2_version_lsb);
+				printf("Capsule update requested\n");
+				return true;
+			}
+		}
+	}
+
+	/* All version are the same, no update requested */
+	return false;
 }
 
 int flash_capsule(void *data, unsigned sz)
 {
+	int ret_status = 0;
 	char capsule_trigger = '1';
-    struct capsule *c = NULL;
-	struct capsule_version *v = NULL;
+	bool capsule_update;
+	struct capsule *c;
 
 	char iafw_stage1_version_str[PROPERTY_VALUE_MAX];
-	u32 iafw_stage1_version = 0;
-
-	/*
-	 * disabled until fw update
-	 *char iafw_stage2_version_str[PROPERTY_VALUE_MAX];
-	 *u32 iafw_stage2_version = 0;
-	 */
+	u32 iafw_version_msb = 0;
+	u32 iafw_version = 0;
 
 	char sec_version_str[PROPERTY_VALUE_MAX];
+	u32 sec_version_msb = 0;
 	u32 sec_version = 0;
 
+	char pdr_version_str[PROPERTY_VALUE_MAX];
+	u32 pdr_version_msb = 0;
+	u32 pdr_version = 0;
+
+	/* Get current FW version */
 	property_get("sys.ia32.version", iafw_stage1_version_str, "00.00");
 	property_get("sys.chaabi.version", sec_version_str, "00.00");
+	property_get("sys.pdr.version", pdr_version_str, "00.00");
 
-	sscanf(iafw_stage1_version_str, "%*d.%x", &iafw_stage1_version);
-	sscanf(sec_version_str, "%*d.%x", &sec_version);
+	sscanf(iafw_stage1_version_str, "%x.%x", &iafw_version_msb, &iafw_version);
+	sscanf(sec_version_str, "%*d.%*d.%d.%d", &sec_version_msb, &sec_version);
+	iafw_version |= iafw_version_msb << 16;
+	sec_version += (sec_version_msb * 100);
+	sscanf(pdr_version_str, "%x.%x", &pdr_version_msb, &pdr_version);
+	pdr_version |= pdr_version_msb << 16;
 
-	printf("current iafw version: %s (0x%02x)\n",
-				iafw_stage1_version_str,
-				iafw_stage1_version);
+	printf("current iafw version: %s (0x%02x)\n",iafw_stage1_version_str,
+		iafw_version);
 
-	printf("current sec version: %s (0x%2x)\n",
-					sec_version_str,
-					sec_version);
+	printf("current sec version: %s (%d)\n",sec_version_str,
+		sec_version);
+
+	printf("current pdr version: %s (0x%2x)\n",pdr_version_str,
+		pdr_version);
 
 	if (!data || sz <= sizeof(struct capsule_header)) {
 		pr_perror("Capsule file is not valid\n");
-		return -1;
+		ret_status = -1;
+		goto exit;
 	}
 
 	c = (struct capsule *) data;
-	if (check_capsule(c)) {
-		printf("Capsule file is not valid\n");
-		/* do not fail to avoid breaking flashing procedure */
-		return 0;
+	print_capsule_header(c);
+
+	/* Check capsule vs current FW version */
+	capsule_update = check_capsule(c, iafw_version, sec_version, pdr_version);
+
+	/* Flash capsule file only if versions missmatch */
+	if (!capsule_update)
+	{
+		printf("Capsule contains same FW versions as current ones , do not request update\n");
+		goto exit;
 	}
 
-	dump_capsule(c);
-
-	v = &(c->header.ver);
-
-	if (v->iafw_stage1_version == iafw_stage1_version &&
-				v->sec_version == sec_version) {
-			pr_perror("Capsule flashing disabled: same IAFW and SECFW\n");
-			return -1;
-	}
-
-
-	if (file_write(CAPSULE_PARTITION_NAME, data, sz)) {
+	if ((ret_status = file_write(CAPSULE_PARTITION_NAME, data, sz))) {
 		pr_perror("Capsule flashing failed!\n");
-		return -1;
+		goto exit;
 	}
 
-
-
-	if (file_write(CAPSULE_UPDATE_FLAG_PATH,
-				&capsule_trigger, sizeof(capsule_trigger))) {
+	if ((ret_status = file_write(CAPSULE_UPDATE_FLAG_PATH,
+				&capsule_trigger, sizeof(capsule_trigger)))) {
 		pr_perror("Can't set fw_update bit!\n");
-		return -1;
+		goto exit;
 	}
 
-	return 0;
+exit:
+	return ret_status;
 }
 
 int flash_ulpmc(void *data, unsigned sz)
