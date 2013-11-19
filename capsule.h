@@ -17,6 +17,7 @@
 #ifndef _CAPSULE_H
 #define _CAPSULE_H
 
+#include "stdbool.h"
 
 typedef uint64_t u64;
 typedef uint32_t u32;
@@ -62,8 +63,8 @@ struct capsule {
 	void *sec_fw;
 };
 
-void dump_capsule(struct capsule *c);
-int check_capsule(struct capsule *c);
+void print_capsule_header(struct capsule *c);
+bool check_capsule(struct capsule *c, u32 iafw_version, u32 sec_version, u32 pdr_version);
 int flash_capsule(void *data, unsigned sz);
 
 #endif
