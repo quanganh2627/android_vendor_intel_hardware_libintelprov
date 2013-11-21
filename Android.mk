@@ -68,7 +68,7 @@ endif
 ifeq ($(HAS_SPINOR),true)
   LOCAL_CFLAGS += -DHAS_SPINOR
 endif
-LOCAL_WHOLE_STATIC_LIBRARIES := libmiu
+LOCAL_WHOLE_STATIC_LIBRARIES := libxml2 libtcs libmiu
 ifeq ($(external_release),no)
 ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
 LOCAL_SRC_FILES += tee_connector.c
@@ -142,7 +142,7 @@ LOCAL_C_INCLUDES := bootable/droidboot bootable/droidboot/volumeutils $(call inc
 
 LOCAL_SRC_FILES := droidboot.c update_partition.c $(common_libintelprov_files) $(LIBCGPT_FILES)
 
-LOCAL_WHOLE_STATIC_LIBRARIES := libmiu libpartlink
+LOCAL_WHOLE_STATIC_LIBRARIES := libxml2 libtcs libmiu libpartlink
 
 ifeq ($(external_release),no)
 LOCAL_SRC_FILES += $(common_pmdb_files) $(token_implementation)
@@ -177,8 +177,8 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE := flashtool
-LOCAL_SHARED_LIBRARIES := liblog libcutils
-LOCAL_STATIC_LIBRARIES := libmiu
+LOCAL_SHARED_LIBRARIES := liblog libcutils libicuuc
+LOCAL_WHOLE_STATIC_LIBRARIES := libxml2 libtcs libmiu
 
 LOCAL_C_INCLUDES := $(common_libintelprov_includes) $(call include-path-for, recovery)
 LOCAL_SRC_FILES := flashtool.c $(common_libintelprov_files)
