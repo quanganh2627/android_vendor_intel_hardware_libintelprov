@@ -30,8 +30,8 @@
 #include <linux/ioctl.h>
 #include <linux/mdm_ctrl.h>
 #include <sys/mount.h>
-#include <ufdisk.h>
 
+#include "volumeutils/ufdisk.h"
 #include "update_osip.h"
 #include "util.h"
 #include "fw_version_check.h"
@@ -915,9 +915,9 @@ static int oem_partition_gpt_handler(FILE *fp)
 			fastboot_fail("GPT str_to_array error. Malformed string ?\n");
 			return -1;
 		}
-
-		partlink_populate();
 	}
+
+	partlink_populate();
 
 	return 0;
 }
@@ -1017,7 +1017,7 @@ static int oem_erase_partition(int argc, char **argv)
 	}
 
 	ui_print("ERASE step 2/2...\n");
-	retval = format_volume(mnt_point, NULL);
+	retval = format_volume(mnt_point);
 	if (retval != 0) {
 		pr_error("format_volume failed: %s\n", mnt_point);
 	} else {

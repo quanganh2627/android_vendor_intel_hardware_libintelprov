@@ -97,10 +97,10 @@ int partlink_populate()
         snprintf(from, sizeof(from) - 1, STORAGE_PARTITION_FORMAT, STORAGE_BASE_PATH, i + 1);
 
         snprintf(to, sizeof(to) - 1, BASE_PLATFORM_INTEL_LABEL "/%s" , label);
-        link(from, to);
+        symlink(from, to);
 
         snprintf(to, sizeof(to) - 1, BASE_PLATFORM_INTEL_UUID "/%s" , uuid);
-        link(from, to);
+        symlink(from, to);
     }
 
     ret = EXIT_SUCCESS;

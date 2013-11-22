@@ -21,8 +21,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-
 #include "util.h"
+
 #include "droidboot.h"
 #include "droidboot_ui.h"
 #include "update_partition.h"
