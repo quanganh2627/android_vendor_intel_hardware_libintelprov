@@ -41,7 +41,10 @@ static void teeprov_error(const char *msg)
 
 static void usage (int status, const char *program_name)
 {
-	printf("Usage: %s [-o FILE] OPTION...\n", basename(program_name));
+	if (program_name != NULL)
+		printf("Usage: %s [-o FILE] OPTION...\n", basename(program_name));
+	else
+		printf("Usage: <program_name> [-o FILE] OPTION...\n");
 	printf("\
 Provide data to or retrieve data from Chaabi.\n\
 Mandatory arguments to long options are mandatory for short options too.\n\
