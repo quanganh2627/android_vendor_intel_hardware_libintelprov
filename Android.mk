@@ -26,9 +26,14 @@ common_libintelprov_files := \
 	update_osip.c \
 	fw_version_check.c \
 	util.c \
-	flash_ifwi.c \
 	fpt.c \
 	txemanuf.c
+
+ifeq ($(TARGET_BIOS_TYPE), "uefi")
+common_libintelprov_files += flash_ifwi_uefi.c
+else
+common_libintelprov_files += flash_ifwi.c
+endif
 
 common_libintelprov_includes := \
 	$(call include-path-for, libc-private) \

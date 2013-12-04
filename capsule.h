@@ -63,8 +63,6 @@ struct capsule {
 	void *sec_fw;
 };
 
-void print_capsule_header(struct capsule *c);
-bool check_capsule(struct capsule *c, u32 iafw_version, u32 sec_version, u32 pdr_version);
 int flash_capsule(void *data, unsigned sz);
 
 #endif

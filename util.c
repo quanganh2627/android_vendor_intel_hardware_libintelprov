@@ -183,8 +183,13 @@ int is_hex(char c) {
 	return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
 }
 
+void eprintf(const char *msg)
+{
+	fprintf(stderr, "%s", msg);
+}
+
 /* Output stream management.  */
-static void (*error_fun)(const char *msg) = (void (*)(const char *))printf;
+static void (*error_fun)(const char *msg) = (void (*)(const char *))eprintf;
 static void (*print_fun)(const char *msg) = (void (*)(const char *))printf;
 
 #define MSG_BUF_LENGTH 256
