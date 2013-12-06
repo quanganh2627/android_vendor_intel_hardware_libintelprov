@@ -23,6 +23,7 @@
 #ifdef MRFLD
 int check_ifwi_file(void *data, unsigned size);
 int update_ifwi_file(void *data, unsigned size);
+int write_token_umip(void *data, size_t size);
 #else
 int update_ifwi_file(const char *dnx, const char *ifwi);
 #endif

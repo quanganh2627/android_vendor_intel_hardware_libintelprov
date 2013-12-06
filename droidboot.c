@@ -384,6 +384,11 @@ static int flash_ifwi(void *data, unsigned size)
 	return ret;
 }
 
+static int flash_token_umip(void *data, unsigned size)
+{
+	return write_token_umip(data, size);
+}
+
 #else
 
 #define BIN_DNX  "/tmp/__dnx.bin"
@@ -1299,6 +1304,9 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("radio_fuse_only", flash_modem_get_fuse_only);
 	ret |= aboot_register_flash_cmd("dnx", flash_dnx);
 	ret |= aboot_register_flash_cmd("ifwi", flash_ifwi);
+#ifdef MRFLD
+	ret |= aboot_register_flash_cmd("token_umip", flash_token_umip);
+#endif
 	ret |= aboot_register_flash_cmd("capsule", flash_capsule);
 	ret |= aboot_register_flash_cmd("ulpmc", flash_ulpmc);
 
