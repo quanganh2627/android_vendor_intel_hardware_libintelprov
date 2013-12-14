@@ -318,6 +318,10 @@ class EdifyGenerator(object):
     self.script.append('run_program("/system/bin/teeprov", "--cancel-update");');
     self.script.append('run_program("/system/bin/teeprov", "--start-update");');
 
+  def FlashBomToken(self, filename):
+    self.Print("Checking BOM token...\n");
+    self.script.append('ifelse(flash_bom_token("/tmp/%s")=="fail",restore_os("boot");abort("BOM flashing failed \n"),ui_print("BOM flashing passed \n"));' % (filename,))
+
   def FinalizeUpdate(self):
     self.Print("Security finalize update \n");
     self.script.append('run_program("/system/bin/teeprov", "--finalize-update");');
