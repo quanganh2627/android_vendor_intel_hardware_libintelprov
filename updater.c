@@ -31,28 +31,15 @@
 #include "flash_ifwi.h"
 #include "fpt.h"
 #include "txemanuf.h"
-#include "miu.h"
 #ifdef TEE_FRAMEWORK
 #include "tee_connector.h"
 #endif
 #include "oem_partition.h"
 #include "gpt/partlink/partlink.h"
 
-static void miu_progress_cb(int progress, int total)
-{
-	printf("Progress: %d / %d\n", progress, total);
-}
-
-static void miu_log_cb(const char *msg, ...)
-{
-	va_list ap;
-
-	if (msg != NULL) {
-		va_start(ap, msg);
-		vprintf(msg, ap);
-		va_end(ap);
-	}
-}
+#ifdef BOARD_HAVE_MODEM
+#include "telephony_updater.h"
+#endif
 
 Value *ExtractOsipFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
@@ -346,7 +333,7 @@ Value *FlashBomFn(const char *name, State *state, int argc, Expr *argv[]) {
 }
 #endif
 
-#else
+#else /* MRFLD */
 
 #define DNX_BIN_PATH	"/tmp/dnx.bin"
 #define DNX_NAME	"dnx"
@@ -436,89 +423,7 @@ done:
 
     return ret;
 }
-#endif
-
-#define MODEM_PATH   "/tmp/radio_firmware.bin"
-#define MODEM_NAME   "radio_firmware"
-
-Value *FlashModemFn(const char *name, State * state, int argc, Expr * argv[])
-{
-	Value *ret = NULL;
-        int err;
-        ZipArchive modem_za;
-
-	char *filename = NULL;
-	e_miu_flash_options_t flash_options = 0;
-
-	if (ReadArgs(state, argv, 1, &filename) < 0) {
-		return NULL;
-	}
-
-	if (filename == NULL || strlen(filename) == 0) {
-		ErrorAbort(state, "filename argument to %s can't be empty",
-			   name);
-		goto done;
-	}
-
-        err = mzOpenZipArchive(filename, &modem_za);
-        if (err) {
-            printf("Failed to open zip archive %s\n", filename);
-            ret = StringValue(strdup(""));
-            goto done;
-        }
-        printf("miu using archive  %s\n", filename);
-        mzCloseZipArchive(&modem_za);
-
-
-	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
-		printf("%s failed at %s\n", __func__, "miu_initialize failed");
-	} else {
-		if (miu_flash_modem_fw(filename, flash_options) !=
-		    E_MIU_ERR_SUCCESS) {
-			printf("error during 3G Modem flashing!\n");
-		}
-		miu_dispose();
-	}
-
-	ret = StringValue(strdup(""));
-done:
-	if (filename)
-		free(filename);
-
-	return ret;
-}
-
-Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[])
-{
-	Value *ret = NULL;
-	char *filename = NULL;
-
-	if (ReadArgs(state, argv, 1, &filename) < 0) {
-		return NULL;
-	}
-
-	if (filename == NULL || strlen(filename) == 0) {
-		ErrorAbort(state, "filename argument to %s can't be empty",
-			   name);
-		goto done;
-	}
-
-	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
-		printf("%s failed at %s\n", __func__, "miu_initialize failed");
-	} else {
-		if (miu_flash_modem_nvm(filename) != E_MIU_ERR_SUCCESS) {
-			printf("error during 3G Modem NVM config!\n");
-		}
-		miu_dispose();
-	}
-
-	ret = StringValue(strdup(""));
-done:
-	if (filename)
-		free(filename);
-
-	return ret;
-}
+#endif /* MRFLD */
 
 Value *FlashCapsuleFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
@@ -730,8 +635,10 @@ void Register_libintel_updater(void)
 #ifdef TEE_FRAMEWORK
     RegisterFunction("flash_bom_token", FlashBomFn);
 #endif  /* TEE_FRAMEWORK */
-    RegisterFunction("flash_modem", FlashModemFn);
-    RegisterFunction("flash_nvm", FlashNvmFn);
+
+#ifdef BOARD_HAVE_MODEM
+    RegisterTelephonyFunctions();
+#endif
     RegisterFunction("extract_osip", ExtractOsipFn);
     RegisterFunction("invalidate_os", InvalidateOsFn);
     RegisterFunction("restore_os", RestoreOsFn);

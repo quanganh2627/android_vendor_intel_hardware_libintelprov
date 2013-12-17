@@ -73,13 +73,19 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_C_INCLUDES := $(call include-path-for, recovery) $(common_libintelprov_includes)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
+LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
+ifeq ($(BOARD_HAVE_MODEM),true)
+LOCAL_SRC_FILES += telephony/telephony_updater.c
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/telephony
+LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
+LOCAL_WHOLE_STATIC_LIBRARIES += libmiu
+endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
 endif
 ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
   LOCAL_CFLAGS += -DMRFLD
 endif
-LOCAL_WHOLE_STATIC_LIBRARIES := libmiu liboempartitioning_static
 ifeq ($(external_release),no)
 ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
 LOCAL_SRC_FILES += tee_connector.c
@@ -131,7 +137,13 @@ LOCAL_C_INCLUDES := bootable/droidboot $(call include-path-for, recovery) $(comm
 
 LOCAL_SRC_FILES := droidboot.c $(common_libintelprov_files)
 
-LOCAL_WHOLE_STATIC_LIBRARIES := libmiu liboempartitioning_static
+LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
+ifeq ($(BOARD_HAVE_MODEM),true)
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/telephony
+LOCAL_SRC_FILES += telephony/telephony_droidboot.c
+LOCAL_WHOLE_STATIC_LIBRARIES += libmiu
+LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
+endif
 
 ifeq ($(external_release),no)
 LOCAL_SRC_FILES += $(common_pmdb_files) $(token_implementation)
@@ -164,11 +176,18 @@ include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE := flashtool
 LOCAL_SHARED_LIBRARIES := liblog libcutils
-LOCAL_STATIC_LIBRARIES := libmiu
 
 LOCAL_C_INCLUDES := $(common_libintelprov_includes) $(call include-path-for, recovery)
 LOCAL_SRC_FILES := flashtool.c $(common_libintelprov_files)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
+
+ifeq ($(BOARD_HAVE_MODEM),true)
+LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
+LOCAL_STATIC_LIBRARIES += libmiu
+LOCAL_SRC_FILES += telephony/telephony_flashtool.c
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/telephony
+endif
+
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
 LOCAL_CFLAGS += -DCLVT
 else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
