@@ -83,7 +83,7 @@ endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
 endif
-ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
+ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield morganfield),)
   LOCAL_CFLAGS += -DMRFLD
 endif
 ifeq ($(external_release),no)
@@ -163,7 +163,7 @@ LOCAL_CFLAGS += -DUSE_GUI
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
 LOCAL_CFLAGS += -DCLVT
-else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
+else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield morganfield),)
 LOCAL_CFLAGS += -DMRFLD
 endif
 ifeq ($(TARGET_PARTITIONING_SCHEME),"full-gpt")
@@ -191,7 +191,7 @@ endif
 
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
 LOCAL_CFLAGS += -DCLVT
-else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
+else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield morganfield),)
 LOCAL_CFLAGS += -DMRFLD
 endif
 
