@@ -620,13 +620,12 @@ static int get_system_info(int type, char *info, unsigned sz)
 	int ret = -1;
 	char pro_name[MAX_NAME_SIZE];
 	FILE *f;
-	struct firmware_versions v;
+	char value[PROPERTY_VALUE_MAX];
 
 	switch (type) {
 		case IFWI_VERSION:
-			if ((ret = get_current_fw_rev(&v)) < 0)
-				break;
-			snprintf(info, sz, "%2x.%2x", v.ifwi.major, v.ifwi.minor);
+			property_get("sys.ifwi.version", value, "");
+			snprintf(info, sz, "%s", value);
 			ret = 0;
 			break;
 		case PRODUCT_NAME:
@@ -681,6 +680,46 @@ static void cmd_intel_boot(const char *arg, void *data, unsigned sz)
 	ui_print("boot command stubbed on this platform!\n");
 	pr_info("boot command stubbed on this platform!\n");
 	fastboot_okay("");
+}
+
+struct property_format {
+	const char *name;
+	const char *msg;
+	const char *error_msg;
+};
+
+static struct property_format properties_format[] = {
+	{ "sys.ifwi.version",     "         ifwi:", NULL },
+	{ NULL,                   "---- components ----" , NULL },
+	{ "sys.scu.version",      "          scu:", NULL },
+	{ "sys.punit.version",    "        punit:", NULL },
+	{ "sys.valhooks.version", "    hooks/oem:", NULL },
+	{ "sys.ia32.version",     "         ia32:", NULL },
+	{ "sys.suppia32.version", "     suppia32:", NULL },
+	{ "sys.mia.version",      "          mIA:", NULL },
+	{ "sys.chaabi.version",   "       chaabi:", "CHAABI versions unreadable at runtime" },
+};
+
+static void dump_system_versions()
+{
+	char property[PROPERTY_VALUE_MAX];
+	unsigned int i;
+
+	for (i = 0 ; i < sizeof(properties_format)/ sizeof((properties_format)[0]) ; i++)
+	{
+		struct property_format *fmt = &properties_format[i];
+
+		if (!fmt->name) {
+			printf("%s\n", fmt->msg);
+			continue;
+		}
+
+		property_get(fmt->name, property, "");
+		if (strcmp(property, ""))
+			printf("%s %s\n", fmt->msg, property);
+		else if (fmt->error_msg)
+			printf("%s\n", fmt->error_msg);
+	}
 }
 
 void libintel_droidboot_init(void)
@@ -775,21 +814,5 @@ void libintel_droidboot_init(void)
 		}
 	}
 
-#ifdef MRFLD
-	struct firmware_versions_long cur_fw_rev;
-	if (get_current_fw_rev_long(&cur_fw_rev)) {
-		pr_error("Can't query kernel for current FW version");
-	} else {
-		printf("Current FW versions:\n");
-		dump_fw_versions_long(&cur_fw_rev);
-	}
-#else
-	struct firmware_versions cur_fw_rev;
-	if (get_current_fw_rev(&cur_fw_rev)) {
-		pr_error("Can't query kernel for current FW version");
-	} else {
-		printf("Current FW versions: (CHAABI versions unreadable at runtime)\n");
-		dump_fw_versions(&cur_fw_rev);
-	}
-#endif
+	dump_system_versions();
 }
