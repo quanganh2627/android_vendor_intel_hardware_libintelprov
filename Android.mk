@@ -74,7 +74,7 @@ ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
 LOCAL_SRC_FILES += tee_connector.c
 LOCAL_C_INCLUDES += $(cc54_lib_includes)
 LOCAL_WHOLE_STATIC_LIBRARIES += libdx_cc7_static
-LOCAL_CFLAGS += -DTEE_FRAMEWORK
+LOCAL_CFLAGS += -DWRITE_BOM_TOKEN
 endif
 endif
 include $(BUILD_STATIC_LIBRARY)

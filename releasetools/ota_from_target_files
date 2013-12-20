@@ -399,10 +399,6 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   script.InvalidateOs("boot")
 
-  if OPTIONS.intel_chaabi_token == True:
-    script.PackageExtract("ifwi.zip")
-    script.FlashBomToken("ifwi.zip")
-
   if OPTIONS.wipe_user_data:
     script.FormatPartition("/data")
   else:
