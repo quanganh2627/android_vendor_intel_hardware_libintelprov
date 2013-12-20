@@ -31,7 +31,7 @@
 #include "fpt.h"
 #include "txemanuf.h"
 #include "miu.h"
-#ifdef WRITE_BOM_TOKEN
+#ifdef TEE_FRAMEWORK
 #include "tee_connector.h"
 #endif
 
@@ -195,7 +195,17 @@ Value *RestoreOsFn(const char *name, State *state, int argc, Expr *argv[]) {
 
 #ifdef MRFLD
 
-Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
+enum flash_option_type {
+	FLASH_IFWI_BINARY,
+	FLASH_BOM_TOKEN_BINARY,
+};
+
+
+#ifdef TEE_FRAMEWORK
+#define BOM_TOKEN_NAME "bom-token"
+#endif
+
+Value *FlashIfwiOrBomFn(enum flash_option_type flash_option, const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
     char *filename = NULL;
     int err, i, num, buffsize;
@@ -203,6 +213,12 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
     ZipArchive ifwi_za;
     const ZipEntry *ifwi_entry;
     unsigned char *buffer;
+#ifdef TEE_FRAMEWORK
+    char bom_token_name[128];
+    const ZipEntry *bom_token_entry;
+    int bom_token_buffsize;
+    unsigned char *bom_token_buffer;
+#endif
 
     if (ReadArgs(state, argv, 1, &filename) < 0) {
         return NULL;
@@ -253,54 +269,56 @@ Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
             continue;
         }
 
-#ifdef WRITE_BOM_TOKEN
+        if (flash_option == FLASH_BOM_TOKEN_BINARY) {
+#ifdef TEE_FRAMEWORK
+            strcpy(bom_token_name, BOM_TOKEN_NAME);
+            strncat(bom_token_name, &(ifwi_name[strlen(IFWI_NAME)]), sizeof(bom_token_name) - strlen(BOM_TOKEN_NAME) - 1);
+            bom_token_entry = mzFindZipEntry(&ifwi_za, bom_token_name);
 
-#define BOM_TOKEN_NAME "bom-token"
-
-        char bom_token_name[128];
-        const ZipEntry *bom_token_entry;
-        int bom_token_buffsize;
-        unsigned char *bom_token_buffer;
-
-        strcpy(bom_token_name, BOM_TOKEN_NAME);
-        strncat(bom_token_name, &(ifwi_name[strlen(IFWI_NAME)]), sizeof(bom_token_name) - strlen(BOM_TOKEN_NAME) - 1);
-        bom_token_entry = mzFindZipEntry(&ifwi_za, bom_token_name);
-
-        if (bom_token_entry != NULL) {
-            bom_token_buffsize = mzGetZipEntryUncompLen(bom_token_entry);
-            if (bom_token_buffsize <= 0) {
-                ErrorAbort(state, "Bad bom_token_entry size : %d.\n", bom_token_buffsize);
-                free(buffer);
-                goto error;
-            }
-            bom_token_buffer = (unsigned char*)malloc(sizeof(unsigned char)*bom_token_buffsize);
-            if (bom_token_buffer == NULL) {
-                ErrorAbort(state, "Unable to alloc bom token buffer of %d bytes.\n", bom_token_buffsize);
-                free(buffer);
-                goto error;
-            }
-            err = mzExtractZipEntryToBuffer(&ifwi_za, bom_token_entry, bom_token_buffer);
-            if (!err) {
-                ErrorAbort(state, "Failed to unzip %s.\n", IFWI_BIN_PATH);
+            if (bom_token_entry != NULL) {
+                bom_token_buffsize = mzGetZipEntryUncompLen(bom_token_entry);
+                if (bom_token_buffsize <= 0) {
+                    ErrorAbort(state, "Bad bom_token_entry size : %d.\n", bom_token_buffsize);
+                    free(buffer);
+                    goto error;
+                }
+                bom_token_buffer = (unsigned char*)malloc(sizeof(unsigned char)*bom_token_buffsize);
+                if (bom_token_buffer == NULL) {
+                    ErrorAbort(state, "Unable to alloc bom token buffer of %d bytes.\n", bom_token_buffsize);
+                    free(buffer);
+                    goto error;
+                }
+                err = mzExtractZipEntryToBuffer(&ifwi_za, bom_token_entry, bom_token_buffer);
+                if (!err) {
+                    ErrorAbort(state, "Failed to unzip %s.\n", IFWI_BIN_PATH);
+                    free(bom_token_buffer);
+                    free(buffer);
+                    goto error;
+                }
+                if (write_token(bom_token_buffer, bom_token_buffsize) == 0) {
+                    printf("BOM token written\n");
+                } else {
+                    printf("Unable to write BOM token.\n");
+                    cancel_update(0, NULL);
+                    free(bom_token_buffer);
+                    free(buffer);
+                    ret = StringValue(strdup("fail"));
+                    goto error;
+                }
                 free(bom_token_buffer);
-                free(buffer);
-                goto error;
             }
-            if (write_token(bom_token_buffer, bom_token_buffsize) == 0) {
-                printf("BOM token written\n");
-            } else {
-                ErrorAbort(state, "Unable to write BOM token.\n");
-                cancel_update(0, NULL);
-                free(bom_token_buffer);
-                free(buffer);
-                goto error;
-            }
-        }
+#else
+            printf("BOM token flashing not supported\n");
 #endif
-        update_ifwi_file(buffer, buffsize);
-
+        } else if (flash_option == FLASH_IFWI_BINARY) {
+            printf("Flashing IFWI\n");
+            update_ifwi_file(buffer, buffsize);
+        } else {
+            ErrorAbort(state, "Don't know what to do with option %d\n", flash_option);
+            free(buffer);
+            goto error;
+        }
         free(buffer);
-        buffer = NULL;
     }
 
     ret = StringValue(strdup(""));
@@ -314,6 +332,16 @@ done:
 
     return ret;
 }
+
+Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
+    return FlashIfwiOrBomFn(FLASH_IFWI_BINARY, name, state, argc, argv);
+}
+
+#ifdef TEE_FRAMEWORK
+Value *FlashBomFn(const char *name, State *state, int argc, Expr *argv[]) {
+    return FlashIfwiOrBomFn(FLASH_BOM_TOKEN_BINARY, name, state, argc, argv);
+}
+#endif
 
 #else
 
@@ -461,9 +489,6 @@ Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[])
 {
 	Value *ret = NULL;
 	char *filename = NULL;
-        int err;
-        ZipArchive modemnvm_za;
-
 
 	if (ReadArgs(state, argv, 1, &filename) < 0) {
 		return NULL;
@@ -474,15 +499,6 @@ Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[])
 			   name);
 		goto done;
 	}
-
-        err = mzOpenZipArchive(filename, &modemnvm_za);
-        if (err) {
-            printf("Failed to open zip archive %s\n", filename);
-            ret = StringValue(strdup(""));
-            goto done;
-        }
-        printf("miu using archive  %s\n", filename);
-        mzCloseZipArchive(&modemnvm_za);
 
 	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
 		printf("%s failed at %s\n", __func__, "miu_initialize failed");
@@ -491,29 +507,6 @@ Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[])
 			printf("error during 3G Modem NVM config!\n");
 		}
 		miu_dispose();
-	}
-
-	ret = StringValue(strdup(""));
-done:
-	if (filename)
-		free(filename);
-
-	return ret;
-}
-
-Value *FlashSpidNvmFn(const char *name, State * state, int argc, Expr * argv[])
-{
-	Value *ret = NULL;
-	char *filename = NULL;
-
-	if (ReadArgs(state, argv, 1, &filename) < 0) {
-		return NULL;
-	}
-
-	if (filename == NULL || strlen(filename) == 0) {
-		ErrorAbort(state, "filename argument to %s can't be empty",
-			   name);
-		goto done;
 	}
 
 	ret = StringValue(strdup(""));
@@ -706,9 +699,11 @@ void Register_libintel_updater(void)
 {
     RegisterFunction("flash_osip", FlashOsipFn);
     RegisterFunction("flash_ifwi", FlashIfwiFn);
+#ifdef TEE_FRAMEWORK
+    RegisterFunction("flash_bom_token", FlashBomFn);
+#endif  /* TEE_FRAMEWORK */
     RegisterFunction("flash_modem", FlashModemFn);
     RegisterFunction("flash_nvm", FlashNvmFn);
-    RegisterFunction("flash_nvm_spid", FlashSpidNvmFn);
     RegisterFunction("extract_osip", ExtractOsipFn);
     RegisterFunction("invalidate_os", InvalidateOsFn);
     RegisterFunction("restore_os", RestoreOsFn);
