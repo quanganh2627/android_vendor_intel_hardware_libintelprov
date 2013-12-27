@@ -626,7 +626,7 @@ bool get_fw_version_tag_offset(u8** data_ptr, u8* end_ptr)
 	return false;
 }
 
-void print_capsule_header(struct capsule *c) {
+static void print_capsule_header(struct capsule *c) {
 	struct capsule_signature *sig;
 	struct capsule_version *ver;
 	struct capsule_refs *refs;
@@ -660,7 +660,7 @@ void print_capsule_header(struct capsule *c) {
 				refs->sec_offset + sizeof(*sig));
 }
 
-bool check_capsule(struct capsule *c, u32 iafw_version, u32 sec_version, u32 pdr_version)
+static bool check_capsule(struct capsule *c, u32 iafw_version, u32 sec_version, u32 pdr_version)
 {
 	u8* cdata = (u8*)c;
 	struct capsule_signature *sig = &(c->header.sig);

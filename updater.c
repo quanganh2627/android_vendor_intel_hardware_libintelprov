@@ -489,9 +489,6 @@ Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[])
 {
 	Value *ret = NULL;
 	char *filename = NULL;
-        int err;
-        ZipArchive modemnvm_za;
-
 
 	if (ReadArgs(state, argv, 1, &filename) < 0) {
 		return NULL;
@@ -502,15 +499,6 @@ Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[])
 			   name);
 		goto done;
 	}
-
-        err = mzOpenZipArchive(filename, &modemnvm_za);
-        if (err) {
-            printf("Failed to open zip archive %s\n", filename);
-            ret = StringValue(strdup(""));
-            goto done;
-        }
-        printf("miu using archive  %s\n", filename);
-        mzCloseZipArchive(&modemnvm_za);
 
 	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
 		printf("%s failed at %s\n", __func__, "miu_initialize failed");
@@ -519,29 +507,6 @@ Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[])
 			printf("error during 3G Modem NVM config!\n");
 		}
 		miu_dispose();
-	}
-
-	ret = StringValue(strdup(""));
-done:
-	if (filename)
-		free(filename);
-
-	return ret;
-}
-
-Value *FlashSpidNvmFn(const char *name, State * state, int argc, Expr * argv[])
-{
-	Value *ret = NULL;
-	char *filename = NULL;
-
-	if (ReadArgs(state, argv, 1, &filename) < 0) {
-		return NULL;
-	}
-
-	if (filename == NULL || strlen(filename) == 0) {
-		ErrorAbort(state, "filename argument to %s can't be empty",
-			   name);
-		goto done;
 	}
 
 	ret = StringValue(strdup(""));
@@ -739,7 +704,6 @@ void Register_libintel_updater(void)
 #endif  /* TEE_FRAMEWORK */
     RegisterFunction("flash_modem", FlashModemFn);
     RegisterFunction("flash_nvm", FlashNvmFn);
-    RegisterFunction("flash_nvm_spid", FlashSpidNvmFn);
     RegisterFunction("extract_osip", ExtractOsipFn);
     RegisterFunction("invalidate_os", InvalidateOsFn);
     RegisterFunction("restore_os", RestoreOsFn);
@@ -747,7 +711,6 @@ void Register_libintel_updater(void)
     RegisterFunction("flash_capsule", FlashCapsuleFn);
     RegisterFunction("flash_ulpmc", FlashUlpmcFn);
 
-#ifdef HAS_SPINOR
     RegisterFunction("flash_fpt_ifwi", FlashFptIfwi);
     RegisterFunction("flash_fpt_txe", FlashFptTxe);
     RegisterFunction("flash_fpt_pdr", FlashFptPdr);
@@ -760,6 +723,6 @@ void Register_libintel_updater(void)
     RegisterFunction("fpt_closemnf", FptCloseMnf);
     RegisterFunction("txemanuf_eof_test", TxemanufEofTest);
     RegisterFunction("txemanuf_bist_test", TxemanufBistTest);
-#endif  /* HAS_SPINOR */
+
     util_init(recovery_error, NULL);
 }

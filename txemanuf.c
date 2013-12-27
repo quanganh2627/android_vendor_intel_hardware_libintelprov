@@ -21,7 +21,7 @@ static const size_t	 TIMEOUT   = 120;
 static const char	*TEMP_FILE = "/tmp/temp.bin";
 static const char	*LOG_FILE  = "/tmp/txemanuf.log";
 
-static const char	*TXEMANUF_PROGRAM	= "/system/bin/TXEManuf";
+static const char	*TXEMANUF_PROGRAM	= "/system/bin/fpttools/TXEManuf";
 static const char	*TXEMANUF_OP_PASS_STR	= "TXEManuf Operation Passed";
 static const char	*TXEMANUF_TEST_PASS_STR = "TXEManuf Test Passed";
 

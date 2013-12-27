@@ -40,9 +40,7 @@ static void usage(void)
 		"-v <firmware file>    Dump the FW versions in an IFWI release\n"
 		"-f <firmware file>    Flash an IFWI image\n"
 		"-g <firmware file>    Flash 3G firmware\n"
-#ifdef HAS_SPINOR
 		"-p <firmware file>    Flash IFWI using FPT\n"
-#endif
 		"Run with no arguments to print out some system version information\n"
 		"and a dump of the OSIP\n"
 		);
@@ -261,11 +259,9 @@ int main(int argc, char ** argv)
 	case CMD_WRITE_3G_FW:
 		cmd_flash_modem_fw(filename);
 		break;
-#ifdef HAS_SPINOR
 	case CMD_WRITE_FPT_IFWI:
 		flash_fpt_file_ifwi(filename);
 		break;
-#endif
 	}
 	return 0;
 }

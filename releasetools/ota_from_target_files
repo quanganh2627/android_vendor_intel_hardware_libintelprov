@@ -469,6 +469,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   script.ShowProgress(0.1, 0)
   if OPTIONS.no_modem == False:
+    script.Mount("/config")
     device_specific.FullOTA_InstallEnd()
 
   if OPTIONS.extra_script is not None:

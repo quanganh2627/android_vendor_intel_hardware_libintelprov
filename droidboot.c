@@ -1289,6 +1289,8 @@ static void cmd_intel_boot(const char *arg, void *data, unsigned sz)
 void libintel_droidboot_init(void)
 {
 	int ret = 0;
+	char platform_prop[PROPERTY_VALUE_MAX] = { '\0', };
+	char build_type_prop[PROPERTY_VALUE_MAX] = { '\0', };
 
 	util_init(fastboot_fail, fastboot_info);
 
@@ -1315,20 +1317,24 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("rnd_write", flash_modem_write_rnd);
 	ret |= aboot_register_flash_cmd("rnd_erase", flash_modem_erase_rnd);
 
-#ifdef HAS_SPINOR
-	aboot_register_flash_cmd("fpt_ifwi", flash_fpt_data_ifwi);
-	aboot_register_flash_cmd("fpt_txe", flash_fpt_data_txe);
-	aboot_register_flash_cmd("fpt_pdr", flash_fpt_data_pdr);
-	aboot_register_flash_cmd("fpt_bios", flash_fpt_data_bios);
-	aboot_register_flash_cmd("fpt_fpfs", flash_fpt_data_fpfs);
-	aboot_register_flash_cmd("txemanuf", flash_txemanuf_data);
+	if (property_get("ro.board.platform", platform_prop, '\0') &&
+	    property_get("ro.build.type", build_type_prop, '\0')) {
+		if ((strcmp(platform_prop, "baytrail") == 0) &&
+		    (strcmp(build_type_prop, "eng") == 0)) {
+			aboot_register_flash_cmd("fpt_ifwi", flash_fpt_data_ifwi);
+			aboot_register_flash_cmd("fpt_txe", flash_fpt_data_txe);
+			aboot_register_flash_cmd("fpt_pdr", flash_fpt_data_pdr);
+			aboot_register_flash_cmd("fpt_bios", flash_fpt_data_bios);
+			aboot_register_flash_cmd("fpt_fpfs", flash_fpt_data_fpfs);
+			aboot_register_flash_cmd("txemanuf", flash_txemanuf_data);
 
-	aboot_register_oem_cmd("fpt_writeitem", fpt_writeitem);
-	aboot_register_oem_cmd("fpt_writevalidbit", fpt_writevalidbit);
-	aboot_register_oem_cmd("fpt_closemnf", fpt_closemnf);
-	aboot_register_oem_cmd("txemanuf_eof_test", txemanuf_eof_test);
-	aboot_register_oem_cmd("txemanuf_bist_test", txemanuf_bist_test);
-#endif	/* HAS_SPINOR */
+			aboot_register_oem_cmd("fpt_writeitem", fpt_writeitem);
+			aboot_register_oem_cmd("fpt_writevalidbit", fpt_writevalidbit);
+			aboot_register_oem_cmd("fpt_closemnf", fpt_closemnf);
+			aboot_register_oem_cmd("txemanuf_eof_test", txemanuf_eof_test);
+			aboot_register_oem_cmd("txemanuf_bist_test", txemanuf_bist_test);
+		}
+	}
 
 	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
 	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);
