@@ -78,7 +78,7 @@ ifeq ($(BOARD_HAVE_MODEM),true)
 LOCAL_SRC_FILES += telephony/telephony_updater.c
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/telephony
 LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
-LOCAL_WHOLE_STATIC_LIBRARIES += libmiu
+LOCAL_WHOLE_STATIC_LIBRARIES += libxml2 libtcs libmiu
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
@@ -141,7 +141,7 @@ LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
 ifeq ($(BOARD_HAVE_MODEM),true)
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/telephony
 LOCAL_SRC_FILES += telephony/telephony_droidboot.c
-LOCAL_WHOLE_STATIC_LIBRARIES += libmiu
+LOCAL_WHOLE_STATIC_LIBRARIES += libxml2 libtcs libmiu
 LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
 endif
 
@@ -183,7 +183,8 @@ LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 
 ifeq ($(BOARD_HAVE_MODEM),true)
 LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
-LOCAL_STATIC_LIBRARIES += libmiu
+LOCAL_SHARED_LIBRARIES += libicuuc
+LOCAL_STATIC_LIBRARIES += libmiu libtcs libxml2
 LOCAL_SRC_FILES += telephony/telephony_flashtool.c
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/telephony
 endif
