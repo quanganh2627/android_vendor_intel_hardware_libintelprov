@@ -18,27 +18,12 @@
 #include <stdio.h>
 #include <edify/expr.h>
 #include <updater/updater.h>
+#include "logs.h"
 
 #include "miu.h"
 
 #define MODEM_PATH   "/tmp/radio_firmware.bin"
 #define MODEM_NAME   "radio_firmware"
-
-static void miu_progress_cb(int progress, int total)
-{
-	printf("Progress: %d / %d\n", progress, total);
-}
-
-static void miu_log_cb(const char *msg, ...)
-{
-	va_list ap;
-
-	if (msg != NULL) {
-		va_start(ap, msg);
-		vprintf(msg, ap);
-		va_end(ap);
-	}
-}
 
 static Value *FlashModemFn(const char *name, State * state, int argc, Expr * argv[])
 {

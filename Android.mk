@@ -76,7 +76,7 @@ LOCAL_C_INCLUDES := $(call include-path-for, recovery) $(common_libintelprov_inc
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
 ifeq ($(BOARD_HAVE_MODEM),true)
-LOCAL_SRC_FILES += telephony/telephony_updater.c
+LOCAL_SRC_FILES += telephony/telephony_updater.c telephony/logs.c
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/telephony
 LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
 LOCAL_WHOLE_STATIC_LIBRARIES += libxml2 libtcs libmiu
@@ -186,7 +186,7 @@ ifeq ($(BOARD_HAVE_MODEM),true)
 LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
 LOCAL_SHARED_LIBRARIES += libicuuc
 LOCAL_STATIC_LIBRARIES += libmiu libtcs libxml2
-LOCAL_SRC_FILES += telephony/telephony_flashtool.c
+LOCAL_SRC_FILES += telephony/telephony_flashtool.c telephony/logs.c
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/telephony
 endif
 
