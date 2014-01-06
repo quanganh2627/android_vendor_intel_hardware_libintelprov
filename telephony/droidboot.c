@@ -250,7 +250,7 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 			}
 			nvm_path = argv[2];
 
-			if (miu_flash_modem_nvm(nvm_path) == E_MIU_ERR_SUCCESS) {
+			if (miu_flash_modem_nvm(nvm_path, NULL) == E_MIU_ERR_SUCCESS) {
 				retval = 0;
 				pr_info("%s successful\n", __func__);
 			} else {

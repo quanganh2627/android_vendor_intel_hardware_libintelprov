@@ -85,7 +85,7 @@ static Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[
 	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
 		printf("%s failed at %s\n", __func__, "miu_initialize failed");
 	} else {
-		if (miu_flash_modem_nvm(filename) != E_MIU_ERR_SUCCESS)
+		if (miu_flash_modem_nvm(filename, NULL) != E_MIU_ERR_SUCCESS)
 			printf("error during 3G Modem NVM config!\n");
 		miu_dispose();
 	}
