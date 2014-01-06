@@ -28,7 +28,6 @@
 #include <unistd.h>
 #include <charger/charger.h>
 #include <linux/ioctl.h>
-#include <linux/mdm_ctrl.h>
 #include <sys/mount.h>
 
 #include "volumeutils/ufdisk.h"
@@ -193,96 +192,6 @@ static int flash_ifwi(void *data, unsigned sz)
 }
 
 #endif
-
-#define PROXY_SERVICE_NAME	"proxy"
-#define PROXY_PROP		"service.proxy.enable"
-#define PROXY_START		"1"
-#define PROXY_STOP		"0"
-#define HSI_PORT		"/sys/bus/hsi/devices/port0"
-#define MCD_CTRL		"/dev/mdm_ctrl"
-
-static int oem_manage_service_proxy(int argc, char **argv)
-{
-	int retval = 0;
-	int mcd_fd = -1;
-	int evt_type = 0;
-
-	if ((argc < 2) || (strcmp(argv[0], PROXY_SERVICE_NAME))) {
-		/* Should not pass here ! */
-		pr_error("oem_manage_service called with wrong parameter!\n");
-		retval = -1;
-		return retval;
-	}
-
-	if (!strcmp(argv[1], "start")) {
-		/* Check if HSI node was created, */
-		/* indicating that the HSI bus is enabled.*/
-		if (-1 != access(HSI_PORT, F_OK))
-		{
-			/* Start proxy service (at-proxy). */
-			property_set(PROXY_PROP, PROXY_START);
-
-		} else {
-			/* MCD build. Modem needs to be powered */
-			/* Boot up the modem */
-			if ((mcd_fd = open(MCD_CTRL, O_RDWR)) == -1) {
-				pr_error("Unable to open MCD node or find HSI. ABORT.\n");
-				return -1;
-			}
-			if (ioctl(mcd_fd, MDM_CTRL_POWER_ON) == -1) {
-				pr_info("Unable to power on modem. ABORT.\n");
-				close(mcd_fd);
-				return -1;
-			} else {
-				/* Let modem time to boot */
-				pr_info("Modem will be powered up... ");
-				evt_type = MDM_CTRL_STATE_IPC_READY;
-				if (ioctl(mcd_fd, MDM_CTRL_WAIT_FOR_STATE, &evt_type) == -1) {
-					pr_error("Power up failure. ABORT.\n");
-					close(mcd_fd);
-					return -1;
-				}
-				pr_info("Modem powered up.\n");
-				close(mcd_fd);
-				/* Start proxy service (at-proxy). */
-				property_set(PROXY_PROP, PROXY_START);
-			}
-		}
-
-	} else if (!strcmp(argv[1], "stop")) {
-		/* For MCD build, modem will be powered down */
-		if ((mcd_fd = open(MCD_CTRL, O_RDWR)) == -1) {
-			/* Stop proxy service (at-proxy). */
-			property_set(PROXY_PROP, PROXY_STOP);
-			return 0;
-		}
-		/* Stop proxy service (at-proxy) anyway. */
-		property_set(PROXY_PROP, PROXY_STOP);
-		if (ioctl(mcd_fd, MDM_CTRL_POWER_OFF) == -1) {
-			pr_info("Unable to power off modem. ABORT.\n");
-			close(mcd_fd);
-			return -1;
-		} else {
-			/* Let modem time to stop. */
-			pr_info("Modem will be powered down... ");
-			evt_type = MDM_CTRL_STATE_OFF;
-			if (ioctl(mcd_fd, MDM_CTRL_WAIT_FOR_STATE, &evt_type) == -1) {
-				pr_error("Power down failure. ABORT.\n");
-				close(mcd_fd);
-				return -1;
-			}
-			pr_info("Modem powered down.\n");
-			close(mcd_fd);
-			return 0;
-		}
-
-	} else {
-		pr_error("Unknown command. Use %s [start/stop].\n", PROXY_SERVICE_NAME);
-		retval = -1;
-	}
-
-	return retval;
-}
 
 #define DNX_TIMEOUT_CHANGE  "dnx_timeout"
 #define DNX_TIMEOUT_GET	    "--get"
@@ -768,7 +677,6 @@ void libintel_droidboot_init(void)
 		}
 	}
 
-	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
 	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);
 	ret |= aboot_register_oem_cmd("erase", oem_erase_partition);
 	ret |= aboot_register_oem_cmd("repart", oem_repart_partition);
