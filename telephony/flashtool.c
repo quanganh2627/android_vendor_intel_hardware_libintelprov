@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Intel Corporation
+ * Copyright 2011-2014 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,8 +22,7 @@
 void cmd_flash_modem_fw(char *filename)
 {
 	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
-		fprintf(stderr, "%s failed at %s\n", __func__,
-			"miu_initialize failed");
+		fprintf(stderr, "%s initialization has failed\n", __func__);
 	} else {
 		if (miu_flash_modem_fw(filename, 0) != E_MIU_ERR_SUCCESS) {
 			fprintf(stderr, "Failed flashing modem FW!\n");

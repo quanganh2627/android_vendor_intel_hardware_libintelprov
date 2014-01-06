@@ -40,7 +40,7 @@
 #include "flash_image.h"
 
 #ifdef BOARD_HAVE_MODEM
-#include "telephony_updater.h"
+#include "telephony/updater.h"
 #endif
 
 Value *ExtractOsipFn(const char *name, State *state, int argc, Expr *argv[]) {

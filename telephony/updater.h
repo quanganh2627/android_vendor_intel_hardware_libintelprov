@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Intel Corporation
+ * Copyright 2011-2014 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef __TELEPHONY_FLASHTOOL_HEADER__
-#define __TELEPHONY_FLASHTOOL_HEADER__
+#ifndef __TELEPHONY_UPDATER_HEADER__
+#define __TELEPHONY_UPDATER_HEADER__
 
-void cmd_flash_modem_fw(char *filename);
+void RegisterTelephonyFunctions(void);
 
-#endif /* __TELEPHONY_FLASHTOOL_HEADER__ */
+#endif /* __TELEPHONY_UPDATER_HEADER__ */
