@@ -14,20 +14,24 @@
  * limitations under the License.
  */
 
-#ifndef _FLASH_IMAGE_H_
-#define _FLASH_IMAGE_H_
+#ifndef _FLASH_OPS_EDK2_H_
+#define _FLASH_OPS_EDK2_H_
+#include <flash_ops.h>
 
-#include <bootimg.h>
+#ifdef CONFIG_INTELPROV_EDK2
 
-int flash_image(void *data, unsigned sz, const char *name);
-int read_image(const char *name, void **data);
-int flash_android_kernel(void *data, unsigned sz);
-int flash_recovery_kernel(void *data, unsigned sz);
-int flash_fastboot_kernel(void *data, unsigned sz);
-int flash_splashscreen_image(void *data, unsigned sz);
-int flash_esp(void *data, unsigned sz);
-int full_gpt(void);
-ssize_t bootimage_size(int fd, struct boot_img_hdr *hdr, bool include_sig);
-int open_bootimage(const char *name);
+bool is_edk2(void);
+int flash_capsule_edk2(void *data, unsigned sz);
 
-#endif	/* _FLASH_IMAGE_H_ */
+#else  /* CONFIG_INTELPROV_EDK2 */
+
+bool is_edk2(void) {return false;}
+int flash_capsule_edk2(void *data, unsigned sz) {return stub_operation(__func__);}
+
+#endif	/* CONFIG_INTELPROV_EDK2 */
+
+struct capsule_operations edk2_capsule_operations = {
+	.flash_capsule = flash_capsule_edk2,
+};
+
+#endif	/* _FLASH_OPS_EDK2_H_ */

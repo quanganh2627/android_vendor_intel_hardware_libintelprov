@@ -22,19 +22,30 @@ token_implementation := \
 	token.c
 endif
 
+CONFIG_INTELPROV_EDK2 := y
+CONFIG_INTELPROV_FDK := y
+CONFIG_INTELPROV_GPT := y
+CONFIG_INTELPROV_OSIP := y
+CONFIG_INTELPROV_SCU_EMMC := y
+# CONFIG_INTELPROV_SCU_IPC
+CONFIG_INTELPROV_ULPMC := y
+
+MODULES-SOURCES :=
+INTELPROV_CONFIGS := $(filter CONFIG_INTELPROV_%,$(.VARIABLES))
+INTELPROV_DEFINES := $(foreach v,$(INTELPROV_CONFIGS),$(filter %y,-D$(v)=$($(v))))
+libintelprov-modules := $(shell find . -name "intelprov.mk")
+LOCAL_CFLAGS += $(INTELPROV_DEFINES)
+include $(libintelprov-modules)
+
 common_libintelprov_files := \
 	update_osip.c \
 	fw_version_check.c \
 	util.c \
 	fpt.c \
-	flash_image.c \
-	txemanuf.c
-
-ifeq ($(TARGET_BIOS_TYPE), "uefi")
-common_libintelprov_files += flash_ifwi_uefi.c
-else
-common_libintelprov_files += flash_ifwi.c
-endif
+	txemanuf.c \
+	flash_ops.c \
+	flash.c \
+	$(MODULES-SOURCES)
 
 common_libintelprov_includes := \
 	$(call include-path-for, libc-private) \
@@ -94,6 +105,7 @@ LOCAL_WHOLE_STATIC_LIBRARIES += libdx_cc7_static
 LOCAL_CFLAGS += -DTEE_FRAMEWORK
 endif
 endif
+LOCAL_CFLAGS += $(INTELPROV_DEFINES)
 include $(BUILD_STATIC_LIBRARY)
 
 # plugin for recovery_ui
@@ -167,6 +179,7 @@ endif
 ifeq ($(TARGET_PARTITIONING_SCHEME),"full-gpt")
   LOCAL_CFLAGS += -DFULL_GPT
 endif
+LOCAL_CFLAGS += $(INTELPROV_DEFINES)
 include $(BUILD_STATIC_LIBRARY)
 
 # a test flashtool for testing the intelprov library
@@ -190,6 +203,7 @@ else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
 LOCAL_CFLAGS += -DMRFLD
 endif
 
+LOCAL_CFLAGS += $(INTELPROV_DEFINES)
 include $(BUILD_EXECUTABLE)
 
 # update_recovery: this binary is updating the recovery from MOS
@@ -197,11 +211,12 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := update_recovery
-LOCAL_SRC_FILES:= update_recovery.c util.c update_osip.c flash_image.c
+LOCAL_SRC_FILES:= update_recovery.c $(common_libintelprov_files)
 LOCAL_C_INCLUDES := $(common_libintelprov_includes) $(call include-path-for, recovery)/applypatch $(call include-path-for, recovery) $(call include-path-for, mkbootimg)
 LOCAL_CFLAGS := -Wall -Wno-unused-parameter
 LOCAL_SHARED_LIBRARIES := liblog libcutils libz
 LOCAL_STATIC_LIBRARIES := libmincrypt libapplypatch libbz
+LOCAL_CFLAGS += $(INTELPROV_DEFINES)
 include $(BUILD_EXECUTABLE)
 endif
 

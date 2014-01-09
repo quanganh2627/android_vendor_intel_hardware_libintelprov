@@ -29,7 +29,6 @@
 #include "update_osip.h"
 #include "util.h"
 #include "fw_version_check.h"
-#include "flash_ifwi.h"
 #include "fpt.h"
 #include "txemanuf.h"
 #ifdef TEE_FRAMEWORK
@@ -37,11 +36,12 @@
 #endif
 #include "oem_partition.h"
 #include "gpt/partlink/partlink.h"
-#include "flash_image.h"
 
 #ifdef BOARD_HAVE_MODEM
 #include "telephony/updater.h"
 #endif
+
+#include "flash.h"
 
 Value *ExtractImageFn(const char *name, State * state, int argc, Expr * argv[])
 {
@@ -125,8 +125,6 @@ Value *RestoreOsFn(const char *name, State *state, int argc, Expr *argv[]) {
 #define IFWI_BIN_PATH "/tmp/ifwi.bin"
 #define IFWI_NAME     "ifwi"
 #define FILEMODE      S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
-
-#ifdef MRFLD
 
 enum flash_option_type {
     FLASH_IFWI_BINARY,
@@ -276,7 +274,13 @@ Value *FlashBomFn(const char *name, State *state, int argc, Expr *argv[]) {
 }
 #endif
 
-#else /* MRFLD */
+
+/* This should never be enabled anymore.
+ *
+ * Clovertrail program has been removed from mainline and we are
+ * waiting for some months to remove this code
+ */
+#ifdef CLVT
 
 #define DNX_BIN_PATH "/tmp/dnx.bin"
 #define DNX_NAME     "dnx"
@@ -366,7 +370,7 @@ done:
 
     return ret;
 }
-#endif /* MRFLD */
+#endif /* CLVT */
 
 Value *FlashCapsuleFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;

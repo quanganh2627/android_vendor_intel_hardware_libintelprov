@@ -304,6 +304,9 @@ void error(const char *fmt, ...)
 	va_end(argptr);
 
 	error_fun(buf);
+	/* Be sure that logs are printed in any ways */
+	if ((void *)error_fun != (void *)printf)
+		printf("%s", buf);
 }
 
 void print(const char *fmt, ...)
@@ -316,6 +319,9 @@ void print(const char *fmt, ...)
 	va_end(argptr);
 
 	print_fun(buf);
+	/* Be sure that logs are printed in any ways */
+	if (print_fun != eprintf)
+		eprintf(buf);
 }
 
 /* External program management.  */

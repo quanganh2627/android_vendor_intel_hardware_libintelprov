@@ -64,7 +64,6 @@ int get_image_fw_rev_long(void *data, unsigned sz, struct firmware_versions_long
 
 /* Dump all the firmware component versions to stdout */
 void dump_fw_versions(struct firmware_versions *v);
-void dump_fw_versions_long(struct firmware_versions_long *v);
 
 /* Compare versions v1 and v2, and return -1, 1, or 0 if v1 is less than,
  * greater than, or equal to v2, respectively */

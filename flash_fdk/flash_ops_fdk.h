@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Intel Corporation
+ * Copyright 2014 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef FLASH_IFWI_H
-#define FLASH_IFWI_H
+#ifndef _FLASH_OPS_FDK_H_
+#define _FLASH_OPS_FDK_H_
 
-#include <stdlib.h>
-#include "capsule.h"
+#include <flash_ops.h>
 
-#ifdef MRFLD
-int check_ifwi_file(void *data, unsigned size);
-int update_ifwi_file(void *data, unsigned size);
-int write_token_umip(void *data, size_t size);
-#else
-int update_ifwi_file(const char *dnx, const char *ifwi);
-#endif
+#ifdef CONFIG_INTELPROV_FDK
 
-int update_ifwi_image(void *data, size_t size, unsigned reset_flag);
+bool is_fdk(void);
+int flash_capsule_fdk(void *data, unsigned sz);
 
-int flash_ulpmc(void *data, unsigned sz);
+#else  /* CONFIG_INTELPROV_FDK */
 
-#endif
+bool is_fdk(void) {return false;}
+int flash_capsule_fdk(void *data, unsigned sz) {return stub_operation(__func__);}
+
+#endif	/* CONFIG_INTELPROV_FDK */
+
+struct capsule_operations fdk_capsule_operations = {
+	.flash_capsule = flash_capsule_fdk,
+};
+
+#endif	/* _FLASH_OPS_FDK_H_ */

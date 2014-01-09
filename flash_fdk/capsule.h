@@ -63,6 +63,10 @@ struct capsule {
 	void *sec_fw;
 };
 
-int flash_capsule(void *data, unsigned sz);
+typedef struct {
+	int val_0;
+	int val_1;
+	int val_2;
+} sec_version_t ;
 
 #endif

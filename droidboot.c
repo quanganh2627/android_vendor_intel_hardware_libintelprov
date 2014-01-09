@@ -34,14 +34,14 @@
 #include "update_osip.h"
 #include "util.h"
 #include "fw_version_check.h"
-#include "flash_ifwi.h"
-#include "flash_image.h"
 #include "fpt.h"
 #include "txemanuf.h"
 #include "fastboot.h"
 #include "droidboot_ui.h"
 #include "gpt/partlink/partlink.h"
 #include "oem_partition.h"
+#include "flash.h"
+#include "ulpmc.h"
 
 #ifndef EXTERNAL
 #include "pmdb.h"
@@ -59,76 +59,6 @@ static int flash_testos(void *data, unsigned sz)
 	oem_write_osip_header(0,0);
 	return write_stitch_image_ex(data, sz, 0, 1);
 }
-
-#ifdef MRFLD
-
-static int flash_dnx(void *data, unsigned sz)
-{
-    return 0;
-}
-
-static int flash_ifwi(void *data, unsigned size)
-{
-	int ret;
-
-	ret = check_ifwi_file(data, size);
-	if (ret > 0)
-		return update_ifwi_file(data, size);
-
-	return ret;
-}
-
-static int flash_token_umip(void *data, unsigned size)
-{
-	return write_token_umip(data, size);
-}
-
-#else
-
-#define BIN_DNX  "/tmp/__dnx.bin"
-#define BIN_IFWI "/tmp/__ifwi.bin"
-
-static int flash_dnx(void *data, unsigned sz)
-{
-	if (file_write(BIN_DNX, data, sz)) {
-		pr_error("Couldn't write dnx file to %s\n", BIN_DNX);
-		return -1;
-	}
-
-	return 0;
-}
-
-static int flash_ifwi(void *data, unsigned sz)
-{
-	struct firmware_versions img_fw_rev;
-
-
-	if (access(BIN_DNX, F_OK)) {
-		pr_error("dnx binary must be flashed to board first\n");
-		return -1;
-	}
-
-	if (get_image_fw_rev(data, sz, &img_fw_rev)) {
-		pr_error("Coudn't extract FW version data from image");
-		return -1;
-	}
-
-	printf("Image FW versions:\n");
-	dump_fw_versions(&img_fw_rev);
-
-	if (file_write(BIN_IFWI, data, sz)) {
-		pr_error("Couldn't write ifwi file to %s\n", BIN_IFWI);
-		return -1;
-	}
-
-	if (update_ifwi_file(BIN_DNX, BIN_IFWI)) {
-		pr_error("IFWI flashing failed!");
-		return -1;
-	}
-	return 0;
-}
-
-#endif
 
 #define DNX_TIMEOUT_CHANGE  "dnx_timeout"
 #define DNX_TIMEOUT_GET	    "--get"
@@ -633,7 +563,6 @@ void libintel_droidboot_init(void)
 
 	oem_partition_init(&ufdisk);
 	util_init(fastboot_fail, fastboot_info);
-
 	ret |= aboot_register_flash_cmd(TEST_OS_NAME, flash_testos);
 	ret |= aboot_register_flash_cmd(ANDROID_OS_NAME, flash_android_kernel);
 	ret |= aboot_register_flash_cmd(RECOVERY_OS_NAME, flash_recovery_kernel);
@@ -642,9 +571,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("splashscreen", flash_splashscreen_image);
 	ret |= aboot_register_flash_cmd("dnx", flash_dnx);
 	ret |= aboot_register_flash_cmd("ifwi", flash_ifwi);
-#ifdef MRFLD
 	ret |= aboot_register_flash_cmd("token_umip", flash_token_umip);
-#endif
 	ret |= aboot_register_flash_cmd("capsule", flash_capsule);
 	ret |= aboot_register_flash_cmd("ulpmc", flash_ulpmc);
 
@@ -703,16 +630,6 @@ void libintel_droidboot_init(void)
 
 	if (ret)
 		die();
-
-	if (full_gpt()) {
-		struct OSIP_header osip;
-		/* Dump the OSIP to serial to assist debugging */
-		if (read_OSIP(&osip)) {
-			printf("OSIP read failure!\n");
-		} else {
-			dump_osip_header(&osip);
-		}
-	}
 
 	dump_system_versions();
 }

@@ -10,9 +10,9 @@
 #include "update_osip.h"
 #include "util.h"
 #include "fw_version_check.h"
-#include "flash_ifwi.h"
 #include "fpt.h"
 #include "txemanuf.h"
+#include "flash.h"
 
 #ifdef BOARD_HAVE_MODEM
 #include "telephony/flashtool.h"

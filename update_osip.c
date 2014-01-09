@@ -28,6 +28,7 @@
 
 #include "update_osip.h"
 #include "util.h"
+#include "flash.h"
 
 #define ANDROID_OS_NUM      0
 #define RECOVERY_OS_NUM     1

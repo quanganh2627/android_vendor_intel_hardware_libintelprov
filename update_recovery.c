@@ -29,89 +29,15 @@
 
 #include <bootimg.h>
 
-#include "flash_image.h"
+#include "flash.h"
 #include "update_osip.h"
 #include "util.h"
 #include "gpt/partlink/partlink.h"
 
 /* Needs to agree with ota_from_target_files.MakeRecoveryPatch() */
-#define OSIP_SIG_SIZE		480
-#define ANDROID_SIG_SIZE	2048
-
 #define LOGPERROR(x)	LOGE("%s failed: %s", x, strerror(errno))
 
 #define TGT_SIZE_MAX    (LBA_SIZE * OS_MAX_LBA)
-
-static struct OSIP_header osip;
-static int recovery_index;
-
-static int read_recovery_signature(void **buf)
-{
-	int fd = -1;
-	int sig_size;
-	int fgpt = full_gpt();
-
-	sig_size = fgpt ? ANDROID_SIG_SIZE : OSIP_SIG_SIZE;
-
-	*buf = malloc(sig_size);
-	if (!*buf) {
-		LOGE("Failed to allocate signature buffer\n");
-		return -1;
-	}
-
-	if (fgpt) {
-		struct boot_img_hdr hdr;
-		ssize_t img_size;
-
-		fd = open_bootimage(RECOVERY_OS_NAME);
-		if (fd < 0) {
-			LOGPERROR("open");
-			goto err;
-		}
-
-		img_size = bootimage_size(fd, &hdr, false);
-		if (img_size <= 0) {
-			error("Invalid image\n");
-			goto err;
-		}
-
-		sig_size = hdr.sig_size;
-
-		if (lseek(fd, img_size, SEEK_SET) < 0) {
-			LOGPERROR("lseek");
-			goto err;
-		}
-	} else {
-		int offset;
-		sig_size = OSIP_SIG_SIZE;
-		fd = open(MMC_DEV_POS, O_RDONLY);
-		if (fd < 0) {
-			LOGPERROR("open");
-			goto err;
-		}
-
-		offset = osip.desc[recovery_index].logical_start_block * LBA_SIZE;
-		if (lseek(fd, offset, SEEK_SET) < 0) {
-			LOGPERROR("lseek");
-			goto err;
-		}
-	}
-
-	if (safe_read(fd, *buf, sig_size)) {
-		LOGPERROR("read");
-		goto err;
-	}
-
-	close(fd);
-	return sig_size;
-
-err:
-	if (fd != -1)
-		close(fd);
-	free(*buf);
-
-	return -1;
-}
 
 /* Compare the first SIG_SIZE bytes of the current recovery.img
  * with the SHA1 passed in, to determine if we need to update it.
@@ -129,7 +55,7 @@ static int check_recovery_header(const char *tgt_sha1, int *needs_patching)
 		return -1;
 	}
 
-	sig_size = read_recovery_signature(&buf);
+	sig_size = read_image_signature(&buf, RECOVERY_OS_NAME);
 	if (sig_size == -1) {
 		LOGE("Failed to read boot signature\n");
 		return -1;
@@ -294,7 +220,7 @@ int main(int argc, char **argv)
 	char *patch_file = NULL;
 	unsigned int tgt_size = 0;
 	int needs_patching;
-	int unsigned_image;
+	int signed_image;
 
 	while (1) {
 		int option_index = 0;
@@ -328,34 +254,13 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (full_gpt()) {
-		struct boot_img_hdr hdr;
-		int fd = open(BASE_PLATFORM_INTEL_LABEL"/recovery", O_RDONLY);
-		if (fd < 0) {
-			LOGPERROR("open");
-			exit(EXIT_FAILURE);
-		}
-		if (safe_read(fd, &hdr, sizeof(hdr))) {
-			LOGPERROR("read");
-			close(fd);
-			exit(EXIT_FAILURE);
-		}
-		close(fd);
-		unsigned_image = hdr.sig_size == 0;
-	} else {
-		if (read_OSIP(&osip)) {
-			LOGE("Can't read the OSIP");
-			exit(EXIT_FAILURE);
-		}
-		recovery_index = get_named_osii_index(RECOVERY_OS_NAME);
-		if (recovery_index < 0) {
-			LOGE("Can't find recovery console in the OSIP");
-			exit(EXIT_FAILURE);
-		}
-		unsigned_image = osip.desc[recovery_index].attribute & ATTR_UNSIGNED_KERNEL;
+	signed_image = is_image_signed(RECOVERY_OS_NAME);
+	if (signed_image == -1) {
+		LOGE("Failed to know if recovery is signed\n");
+		exit(EXIT_FAILURE);
 	}
 
-	if (unsigned_image || !check_sha1) {
+	if (!signed_image || !check_sha1) {
 		/* We can't do any quick checks if unsigned images
 		 * are used. Examine the whole image */
 		LOGI("Checking full recovery image");

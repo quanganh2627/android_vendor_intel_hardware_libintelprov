@@ -14,21 +14,20 @@
  * limitations under the License.
  */
 
+#include <bootimg.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <bootimg.h>
+#include "../gpt/partlink/partlink.h"
 #include "util.h"
-#include "flash_image.h"
-#include "gpt/partlink/partlink.h"
-#include "update_osip.h"
+#include "flash.h"
 
-int full_gpt(void)
+bool is_gpt(void)
 {
 	struct stat buf;
-
 	return (stat(BASE_PLATFORM_INTEL_LABEL"/fastboot", &buf) == 0
 		&& S_ISBLK(buf.st_mode));
 }
@@ -67,29 +66,18 @@ error:
 	return NULL;
 }
 
-int flash_image(void *data, unsigned sz, const char *name)
+int flash_image_gpt(void *data, unsigned sz, const char *name)
 {
-	if (full_gpt()) {
-		char *block_dev;
-		int ret;
+	char *block_dev;
+	int ret;
 
-		block_dev = get_gpt_path(name);
-		if (!block_dev)
-			return -1;
+	block_dev = get_gpt_path(name);
+	if (!block_dev)
+		return -1;
 
-		ret = file_write(block_dev, data, sz);
-		free(block_dev);
-		return ret;
-	} else {
-		int index = get_named_osii_index(name);
-
-		if (index < 0) {
-			error("Can't find OSII index!!\n");
-			return -1;
-		}
-
-		return write_stitch_image(data, sz, index);
-	}
+	ret = file_write(block_dev, data, sz);
+	free(block_dev);
+	return ret;
 }
 
 static int pages(struct boot_img_hdr *hdr, int blob_size)
@@ -141,7 +129,7 @@ out:
 	return size;
 }
 
-static int read_image_full_gpt(const char *name, void **data)
+int read_image_gpt(const char *name, void **data)
 {
 	ssize_t size;
 	struct boot_img_hdr hdr;
@@ -182,48 +170,73 @@ out:
 	return ret;
 }
 
-int read_image(const char *name, void **data)
+int read_image_signature_gpt(void **buf, char *name)
 {
-	size_t size;
+	int fd = -1;
+	int sig_size;
+	struct boot_img_hdr hdr;
+	ssize_t img_size;
 
-	if (full_gpt())
-		return read_image_full_gpt(name, data);
-
-	int index;
-	index = get_named_osii_index(name);
-	if (index < 0) {
-		error("Can't find image %s in the OSIP\n", name);
-		return -1;
+	fd = open_bootimage(name);
+	if (fd < 0) {
+		error("open: %s", strerror(errno));
+		goto err;
 	}
 
-	if (read_osimage_data(data, &size, index)) {
-		error("Failed to read OSIP entry\n");
-		return -1;
+	img_size = bootimage_size(fd, &hdr, false);
+	if (img_size <= 0) {
+		error("Invalid image\n");
+		goto close;
 	}
-	return size;
+
+	if (lseek(fd, img_size, SEEK_SET) < 0) {
+		error("lseek: %s", strerror(errno));
+		goto close;
+	}
+
+	sig_size = hdr.sig_size;
+	*buf = malloc(sig_size);
+	if (!*buf) {
+		error("Failed to allocate signature buffer\n");
+		goto close;
+	}
+
+	if (safe_read(fd, *buf, sig_size)) {
+		error("read: %s", strerror(errno));
+		goto free;
+	}
+
+	close(fd);
+	return sig_size;
+
+free:
+	free(*buf);
+close:
+	close(fd);
+err:
+	return -1;
 }
 
-int flash_android_kernel(void *data, unsigned sz)
+int is_image_signed_gpt(const char *name)
 {
-	return flash_image(data, sz, ANDROID_OS_NAME);
-}
+	struct boot_img_hdr hdr;
+	int ret = -1;
+	int fd;
 
-int flash_recovery_kernel(void *data, unsigned sz)
-{
-	return flash_image(data, sz, RECOVERY_OS_NAME);
-}
+	fd = open(BASE_PLATFORM_INTEL_LABEL"/recovery", O_RDONLY);
+	if (fd < 0) {
+		error("open: %s", strerror(errno));
+		goto out;
+	}
 
-int flash_fastboot_kernel(void *data, unsigned sz)
-{
-	return flash_image(data, sz, FASTBOOT_OS_NAME);
-}
+	if (safe_read(fd, &hdr, sizeof(hdr))) {
+		error("read: %s", strerror(errno));
+		goto close;
+	}
 
-int flash_splashscreen_image(void *data, unsigned sz)
-{
-	return flash_image(data, sz, SPLASHSCREEN_NAME);
-}
-
-int flash_esp(void *data, unsigned sz)
-{
-	return flash_image(data, sz, ESP_PART_NAME);
+	ret = hdr.sig_size == 0 ? 0 : 1;
+close:
+	close(fd);
+out:
+	return ret;
 }

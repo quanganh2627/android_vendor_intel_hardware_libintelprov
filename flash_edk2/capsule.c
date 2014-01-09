@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Intel Corporation
+ * Copyright 2014 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,25 +24,18 @@
 #include <cutils/properties.h>
 
 #include "util.h"
+#include "../gpt/partlink/partlink.h"
 
-#define ESP_SYSFS_DEVICE	"/dev/block/platform/intel/by-label/ESP"
+#define ESP_DEVICE		BASE_PLATFORM_INTEL_LABEL"/ESP"
 #define ESP_MOUNT_POINT		"/ESP"
 #define CAPSULE_BIN_FILE	ESP_MOUNT_POINT"/BiosUpdate.fv"
 #define ESP_FS_TYPE		"vfat"
 
-int flash_ulpmc(void *data, unsigned sz)
+bool is_edk2(void)
 {
-	return -1;
-}
-
-int update_ifwi_file(void *data, unsigned size)
-{
-	return -1;
-}
-
-int update_ifwi_image(void *data, size_t size, unsigned reset_flag)
-{
-	return -1;
+	struct stat buf;
+	return (stat(ESP_DEVICE, &buf) == 0
+		&& S_ISBLK(buf.st_mode));
 }
 
 /* This function is workaround replacement of ensure_path_mounted we
@@ -58,7 +51,7 @@ static int ensure_esp_mounted()
 		return ret;
 	}
 
-	ret = mount(ESP_SYSFS_DEVICE, ESP_MOUNT_POINT, ESP_FS_TYPE,
+	ret = mount(ESP_DEVICE, ESP_MOUNT_POINT, ESP_FS_TYPE,
 		    MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
 	/* EBUSY means that the filesystem is already mounted. */
 	if (ret == -1 && errno != EBUSY) {
@@ -69,7 +62,7 @@ static int ensure_esp_mounted()
 	return 0;
 }
 
-int flash_capsule(void *data, unsigned sz)
+int flash_capsule_edk2(void *data, unsigned sz)
 {
 	int ret;
 

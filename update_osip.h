@@ -30,13 +30,6 @@
 #define DDR_LOAD_ADDX       0x01100000
 #define ENTRY_POINT         0x01101000
 
-#define ANDROID_OS_NAME     "boot"
-#define RECOVERY_OS_NAME    "recovery"
-#define FASTBOOT_OS_NAME    "fastboot"
-#define DROIDBOOT_OS_NAME   "droidboot"
-#define TEST_OS_NAME        "testos"
-#define SPLASHSCREEN_NAME   "splashscreen"
-#define ESP_PART_NAME       "ESP"
 #define MAX_OSIP_DESC 	    7
 /* mfld-structures section 2.7.1 mfld-fas v0.8*/
 #define OSIP_SIG 0x24534f24	/* $OS$ */
