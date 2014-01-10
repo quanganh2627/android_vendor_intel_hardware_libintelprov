@@ -37,11 +37,10 @@ static unsigned long long _lba_count(const char *blk_device)
 {
     unsigned long long numblocks = 0;
     int fd;
-    int retval=0;
 
     fd = open(blk_device, O_RDONLY);
     if (fd != -1) {
-      retval=ioctl(fd, BLKGETSIZE64, &numblocks);
+      ioctl(fd, BLKGETSIZE64, &numblocks);
       close(fd);
     }
     return numblocks/512;

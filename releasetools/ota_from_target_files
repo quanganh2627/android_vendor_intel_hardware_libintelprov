@@ -92,6 +92,7 @@ OPTIONS.intel_ota = False
 OPTIONS.intel_capsule = False
 OPTIONS.intel_ulpmc = False
 OPTIONS.intel_chaabi_token = False
+OPTIONS.do_partitioning = False
 
 # Following is a hack for release scripts to be able to create OTA packages
 # using the ABS targets, and not rely on invoking this script separately. This
@@ -396,6 +397,13 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   if OPTIONS.intel_chaabi_token == True:
     script.StartUpdate()
+
+  if OPTIONS.do_partitioning:
+    partition_file = common.GetBootableImage("partition.tbl", "partition.tbl",
+                                             OPTIONS.input_tmp, "BOOT")
+    common.ZipWriteStr(output_zip, partition_file.name, partition_file.data)
+    script.PackageExtract(partition_file.name)
+    script.FlashPartitionScheme(partition_file.name)
 
   script.InvalidateOs("boot")
 
@@ -927,6 +935,8 @@ def main(argv):
       OPTIONS.intel_ulpmc = True
     elif o in ("--intel_chaabi_token"):
       OPTIONS.intel_chaabi_token = True
+    elif o in ("--do_partitioning"):
+      OPTIONS.do_partitioning = True
     else:
       return False
     return True
@@ -946,6 +956,7 @@ def main(argv):
                                               "intel_capsule",
                                               "intel_ulpmc",
                                               "intel_chaabi_token",
+                                              "do_partitioning",
                                               ],
                              extra_option_handler=option_handler)
 

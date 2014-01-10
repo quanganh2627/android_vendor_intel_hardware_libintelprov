@@ -23,6 +23,7 @@
 #include <edify/expr.h>
 #include <updater/updater.h>
 #include <common.h>
+#include <cutils/properties.h>
 
 #include "update_osip.h"
 #include "util.h"
@@ -34,6 +35,8 @@
 #ifdef TEE_FRAMEWORK
 #include "tee_connector.h"
 #endif
+#include "oem_partition.h"
+#include "gpt/partlink/partlink.h"
 
 static void miu_progress_cb(int progress, int total)
 {
@@ -695,6 +698,31 @@ Value *TxemanufBistTest(const char *name, State *state, int argc, Expr *argv[]) 
     return CommandFunction(txemanuf_bist_test, name, state, argc, argv);
 }
 
+/* Warning: USE THIS FUNCTION VERY CAUTIOUSLY. It only has been added
+ * for an OTA update which REALLY needs to modify the partition
+ * scheme. Before Android KitKat, we have some running services that
+ * needs some partition to be mounted and thus we cannot reload the
+ * partition scheme and the /dev/block/ nodes won't be accurately
+ * representation of the actual partition scheme after this function
+ * is called. Think about this before calling this function.  */
+Value *FlashPartition(const char *name, State *state, int argc, Expr *argv[]) {
+    Value *ret = NULL;
+
+    /* Ensure that the partition links are there before smashing up
+     * the partition scheme.  */
+    partlink_populate();
+
+    /* Do not reload partition table during OTA since some partition
+     * are still mounted, reload would failed.  */
+    oem_partition_disable_cmd_reload();
+
+    property_set("sys.partitioning", "1");
+    ret = CommandFunction(oem_partition_cmd_handler, name, state, argc, argv);
+    property_set("sys.partitioning", "0");
+
+    return ret;
+}
+
 void Register_libintel_updater(void)
 {
     RegisterFunction("flash_osip", FlashOsipFn);
@@ -723,6 +751,7 @@ void Register_libintel_updater(void)
     RegisterFunction("fpt_closemnf", FptCloseMnf);
     RegisterFunction("txemanuf_eof_test", TxemanufEofTest);
     RegisterFunction("txemanuf_bist_test", TxemanufBistTest);
+    RegisterFunction("flash_partition", FlashPartition);
 
     util_init(recovery_error, NULL);
 }
