@@ -61,7 +61,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := liboempartitioning_static
 LOCAL_SRC_FILES := oem_partition.c
 LOCAL_MODULE_TAGS := optional
-LOCAL_C_INCLUDES := bootable/droidboot/volumeutils $(LOCAL_PATH)/gpt/lib/include
+LOCAL_C_INCLUDES := bootable/droidboot $(LOCAL_PATH)/gpt/lib/include
 LOCAL_WHOLE_STATIC_LIBRARIES := libpartlink_static libcgpt_static
 include $(BUILD_STATIC_LIBRARY)
 

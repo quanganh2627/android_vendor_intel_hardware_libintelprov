@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <cgpt.h>
 #include <cutils/properties.h>
-#include <roots.h>
+#include <droidboot_fstab.h>
 
 #include "util.h"
 #include "gpt/partlink/partlink.h"
