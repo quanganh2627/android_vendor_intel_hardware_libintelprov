@@ -40,17 +40,17 @@ char *get_gpt_path(const char *name)
 	struct stat buf;
 
 	if (!name) {
-		error("%s: Passed name is empty.", __func__);
+		error("%s: Passed name is empty.\n", __func__);
 		goto error;
 	}
 
 	if (strlen(name) > BUFSIZ - sizeof(base)) {
-		error("%s: Buffer is not large enough to build block device path.", __func__);
+		error("%s: Buffer is not large enough to build block device path.\n", __func__);
 		goto error;
 	}
 
 	if (!block_dev) {
-		error("%s: Failed to allocate mem for block dev.", __func__);
+		error("%s: Failed to allocate mem for block dev.\n", __func__);
 		goto error;
 	}
 
@@ -84,7 +84,7 @@ int flash_image(void *data, unsigned sz, const char *name)
 		int index = get_named_osii_index(name);
 
 		if (index < 0) {
-			error("Can't find OSII index!!");
+			error("Can't find OSII index!!\n");
 			return -1;
 		}
 
@@ -109,51 +109,82 @@ static size_t bootimage_size(struct boot_img_hdr *hdr)
         return size;
 }
 
-static int read_image_full_gpt(const char *name, void **data)
+int open_bootimage(const char *name)
 {
-	size_t size;
-	struct boot_img_hdr hdr;
 	char *block_dev;
-	int ret = -1;
-	int fd;
+	int fd = -1;
 
 	block_dev = get_gpt_path(name);
 	if (!block_dev)
 		goto out;
 
-	fd = open(block_dev, O_RDONLY);
+	fd =  open(block_dev, O_RDONLY);
+	if (fd < 0)
+		error("Failed to open %s: %s\n", block_dev, strerror(errno));
+
+	free(block_dev);
+out:
+	return fd;
+}
+
+/* Fill hdr with bootimage's header and return image's size */
+ssize_t read_bootimage_hdr(int fd, struct boot_img_hdr *hdr)
+{
+	ssize_t ret = -1;
+
+	if (safe_read(fd, hdr, sizeof(*hdr))) {
+		error("Failed to read image header: %s\n", strerror(errno));
+		goto out;
+	}
+
+	if (memcmp(hdr->magic, BOOT_MAGIC, sizeof(hdr->magic))) {
+		error("Image is corrupted (bad magic)\n");
+		goto out;
+	}
+
+	ret = bootimage_size(hdr);
+
+out:
+	return ret;
+}
+
+static int read_image_full_gpt(const char *name, void **data)
+{
+	ssize_t size;
+	struct boot_img_hdr hdr;
+	int ret = -1;
+	int fd;
+
+	fd = open_bootimage(name);
 	if (fd < 0) {
-		error("Failed to open %s: %s", block_dev, strerror(errno));
-		goto free_block_dev;
+		error("Failed to open %s image\n", name);
+		goto out;
 	}
 
-	if (safe_read(fd, &hdr, sizeof(hdr))) {
-		error("Failed to header of %s: %s", block_dev, strerror(errno));
-		goto close;
+	size = read_bootimage_hdr(fd, &hdr);
+	if (size <= 0) {
+		error("Invalid %s image\n", name);
+		goto out;
 	}
 
-	if (memcmp(hdr.magic, BOOT_MAGIC, sizeof(hdr.magic))) {
-		error("Corrupted image");
-		goto close;
+	if (lseek(fd, 0, SEEK_SET) < 0) {
+		error("Seek to beginning of file failed: %s\n", strerror(errno));
+		goto out;
 	}
-
-	size = bootimage_size(&hdr);
 
 	*data = malloc(size);
 	if (!data) {
-		error("Memory allocation failure");
+		error("Memory allocation failure\n");
 		goto close;
 	}
-	memcpy(*data, &hdr, sizeof(hdr));
-	ret = safe_read(fd, (char *)*data + sizeof(hdr), size - sizeof(hdr));
+
+	ret = safe_read(fd, *data, size);
 	if (ret)
 		free(*data);
 	else
 		ret = size;
 close:
 	close(fd);
-free_block_dev:
-	free(block_dev);
 out:
 	return ret;
 }
@@ -161,20 +192,20 @@ out:
 int read_image(const char *name, void **data)
 {
 	size_t size;
-	if (full_gpt()) {
-		return read_image_full_gpt(name, data);
-	} else {
-		int index;
-		index = get_named_osii_index(name);
-		if (index < 0) {
-			error("Can't find image %s in the OSIP", name);
-			return -1;
-		}
 
-		if (read_osimage_data(data, &size, index)) {
-			error("Failed to read OSIP entry");
-			return -1;
-		}
+	if (full_gpt())
+		return read_image_full_gpt(name, data);
+
+	int index;
+	index = get_named_osii_index(name);
+	if (index < 0) {
+		error("Can't find image %s in the OSIP\n", name);
+		return -1;
+	}
+
+	if (read_osimage_data(data, &size, index)) {
+		error("Failed to read OSIP entry\n");
+		return -1;
 	}
 	return size;
 }

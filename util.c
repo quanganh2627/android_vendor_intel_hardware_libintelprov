@@ -132,19 +132,19 @@ int file_size(const char *filename)
 	return stat_buf.st_size;
 }
 
-void *file_mmap(const char *filename, size_t length)
+void *file_mmap(const char *filename, size_t length, bool writable)
 {
 	void *ret = NULL;
 	int fd;
 
-	fd = open(filename, O_RDONLY);
+	fd = open(filename, writable ? O_RDWR : O_RDONLY);
 	if (fd == -1) {
 		error("Failed to open %s file, %s.",
 		      filename, strerror(errno));
 		goto exit;
 	}
 
-	ret = mmap(NULL, length, PROT_READ, MAP_SHARED, fd, 0);
+	ret = mmap(NULL, length, (writable ? PROT_WRITE : 0) | PROT_READ, MAP_SHARED, fd, 0);
 	if (ret == MAP_FAILED) {
 		error("Failed to map %s file into memory, %s.",
 		      filename, strerror(errno));

@@ -371,6 +371,24 @@ update_recovery --check-sha1 %(header_sha1)s \\
   common.ZipWriteStr(output_zip, "recovery/etc/install-recovery.sh", sh)
   return Item.Get("system/etc/install-recovery.sh", dir=False)
 
+def FlashImage(script, name, img_name, partition_file):
+  if name == "esp":
+    name = "ESP"
+  if name == "ifwi":
+    script.FlashIfwi(img_name)
+  elif name == "capsule":
+    script.FlashCapsule(img_name)
+  elif name == "ulpmc":
+    script.FlashUlpmc(img_name)
+  elif partition_file == None:
+    script.FlashOSImage(img_name, name)
+  else:
+    for line in partition_file.data.splitlines():
+      if "-l %s " % (name.lower()) in line.lower():
+        lba_start = re.search('-b (\d+)', line).group(1)
+        if not lba_start:
+          raise common.ExternalError("couldn't find lba start of partition %s" % (name))
+        script.FlashImageAtOffset(img_name, int(lba_start) * 512)
 
 def WriteFullOTAPackage(input_zip, output_zip):
   # TODO: how to determine this?  We don't know what version it will
@@ -410,6 +428,8 @@ def WriteFullOTAPackage(input_zip, output_zip):
     common.ZipWriteStr(output_zip, partition_file.name, partition_file.data)
     script.PackageExtract(partition_file.name)
     script.FlashPartitionScheme(partition_file.name)
+  else:
+    partition_file = None
 
   script.InvalidateOs("boot")
 
@@ -438,7 +458,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
   #  script.UndoRetouchBinaries(retouch_files)
 
   images = {}
-  name_list = ["boot", "recovery", "fastboot", "uefi", "ifwi"]
+  name_list = ["boot", "recovery", "fastboot", "esp", "ifwi"]
 
   if OPTIONS.intel_capsule == True:
     name_list.append("capsule")
@@ -448,17 +468,12 @@ def WriteFullOTAPackage(input_zip, output_zip):
   for name in name_list:
     if name == "ifwi":
       filename = name + ".zip"
+    elif name == "capsule" or name == "ulpmc":
+      filename = name + ".bin"
     else:
-      if name == "capsule" or name == "ulpmc":
-        filename = name + ".bin"
-      else:
-        filename = name + ".img"
-    if name != "uefi":
-      img = common.GetBootableImage(filename, filename,
-              OPTIONS.input_tmp, name.upper())
-    else:
-      img = common.GetStitchedImage(filename, OPTIONS.input_tmp,
-              "MFLD_IMAGES/uefi.fv")
+      filename = name + ".img"
+    img = common.GetBootableImage(filename, filename,
+                                  OPTIONS.input_tmp, name.upper())
     if img:
       images[name] = img
 
@@ -471,23 +486,8 @@ def WriteFullOTAPackage(input_zip, output_zip):
     common.CheckSize(img.data, img.name, OPTIONS.info_dict)
     common.ZipWriteStr(output_zip, img.name, img.data)
     script.PackageExtract(img.name)
-    if name == "ifwi":
-      script.FlashIfwi("ifwi.zip")
-    else:
-      if name != "capsule" and name != "ulpmc":
-        if OPTIONS.full_gpt == True:
-          if OPTIONS.do_partitioning == True:
-            for line in partition_file.data.splitlines():
-              if "-l %s " % (name) in line:
-                lba_start = re.search('-b (\d+)', line).group(1)
-            if not lba_start:
-                  raise common.ExternalError("couldn't find lba start of partition %s" % (name))
-            script.FlashImageAtOffset(img.name, int(lba_start) * 512)
-          else:
-            script.FlashImageByLabel(img.name, name)
-        else:
-          script.FlashOsip(name)
-        script.DeleteTmpImage(img.name)
+    FlashImage(script, name, img.name, partition_file)
+    script.DeleteTmpImage(img.name)
 
   Item.GetMetadata(input_zip)
   Item.Get("system").SetPermissions(script)
@@ -499,11 +499,6 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   if OPTIONS.extra_script is not None:
     script.AppendExtra(OPTIONS.extra_script)
-
-  if OPTIONS.intel_capsule == True:
-    script.FlashCapsule("capsule.bin")
-  if OPTIONS.intel_ulpmc == True:
-    script.FlashUlpmc("ulpmc.bin")
 
   script.UnmountAll()
   script.RestoreOs("boot")
@@ -523,9 +518,6 @@ def WriteMetadata(metadata, output_zip):
                      "".join(["%s=%s\n" % kv
                               for kv in sorted(metadata.iteritems())]))
 
-
-
-
 def LoadSystemFiles(z):
   """Load all the files from SYSTEM/... in a given target-files
   ZipFile, and return a dict of {filename: File object}."""
@@ -541,7 +533,6 @@ def LoadSystemFiles(z):
         retouch_files.append(("/system/" + basefilename,
                               out[fn].sha1))
   return (out, retouch_files)
-
 
 def GetBuildProp(property, z):
   """Return the fingerprint of the build of a given target-files
@@ -576,7 +567,6 @@ def GetCompatibleProduct(product):
 
   f.close()
   return None
-
 
 def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   source_version = OPTIONS.source_info_dict["recovery_api_version"]
@@ -660,32 +650,24 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   images = {} # Set of images to update (source, target)
   full_images = {} # Set of images to create (target) (no source)
 
-  name_list = ["boot", "recovery", "fastboot", "uefi", "ifwi", "capsule", "ulpmc"]
+  name_list = ["boot", "recovery", "fastboot", "esp", "ifwi"]
+
+  if OPTIONS.intel_capsule == True:
+    name_list.append("capsule")
+  if OPTIONS.intel_ulpmc == True:
+    name_list.append("ulpmc")
 
   for name in name_list:
     if name == "ifwi":
       filename = name + ".zip"
+    elif name == "capsule" or name == "ulpmc":
+      filename = name + ".bin"
     else:
-      if name == "capsule" or name == "ulpmc":
-        filename = name + ".bin"
-      else:
-        filename = name + ".img"
-    if name != "uefi":
-      if name == "capsule" or name == "ulpmc":
-          src_img = common.GetFirmwareImage(filename, filename, OPTIONS.source_tmp,
-                  name.upper())
-          tgt_img = common.GetFirmwareImage(filename, filename, OPTIONS.target_tmp,
-                  name.upper())
-      else:
-          src_img = common.GetBootableImage(filename, filename, OPTIONS.source_tmp,
-                  name.upper())
-          tgt_img = common.GetBootableImage(filename, filename, OPTIONS.target_tmp,
-                  name.upper())
-    else:
-      src_img = common.GetStitchedImage(filename, OPTIONS.source_tmp,
-              "MFLD_IMAGES/uefi.fv")
-      tgt_img = common.GetStitchedImage(filename, OPTIONS.target_tmp,
-              "MFLD_IMAGES/uefi.fv")
+      filename = name + ".img"
+    src_img = common.GetBootableImage(filename, filename, OPTIONS.source_tmp,
+                name.upper())
+    tgt_img = common.GetBootableImage(filename, filename, OPTIONS.target_tmp,
+                name.upper())
     all_images[name] = (src_img, tgt_img)
     if not tgt_img:
       print "%s image not present, skipping" % name
@@ -701,8 +683,8 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
       # skip the ifwi flashing if it is the same as src targetfiles
       if not common.IfwiDiffers(src_img, tgt_img):
         continue
-    if name == "ifwi" or metadata["fromgb"] or name == "capsule" or name == "ulpmc":
-      # we dont make incremental images from GB
+    if OPTIONS.do_partitioning == True or name == "ifwi" or metadata["fromgb"] or name == "capsule" or name == "ulpmc" or name == "esp":
+      # we dont make incremental images
       full_images[name] = tgt_img
       continue
     if src_img:
@@ -725,8 +707,8 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   script.ShowProgress(0.1, 0)
   total_verify_size = float(sum([i[2].size for i in patch_list]) + 1)
   so_far = 0
-  for osip_target in images.keys():
-    src_img, tgt_img = images[osip_target]
+  for img in images.keys():
+    src_img, tgt_img = images[img]
     total_verify_size += src_img.size
 
   for fn, tf, sf, size, patch_sha in patch_list:
@@ -734,18 +716,17 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
     so_far += sf.size
     script.SetProgress(so_far / total_verify_size)
 
-  for osip_target in images.keys():
-    src_img, tgt_img = images[osip_target]
-    script.Print("Verifying %s image...\n" % (osip_target,))
+  for img in images.keys():
+    src_img, tgt_img = images[img]
+    script.Print("Verifying %s image...\n" % (img,))
     d = common.Difference(tgt_img, src_img)
     _, _, d = d.ComputePatch()
-    print "OSIP %s image:      target: %d  source: %d  diff: %d" % (
-            osip_target, tgt_img.size, src_img.size, len(d))
-    common.ZipWriteStr(output_zip, "patch/%s.img.p" % osip_target, d)
-    # Extract the source image from the OSIP and make sure the patch will
-    # apply to it
-    script.ExtractOsip(osip_target);
-    script.PatchCheck("/tmp/%s.img" % osip_target, tgt_img.sha1,
+    print "%s image:      target: %d  source: %d  diff: %d" % (
+            img, tgt_img.size, src_img.size, len(d))
+    common.ZipWriteStr(output_zip, "patch/%s.img.p" % img, d)
+    # Extract the source image and make sure the patch will apply to it
+    script.ExtractImage(img);
+    script.PatchCheck("/tmp/%s.img" % img, tgt_img.sha1,
             src_img.sha1)
     script.CacheFreeSpaceCheck(tgt_img.size)
     so_far += src_img.size
@@ -757,6 +738,15 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   device_specific.IncrementalOTA_VerifyEnd()
 
   script.Comment("---- start making changes here ----")
+
+  if OPTIONS.do_partitioning:
+    partition_file = common.GetBootableImage("partition.tbl", "partition.tbl",
+                                             OPTIONS.input_tmp, "BOOT")
+    common.ZipWriteStr(output_zip, partition_file.name, partition_file.data)
+    script.PackageExtract(partition_file.name)
+    script.FlashPartitionScheme(partition_file.name)
+  else:
+    partition_file = None
 
   script.InvalidateOs("boot")
 
@@ -784,16 +774,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
     common.CheckSize(img.data, img.name, OPTIONS.info_dict)
     common.ZipWriteStr(output_zip, img.name, img.data)
     script.PackageExtract(img.name)
-    if name == "ifwi":
-      script.FlashIfwi("ifwi.zip")
-    else:
-      if name == "capsule":
-        script.FlashCapsule("capsule.bin")
-      else:
-        if name == "ulpmc":
-          script.FlashUlpmc("ulpmc.bin")
-        else:
-          script.FlashOsip(name)
+    FlashImage(script, name, img.name, partition_file)
     script.DeleteTmpImage(img.name)
     so_far += tgt_img.size
     script.SetProgress(so_far / total_patch_size)
@@ -810,12 +791,12 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
     script.SetProgress(so_far / total_patch_size)
 
   script.Print("Patching OS images...")
-  for osip_target in images.keys():
-    src_img, tgt_img = images[osip_target]
-    script.ApplyPatch("/tmp/%s.img" % osip_target, "-", tgt_img.size, tgt_img.sha1,
-            src_img.sha1, "patch/%s.img.p" % osip_target)
-    script.FlashOsip(osip_target)
-    script.DeleteTmpImage(osip_target + ".img");
+  for img in images.keys():
+    src_img, tgt_img = images[img]
+    script.ApplyPatch("/tmp/%s.img" % img, "-", tgt_img.size, tgt_img.sha1,
+                      src_img.sha1, "patch/%s.img.p" % img)
+    FlashImage(script, img, "%s.img" % img, partition_file)
+    script.DeleteTmpImage(img + ".img");
     so_far += tgt_img.size
     script.SetProgress(so_far / total_patch_size)
 

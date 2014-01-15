@@ -50,7 +50,6 @@ static int read_recovery_signature(void **buf)
 	int fd = -1;
 	int sig_size;
 	int fgpt = full_gpt();
-	int ret = -1;
 
 	sig_size = fgpt ? ANDROID_SIG_SIZE : OSIP_SIG_SIZE;
 
@@ -61,12 +60,23 @@ static int read_recovery_signature(void **buf)
 	}
 
 	if (fgpt) {
-		fd = open(BASE_PLATFORM_INTEL_LABEL"/recovery", O_RDONLY);
+		struct boot_img_hdr hdr;
+		ssize_t img_size;
+
+		fd = open_bootimage(RECOVERY_OS_NAME);
 		if (fd < 0) {
 			LOGPERROR("open");
 			goto err;
 		}
-		if (lseek(fd, -ANDROID_SIG_SIZE, SEEK_END) < 0) {
+
+		img_size = read_bootimage_hdr(fd, &hdr);
+		if (img_size <= 0) {
+			error("Invalid image\n");
+			goto err;
+		}
+
+
+		if (lseek(fd, img_size - ANDROID_SIG_SIZE, SEEK_SET) < 0) {
 			LOGPERROR("lseek");
 			goto err;
 		}
