@@ -28,7 +28,6 @@
 #include <unistd.h>
 #include <charger/charger.h>
 #include <linux/ioctl.h>
-#include <linux/mdm_ctrl.h>
 #include <sys/mount.h>
 
 #include "volumeutils/ufdisk.h"
@@ -36,6 +35,7 @@
 #include "util.h"
 #include "fw_version_check.h"
 #include "flash_ifwi.h"
+#include "flash_image.h"
 #include "fpt.h"
 #include "txemanuf.h"
 #include "fastboot.h"
@@ -54,74 +54,10 @@
 
 static int oem_write_osip_header(int argc, char **argv);
 
-static int full_gpt(void)
-{
-	struct stat buf;
-
-	return (stat(BASE_PLATFORM_INTEL_LABEL"/fastboot", &buf) == 0
-		&& S_ISBLK(buf.st_mode));
-}
-
-static int flash_image(void *data, unsigned sz, const char *name)
-{
-	if (full_gpt()) {
-		char block_dev[BUFSIZ];
-		char base[] = BASE_PLATFORM_INTEL_LABEL"/";
-		struct stat buf;
-
-		if (strlen(name) > sizeof(block_dev) - sizeof(base)) {
-			pr_error("Buffer is not large enough to build block device path.");
-			return -1;
-		}
-
-		strncpy(block_dev, base, sizeof(base));
-		strncpy(block_dev + sizeof(base) - 1, name, strlen(name) + 1);
-
-		if (stat(block_dev, &buf) != 0 || !S_ISBLK(buf.st_mode))
-			return -1;
-
-		return file_write(block_dev, data, sz);
-	} else {
-		int index = get_named_osii_index(name);
-
-		if (index < 0) {
-			pr_error("Can't find OSII index!!");
-			return -1;
-		}
-
-		return write_stitch_image(data, sz, index);
-	}
-}
-
-static int flash_android_kernel(void *data, unsigned sz)
-{
-	return flash_image(data, sz, ANDROID_OS_NAME);
-}
-
 static int flash_testos(void *data, unsigned sz)
 {
 	oem_write_osip_header(0,0);
 	return write_stitch_image_ex(data, sz, 0, 1);
-}
-
-static int flash_recovery_kernel(void *data, unsigned sz)
-{
-	return flash_image(data, sz, RECOVERY_OS_NAME);
-}
-
-static int flash_fastboot_kernel(void *data, unsigned sz)
-{
-	return flash_image(data, sz, FASTBOOT_OS_NAME);
-}
-
-static int flash_splashscreen_image(void *data, unsigned sz)
-{
-	return flash_image(data, sz, SPLASHSCREEN_NAME);
-}
-
-static int flash_esp(void *data, unsigned sz)
-{
-	return flash_image(data, sz, ESP_PART_NAME);
 }
 
 #ifdef MRFLD
@@ -193,96 +129,6 @@ static int flash_ifwi(void *data, unsigned sz)
 }
 
 #endif
-
-#define PROXY_SERVICE_NAME	"proxy"
-#define PROXY_PROP		"service.proxy.enable"
-#define PROXY_START		"1"
-#define PROXY_STOP		"0"
-#define HSI_PORT		"/sys/bus/hsi/devices/port0"
-#define MCD_CTRL		"/dev/mdm_ctrl"
-
-static int oem_manage_service_proxy(int argc, char **argv)
-{
-	int retval = 0;
-	int mcd_fd = -1;
-	int evt_type = 0;
-
-	if ((argc < 2) || (strcmp(argv[0], PROXY_SERVICE_NAME))) {
-		/* Should not pass here ! */
-		pr_error("oem_manage_service called with wrong parameter!\n");
-		retval = -1;
-		return retval;
-	}
-
-	if (!strcmp(argv[1], "start")) {
-		/* Check if HSI node was created, */
-		/* indicating that the HSI bus is enabled.*/
-		if (-1 != access(HSI_PORT, F_OK))
-		{
-			/* Start proxy service (at-proxy). */
-			property_set(PROXY_PROP, PROXY_START);
-
-		} else {
-			/* MCD build. Modem needs to be powered */
-			/* Boot up the modem */
-			if ((mcd_fd = open(MCD_CTRL, O_RDWR)) == -1) {
-				pr_error("Unable to open MCD node or find HSI. ABORT.\n");
-				return -1;
-			}
-			if (ioctl(mcd_fd, MDM_CTRL_POWER_ON) == -1) {
-				pr_info("Unable to power on modem. ABORT.\n");
-				close(mcd_fd);
-				return -1;
-			} else {
-				/* Let modem time to boot */
-				pr_info("Modem will be powered up... ");
-				evt_type = MDM_CTRL_STATE_IPC_READY;
-				if (ioctl(mcd_fd, MDM_CTRL_WAIT_FOR_STATE, &evt_type) == -1) {
-					pr_error("Power up failure. ABORT.\n");
-					close(mcd_fd);
-					return -1;
-				}
-				pr_info("Modem powered up.\n");
-				close(mcd_fd);
-				/* Start proxy service (at-proxy). */
-				property_set(PROXY_PROP, PROXY_START);
-			}
-		}
-
-	} else if (!strcmp(argv[1], "stop")) {
-		/* For MCD build, modem will be powered down */
-		if ((mcd_fd = open(MCD_CTRL, O_RDWR)) == -1) {
-			/* Stop proxy service (at-proxy). */
-			property_set(PROXY_PROP, PROXY_STOP);
-			return 0;
-		}
-		/* Stop proxy service (at-proxy) anyway. */
-		property_set(PROXY_PROP, PROXY_STOP);
-		if (ioctl(mcd_fd, MDM_CTRL_POWER_OFF) == -1) {
-			pr_info("Unable to power off modem. ABORT.\n");
-			close(mcd_fd);
-			return -1;
-		} else {
-			/* Let modem time to stop. */
-			pr_info("Modem will be powered down... ");
-			evt_type = MDM_CTRL_STATE_OFF;
-			if (ioctl(mcd_fd, MDM_CTRL_WAIT_FOR_STATE, &evt_type) == -1) {
-				pr_error("Power down failure. ABORT.\n");
-				close(mcd_fd);
-				return -1;
-			}
-			pr_info("Modem powered down.\n");
-			close(mcd_fd);
-			return 0;
-		}
-
-	} else {
-		pr_error("Unknown command. Use %s [start/stop].\n", PROXY_SERVICE_NAME);
-		retval = -1;
-	}
-
-	return retval;
-}
 
 #define DNX_TIMEOUT_CHANGE  "dnx_timeout"
 #define DNX_TIMEOUT_GET	    "--get"
@@ -620,13 +466,12 @@ static int get_system_info(int type, char *info, unsigned sz)
 	int ret = -1;
 	char pro_name[MAX_NAME_SIZE];
 	FILE *f;
-	struct firmware_versions v;
+	char value[PROPERTY_VALUE_MAX];
 
 	switch (type) {
 		case IFWI_VERSION:
-			if ((ret = get_current_fw_rev(&v)) < 0)
-				break;
-			snprintf(info, sz, "%2x.%2x", v.ifwi.major, v.ifwi.minor);
+			property_get("sys.ifwi.version", value, "");
+			snprintf(info, sz, "%s", value);
 			ret = 0;
 			break;
 		case PRODUCT_NAME:
@@ -683,6 +528,46 @@ static void cmd_intel_boot(const char *arg, void *data, unsigned sz)
 	fastboot_okay("");
 }
 
+struct property_format {
+	const char *name;
+	const char *msg;
+	const char *error_msg;
+};
+
+static struct property_format properties_format[] = {
+	{ "sys.ifwi.version",     "         ifwi:", NULL },
+	{ NULL,                   "---- components ----" , NULL },
+	{ "sys.scu.version",      "          scu:", NULL },
+	{ "sys.punit.version",    "        punit:", NULL },
+	{ "sys.valhooks.version", "    hooks/oem:", NULL },
+	{ "sys.ia32.version",     "         ia32:", NULL },
+	{ "sys.suppia32.version", "     suppia32:", NULL },
+	{ "sys.mia.version",      "          mIA:", NULL },
+	{ "sys.chaabi.version",   "       chaabi:", "CHAABI versions unreadable at runtime" },
+};
+
+static void dump_system_versions()
+{
+	char property[PROPERTY_VALUE_MAX];
+	unsigned int i;
+
+	for (i = 0 ; i < sizeof(properties_format)/ sizeof((properties_format)[0]) ; i++)
+	{
+		struct property_format *fmt = &properties_format[i];
+
+		if (!fmt->name) {
+			printf("%s\n", fmt->msg);
+			continue;
+		}
+
+		property_get(fmt->name, property, "");
+		if (strcmp(property, ""))
+			printf("%s %s\n", fmt->msg, property);
+		else if (fmt->error_msg)
+			printf("%s\n", fmt->error_msg);
+	}
+}
+
 void libintel_droidboot_init(void)
 {
 	int ret = 0;
@@ -729,7 +614,6 @@ void libintel_droidboot_init(void)
 		}
 	}
 
-	ret |= aboot_register_oem_cmd(PROXY_SERVICE_NAME, oem_manage_service_proxy);
 	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);
 	ret |= aboot_register_oem_cmd("erase", oem_erase_partition);
 	ret |= aboot_register_oem_cmd("repart", oem_repart_partition);
@@ -775,21 +659,5 @@ void libintel_droidboot_init(void)
 		}
 	}
 
-#ifdef MRFLD
-	struct firmware_versions_long cur_fw_rev;
-	if (get_current_fw_rev_long(&cur_fw_rev)) {
-		pr_error("Can't query kernel for current FW version");
-	} else {
-		printf("Current FW versions:\n");
-		dump_fw_versions_long(&cur_fw_rev);
-	}
-#else
-	struct firmware_versions cur_fw_rev;
-	if (get_current_fw_rev(&cur_fw_rev)) {
-		pr_error("Can't query kernel for current FW version");
-	} else {
-		printf("Current FW versions: (CHAABI versions unreadable at runtime)\n");
-		dump_fw_versions(&cur_fw_rev);
-	}
-#endif
+	dump_system_versions();
 }

@@ -293,6 +293,12 @@ class EdifyGenerator(object):
   def FlashOsip(self, name):
     self.script.append('flash_osip("/tmp/%s.img", "%s");' % (name, name))
 
+  def FlashImageByLabel(self, img, label):
+    self.script.append('flash_image_by_label("/tmp/%s", "%s");' % (img, label))
+
+  def FlashImageAtOffset(self, img, offset):
+    self.script.append('flash_image_at_offset("/tmp/%s", "%d");' % (img, offset))
+
   def FlashIfwi(self, filename):
     self.Print("Updating IFWI image...\n");
     self.script.append('flash_ifwi("/tmp/%s");' % (filename,))
