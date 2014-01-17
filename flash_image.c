@@ -39,8 +39,18 @@ char *get_gpt_path(const char *name)
 	char base[] = BASE_PLATFORM_INTEL_LABEL"/";
 	struct stat buf;
 
+	if (!name) {
+		error("%s: Passed name is empty.", __func__);
+		goto error;
+	}
+
 	if (strlen(name) > BUFSIZ - sizeof(base)) {
-		error("Buffer is not large enough to build block device path.");
+		error("%s: Buffer is not large enough to build block device path.", __func__);
+		goto error;
+	}
+
+	if (!block_dev) {
+		error("%s: Failed to allocate mem for block dev.", __func__);
 		goto error;
 	}
 
@@ -52,7 +62,8 @@ char *get_gpt_path(const char *name)
 
 	return block_dev;
 error:
-	free(block_dev);
+	if (block_dev)
+		free(block_dev);
 	return NULL;
 }
 
