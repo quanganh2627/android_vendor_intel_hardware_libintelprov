@@ -38,6 +38,7 @@ endif
 
 common_libintelprov_includes := \
 	$(call include-path-for, libc-private) \
+	$(call include-path-for, mkbootimg) \
 	$(TARGET_OUT_HEADERS)/IFX-modem
 
 chaabi_dir := $(TOP)/vendor/intel/hardware/PRIVATE/chaabi

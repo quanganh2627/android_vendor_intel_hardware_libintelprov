@@ -143,7 +143,8 @@ static int check_recovery_image(const char *tgt_sha1, int *needs_patching)
 
 	if ((sz = read_image(RECOVERY_OS_NAME, &data)) == -1) {
 		LOGE("failed to read recovery image");
-		return -1;
+		*needs_patching = 1;
+		return 0;
 	}
 	SHA_hash(data, sz, tgt_digest);
 

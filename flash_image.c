@@ -18,6 +18,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <bootimg.h>
 #include "util.h"
 #include "flash_image.h"
 #include "gpt/partlink/partlink.h"
@@ -79,19 +81,77 @@ int flash_image(void *data, unsigned sz, const char *name)
 	}
 }
 
+static int pages(struct boot_img_hdr *hdr, int blob_size)
+{
+        return (blob_size + hdr->page_size - 1) / hdr->page_size;
+}
+
+static size_t bootimage_size(struct boot_img_hdr *hdr)
+{
+        size_t size;
+
+        size = (1 + pages(hdr, hdr->kernel_size) +
+                pages(hdr, hdr->ramdisk_size) +
+                pages(hdr, hdr->second_size) +
+		pages(hdr, hdr->sig_size)) *
+                        hdr->page_size;
+        return size;
+}
+
+static int read_image_full_gpt(const char *name, void **data)
+{
+	size_t size;
+	struct boot_img_hdr hdr;
+	char *block_dev;
+	int ret = -1;
+	int fd;
+
+	block_dev = get_gpt_path(name);
+	if (!block_dev)
+		goto out;
+
+	fd = open(block_dev, O_RDONLY);
+	if (fd < 0) {
+		error("Failed to open %s: %s", block_dev, strerror(errno));
+		goto free_block_dev;
+	}
+
+	if (safe_read(fd, &hdr, sizeof(hdr))) {
+		error("Failed to header of %s: %s", block_dev, strerror(errno));
+		goto close;
+	}
+
+	if (memcmp(hdr.magic, BOOT_MAGIC, sizeof(hdr.magic))) {
+		error("Corrupted image");
+		goto close;
+	}
+
+	size = bootimage_size(&hdr);
+
+	*data = malloc(size);
+	if (!data) {
+		error("Memory allocation failure");
+		goto close;
+	}
+	memcpy(*data, &hdr, sizeof(hdr));
+	ret = safe_read(fd, (char *)*data + sizeof(hdr), size - sizeof(hdr));
+	if (ret)
+		free(*data);
+	else
+		ret = size;
+close:
+	close(fd);
+free_block_dev:
+	free(block_dev);
+out:
+	return ret;
+}
+
 int read_image(const char *name, void **data)
 {
 	size_t size;
 	if (full_gpt()) {
-		char *block_dev;
-		int ret;
-
-		block_dev = get_gpt_path(name);
-		if (!block_dev)
-			return -1;
-		ret = file_read(block_dev, data, &size);
-		if (ret != 0)
-			return -1;
+		return read_image_full_gpt(name, data);
 	} else {
 		int index;
 		index = get_named_osii_index(name);
