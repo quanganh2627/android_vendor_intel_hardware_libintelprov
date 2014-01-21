@@ -621,11 +621,11 @@ Value *FlashImageByLabel(const char *name, State *state, int argc, Expr *argv[])
         goto exit;
     }
 
-    int length = file_size(name);
+    int length = file_size(filename);
     if (length == -1)
         goto free;
 
-    data = file_mmap(name, length);
+    data = file_mmap(filename, length);
     if (data == MAP_FAILED)
         goto free;
 
