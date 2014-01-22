@@ -439,11 +439,6 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   if OPTIONS.wipe_user_data:
     script.FormatPartition("/data")
-  else:
-    # WW26 : remove user dictionary
-    script.Print("Erasing old dictionary...")
-    script.Mount("/data")
-    script.DeleteFiles(["/data/data/com.android.providers.userdictionary/databases/user_dict.db"])
 
   script.FormatPartition("/system")
   script.Mount("/system")
@@ -880,11 +875,6 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   if OPTIONS.extra_script is not None:
     script.AppendExtra(OPTIONS.extra_script)
-
-  # WW26 : remove user dictionary
-  script.Print("Erasing old dictionary...")
-  script.Mount("/data")
-  script.DeleteFiles(["/data/data/com.android.providers.userdictionary/databases/user_dict.db"])
 
   # Patch the build.prop file last, so if something fails but the
   # device can still come up, it appears to be the old build and will
