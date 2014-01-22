@@ -24,6 +24,7 @@
 #include <updater/updater.h>
 #include <common.h>
 #include <cutils/properties.h>
+#include <sys/mman.h>
 
 #include "update_osip.h"
 #include "util.h"
@@ -36,6 +37,7 @@
 #endif
 #include "oem_partition.h"
 #include "gpt/partlink/partlink.h"
+#include "flash_image.h"
 
 #ifdef BOARD_HAVE_MODEM
 #include "telephony_updater.h"
@@ -76,7 +78,7 @@ Value *ExtractOsipFn(const char *name, State *state, int argc, Expr *argv[]) {
 
     if (file_write(filename, data, size) < 0) {
         ErrorAbort(state, "Couldn't write osii[%d] data to %s", osii_index,
-                filename);
+                   filename);
         goto done;
     }
 
@@ -128,7 +130,7 @@ Value *FlashOsipFn(const char *name, State *state, int argc, Expr *argv[]) {
 
     if (write_stitch_image(image_data, image_size, osii_index)) {
         ErrorAbort(state, "Error writing %s image %s to OSIP%d",
-                destination, filename, osii_index);
+                   destination, filename, osii_index);
         goto done;
     }
 
@@ -179,15 +181,15 @@ Value *RestoreOsFn(const char *name, State *state, int argc, Expr *argv[]) {
     return ExecuteOsipFunction(name, state, argc, argv, restore_osii);
 }
 
-#define IFWI_BIN_PATH	"/tmp/ifwi.bin"
-#define IFWI_NAME	"ifwi"
-#define FILEMODE  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
+#define IFWI_BIN_PATH "/tmp/ifwi.bin"
+#define IFWI_NAME     "ifwi"
+#define FILEMODE      S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
 
 #ifdef MRFLD
 
 enum flash_option_type {
-	FLASH_IFWI_BINARY,
-	FLASH_BOM_TOKEN_BINARY,
+    FLASH_IFWI_BINARY,
+    FLASH_BOM_TOKEN_BINARY,
 };
 
 
@@ -335,8 +337,8 @@ Value *FlashBomFn(const char *name, State *state, int argc, Expr *argv[]) {
 
 #else /* MRFLD */
 
-#define DNX_BIN_PATH	"/tmp/dnx.bin"
-#define DNX_NAME	"dnx"
+#define DNX_BIN_PATH "/tmp/dnx.bin"
+#define DNX_NAME     "dnx"
 
 Value *FlashIfwiFn(const char *name, State *state, int argc, Expr *argv[]) {
     Value *ret = NULL;
@@ -513,7 +515,7 @@ Value *FlashCallFunction(int (*fun)(char *), const char *name, State *state,
     char *filename = NULL;
 
     if (ReadArgs(state, argv, 1, &filename) < 0)
-            goto done;
+        goto done;
 
     if (fun(filename) != EXIT_SUCCESS) {
         ErrorAbort(state, "%s failed.", name);
@@ -524,7 +526,7 @@ Value *FlashCallFunction(int (*fun)(char *), const char *name, State *state,
 
 done:
     if (filename)
-	    free(filename);
+        free(filename);
     return ret;
 }
 
@@ -569,8 +571,8 @@ Value *CommandFunction(int (*fun)(int, char **), const char *name, State *state,
         argv_str[i + 1] = argv_read[i];
 
     if (fun(sizeof(argv_str) / sizeof(char *), argv_str) != EXIT_SUCCESS) {
-            ErrorAbort(state, "%s failed.", name);
-            goto done;
+        ErrorAbort(state, "%s failed.", name);
+        goto done;
     }
 
     for (i = 0 ; i < argc ; i++)
@@ -601,6 +603,127 @@ Value *TxemanufEofTest(const char *name, State *state, int argc, Expr *argv[]) {
 
 Value *TxemanufBistTest(const char *name, State *state, int argc, Expr *argv[]) {
     return CommandFunction(txemanuf_bist_test, name, state, argc, argv);
+}
+
+Value *FlashImageByLabel(const char *name, State *state, int argc, Expr *argv[]) {
+    Value *funret = NULL;
+    char *filename, *image_name;
+    void *data;
+    int ret;
+
+    if (argc != 2) {
+        ErrorAbort(state, "%s: Invalid parameters.", name);
+        goto exit;
+    }
+
+    if (ReadArgs(state, argv, 2, &filename, &image_name) < 0) {
+        ErrorAbort(state, "%s: ReadArgs failed.", name);
+        goto exit;
+    }
+
+    int length = file_size(name);
+    if (length == -1)
+        goto free;
+
+    data = file_mmap(name, length);
+    if (data == MAP_FAILED)
+        goto free;
+
+    ret = flash_image(data, length, image_name);
+    if (ret != 0) {
+        ErrorAbort(state, "%s: Failed to flash %s image %s, %s.",
+                   name, filename, image_name, strerror(errno));
+        goto unmap;
+    }
+
+    funret = StringValue(strdup(""));
+
+unmap:
+    munmap(data, length);
+free:
+    free(filename);
+    free(image_name);
+exit:
+    return funret;
+}
+
+Value *FlashImageAtOffset(const char *name, State *state, int argc, Expr *argv[]) {
+    Value *funret = NULL;
+    char *filename, *offset_str;
+    void *data;
+    off_t offset;
+    int fd;
+    int ret;
+
+    if (argc != 2) {
+        ErrorAbort(state, "%s: Invalid parameters.", name);
+        goto exit;
+    }
+
+    if (ReadArgs(state, argv, 2, &filename, &offset_str) < 0) {
+        ErrorAbort(state, "%s: ReadArgs failed.", name);
+        goto exit;
+    }
+
+    char *end;
+    offset = strtoul(offset_str, &end, 10);
+    if (*end != '\0' || errno == ERANGE) {
+        ErrorAbort(state, "%s: offset argument parsing failed.", name);
+        goto free;
+    }
+
+    int length = file_size(filename);
+    if (length == -1)
+        goto free;
+
+    data = file_mmap(filename, length);
+    if (data == MAP_FAILED) {
+        goto free;
+    }
+
+    fd = open(MMC_DEV_POS, O_WRONLY);
+    if (fd == -1) {
+        ErrorAbort(state, "%s: Failed to open %s device block, %s.",
+                   name, MMC_DEV_POS, strerror(errno));
+        goto unmmap_file;
+    }
+
+    ret = lseek(fd, offset, SEEK_SET);
+    if (ret == -1) {
+        ErrorAbort(state, "%s: Failed to seek into %s device block, %s.",
+                   name, MMC_DEV_POS, strerror(errno));
+        goto close;
+    }
+
+    char *ptr = (char *)data;
+    ret = 0;
+    for (; length ; length -= ret, ptr += ret) {
+        ret = write(fd, ptr, length);
+        if (ret == -1) {
+            ErrorAbort(state, "%s: Failed to write into %s device block, %s.",
+                       name, MMC_DEV_POS, strerror(errno));
+            goto close;
+        }
+    }
+
+    ret = fsync(fd);
+    if (ret == -1) {
+        ErrorAbort(state, "%s: Failed to sync %s, %s.",
+                   name, MMC_DEV_POS, strerror(errno));
+        goto close;
+    }
+
+    funret = StringValue(strdup(""));
+
+close:
+    close(fd);
+unmmap_file:
+    munmap(data, length);
+free:
+    free(filename);
+    free(offset_str);
+exit:
+    return funret;
 }
 
 /* Warning: USE THIS FUNCTION VERY CAUTIOUSLY. It only has been added
@@ -659,6 +782,8 @@ void Register_libintel_updater(void)
     RegisterFunction("txemanuf_eof_test", TxemanufEofTest);
     RegisterFunction("txemanuf_bist_test", TxemanufBistTest);
     RegisterFunction("flash_partition", FlashPartition);
+    RegisterFunction("flash_image_at_offset", FlashImageAtOffset);
+    RegisterFunction("flash_image_by_label", FlashImageByLabel);
 
     util_init(recovery_error, NULL);
 }

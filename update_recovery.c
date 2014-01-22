@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Intel Corporation
+ * Copyright (C) 2011-2014 Intel Corporation
  * Copyright (C) 2008 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,11 +27,16 @@
 #include <mincrypt/sha.h>
 #include <applypatch.h>
 
+#include <bootimg.h>
+
+#include "flash_image.h"
 #include "update_osip.h"
 #include "util.h"
+#include "gpt/partlink/partlink.h"
 
 /* Needs to agree with ota_from_target_files.MakeRecoveryPatch() */
-#define SIG_SIZE	480
+#define OSIP_SIG_SIZE		480
+#define ANDROID_SIG_SIZE	512
 
 #define LOGPERROR(x)	LOGE("%s failed: %s", x, strerror(errno))
 
@@ -40,42 +45,85 @@
 static struct OSIP_header osip;
 static int recovery_index;
 
+static int read_recovery_signature(void **buf)
+{
+	int fd = -1;
+	int sig_size;
+	int fgpt = full_gpt();
+	int ret = -1;
+
+	sig_size = fgpt ? ANDROID_SIG_SIZE : OSIP_SIG_SIZE;
+
+	*buf = malloc(sig_size);
+	if (!*buf) {
+		LOGE("Failed to allocate signature buffer\n");
+		return -1;
+	}
+
+	if (fgpt) {
+		fd = open(BASE_PLATFORM_INTEL_LABEL"/recovery", O_RDONLY);
+		if (fd < 0) {
+			LOGPERROR("open");
+			goto err;
+		}
+		if (lseek(fd, -ANDROID_SIG_SIZE, SEEK_END) < 0) {
+			LOGPERROR("lseek");
+			goto err;
+		}
+	} else {
+		int offset;
+		fd = open(MMC_DEV_POS, O_RDONLY);
+		if (fd < 0) {
+			LOGPERROR("open");
+			goto err;
+		}
+
+		offset = osip.desc[recovery_index].logical_start_block * LBA_SIZE;
+		if (lseek(fd, offset, SEEK_SET) < 0) {
+			LOGPERROR("lseek");
+			goto err;
+		}
+	}
+
+	if (safe_read(fd, *buf, sig_size)) {
+		LOGPERROR("read");
+		goto err;
+	}
+
+	close(fd);
+	return sig_size;
+
+err:
+	if (fd != -1)
+		close(fd);
+	free(*buf);
+
+	return -1;
+}
+
 /* Compare the first SIG_SIZE bytes of the current recovery.img
  * with the SHA1 passed in, to determine if we need to update it.
  * These last bytes have the digital signature from LFSTK and would
  * not be the same. This is much faster than hashing the entire image */
 static int check_recovery_header(const char *tgt_sha1, int *needs_patching)
 {
-	char buf[SIG_SIZE];
+	int sig_size;
+	void *buf;
 	uint8_t src_digest[SHA_DIGEST_SIZE];
 	uint8_t tgt_digest[SHA_DIGEST_SIZE];
-	int fd;
-	off_t offset;
 
 	if (ParseSha1(tgt_sha1, tgt_digest)) {
 		LOGE("Bad SHA1 digest passed in");
 		return -1;
 	}
 
-	fd = open(MMC_DEV_POS, O_RDONLY);
-	if (fd < 0) {
-		LOGPERROR("open");
+	sig_size = read_recovery_signature(&buf);
+	if (sig_size == -1) {
+		LOGE("Failed to read boot signature\n");
 		return -1;
 	}
-
-	offset = osip.desc[recovery_index].logical_start_block * LBA_SIZE;
-	if (lseek(fd, offset, SEEK_SET) < 0) {
-		close(fd);
-		LOGPERROR("lseek");
-		return -1;
-	}
-	if (safe_read(fd, buf, SIG_SIZE)) {
-		close(fd);
-		LOGPERROR("read");
-		return -1;
-	}
-	close(fd);
-	SHA_hash(buf, SIG_SIZE, src_digest);
+	SHA_hash(buf, sig_size, src_digest);
+	free(buf);
 
 	*needs_patching = memcmp(src_digest, tgt_digest, SHA_DIGEST_SIZE);
 	return 0;
@@ -84,7 +132,7 @@ static int check_recovery_header(const char *tgt_sha1, int *needs_patching)
 static int check_recovery_image(const char *tgt_sha1, int *needs_patching)
 {
 	void *data;
-	size_t sz;
+	int sz;
 	uint8_t tgt_digest[SHA_DIGEST_SIZE];
 	uint8_t expected_tgt_digest[SHA_DIGEST_SIZE];
 
@@ -93,7 +141,7 @@ static int check_recovery_image(const char *tgt_sha1, int *needs_patching)
 		return -1;
 	}
 
-	if (read_osimage_data(&data, &sz, recovery_index)) {
+	if ((sz = read_image(RECOVERY_OS_NAME, &data)) == -1) {
 		LOGE("failed to read recovery image");
 		return -1;
 	}
@@ -127,8 +175,7 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 {
 	MemorySinkInfo msi;
 	void *src_data;
-	size_t src_size;
-	int boot_index;
+	int src_size;
 	uint8_t expected_src_digest[SHA_DIGEST_SIZE];
 	uint8_t src_digest[SHA_DIGEST_SIZE];
 	uint8_t expected_tgt_digest[SHA_DIGEST_SIZE];
@@ -151,16 +198,12 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 		return -1;
 	}
 
-	boot_index = get_named_osii_index(ANDROID_OS_NAME);
-	if (boot_index < 0) {
-		LOGE("Can't find system boot image in the OSIP");
+	src_size = read_image(ANDROID_OS_NAME, &src_data);
+	if (src_size == -1) {
+		LOGE("Failed to read image %s\n", ANDROID_OS_NAME);
 		return -1;
 	}
 
-	if (read_osimage_data(&src_data, &src_size, boot_index)) {
-		LOGE("Failed to read OSIP entry");
-		return -1;
-	}
 	SHA_hash(src_data, src_size, src_digest);
 	if (memcmp(src_digest, expected_src_digest, SHA_DIGEST_SIZE)) {
 		LOGE("boot image digests don't match!");
@@ -195,7 +238,7 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 		LOGE("output recovery image digest mismatch");
 		goto out;
 	}
-	if (write_stitch_image(msi.buffer, msi.size, recovery_index)) {
+	if (flash_recovery_kernel(msi.buffer, msi.size)) {
 		LOGE("error writing patched recovery image");
 		goto out;
 	}
@@ -213,8 +256,7 @@ static void usage(void)
 	printf("-s | --src-sha1     Expected sha1 of boot image\n");
 	printf("-t | --tgt-sha1     Expected sha1 of patched recovery image\n");
 	printf("-z | --tgt-size     Size of patched recovery image\n");
-	printf("-c | --check-sha1   Expected SHA1 of last %d bytes of recovery\n",
-			SIG_SIZE);
+	printf("-c | --check-sha1   Expected SHA1 of signature of recovery\n");
 	printf("                    If the actual value does not match, patch it\n");
 	printf("-p | --patch        Patch file, applied to boot, which creates recovery\n");
 	printf("-h | --help         Show this message\n");
@@ -239,6 +281,7 @@ int main(int argc, char **argv)
 	char *patch_file = NULL;
 	unsigned int tgt_size = 0;
 	int needs_patching;
+	int unsigned_image;
 
 	while (1) {
 		int option_index = 0;
@@ -272,17 +315,34 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (read_OSIP(&osip)) {
-		LOGE("Can't read the OSIP");
-		exit(EXIT_FAILURE);
-	}
-	recovery_index = get_named_osii_index(RECOVERY_OS_NAME);
-	if (recovery_index < 0) {
-		LOGE("Can't find recovery console in the OSIP");
-		exit(EXIT_FAILURE);
+	if (full_gpt()) {
+		struct boot_img_hdr hdr;
+		int fd = open(BASE_PLATFORM_INTEL_LABEL"/recovery", O_RDONLY);
+		if (fd < 0) {
+			LOGPERROR("open");
+			exit(EXIT_FAILURE);
+		}
+		if (safe_read(fd, &hdr, sizeof(hdr))) {
+			LOGPERROR("read");
+			close(fd);
+			exit(EXIT_FAILURE);
+		}
+		close(fd);
+		unsigned_image = hdr.sig_size == 0;
+	} else {
+		if (read_OSIP(&osip)) {
+			LOGE("Can't read the OSIP");
+			exit(EXIT_FAILURE);
+		}
+		recovery_index = get_named_osii_index(RECOVERY_OS_NAME);
+		if (recovery_index < 0) {
+			LOGE("Can't find recovery console in the OSIP");
+			exit(EXIT_FAILURE);
+		}
+		unsigned_image = osip.desc[recovery_index].attribute == ATTR_UNSIGNED_KERNEL;
 	}
 
-	if (osip.desc[recovery_index].attribute == ATTR_UNSIGNED_KERNEL) {
+	if (unsigned_image) {
 		/* We can't do any quick checks if unsigned images
 		 * are used. Examine the whole image */
 		LOGI("Detected unsigned kernel images in use");
