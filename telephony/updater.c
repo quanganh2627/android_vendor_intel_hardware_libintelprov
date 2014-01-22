@@ -50,7 +50,7 @@ static Value *FlashModemFn(const char *name, State * state, int argc, Expr * arg
 	mzCloseZipArchive(&modem_za);
 
 
-	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+	if (miu_initialize(miu_progress_cb, miu_log_cb, filename) != E_MIU_ERR_SUCCESS) {
 		printf("%s failed at %s\n", __func__, "miu_initialize failed");
 	} else {
 		if (miu_flash_modem_fw(filename, flash_options) !=
@@ -82,7 +82,7 @@ static Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[
 		goto done;
 	}
 
-	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+	if (miu_initialize(miu_progress_cb, miu_log_cb, filename) != E_MIU_ERR_SUCCESS) {
 		printf("%s failed at %s\n", __func__, "miu_initialize failed");
 	} else {
 		if (miu_flash_modem_nvm(filename, NULL) != E_MIU_ERR_SUCCESS)
