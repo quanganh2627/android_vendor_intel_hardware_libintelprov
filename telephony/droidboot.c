@@ -76,7 +76,7 @@ static int flash_modem(e_miu_flash_options_t flash_options)
 {
 	int ret = -1;
 
-	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+	if (miu_initialize(miu_progress_cb, miu_log_cb, IMG_RADIO) != E_MIU_ERR_SUCCESS) {
 		pr_error("%s initialization has failed\n", __func__);
 	} else {
 		if (is_log_enabled)
@@ -125,7 +125,7 @@ static int flash_modem_get_fuse_only(void *data, unsigned sz)
 {
 	int ret = -1;
 
-	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+	if (miu_initialize(miu_progress_cb, miu_log_cb, NULL) != E_MIU_ERR_SUCCESS) {
 		pr_error("%s failed at %s\n", __func__,
 			 "miu_initialize failed");
 	} else {
@@ -165,7 +165,7 @@ static int flash_modem_read_rnd(void *data, unsigned sz)
 {
 	int ret = -1;
 
-	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+	if (miu_initialize(miu_progress_cb, miu_log_cb, NULL) != E_MIU_ERR_SUCCESS) {
 		pr_error("%s failed at %s\n", __func__,
 			 "miu_initialize failed");
 	} else {
@@ -190,7 +190,7 @@ static int flash_modem_write_rnd(void *data, unsigned sz)
 		pr_error("Couldn't write radio_rnd image to %s", IMG_RADIO_RND);
 		return ret;
 	}
-	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+	if (miu_initialize(miu_progress_cb, miu_log_cb, NULL) != E_MIU_ERR_SUCCESS) {
 		pr_error("%s failed at %s\n", __func__,
 			 "miu_initialize failed");
 	} else {
@@ -214,7 +214,7 @@ static int flash_modem_erase_rnd(void *data, unsigned sz)
 {
 	int ret = -1;
 
-	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+	if (miu_initialize(miu_progress_cb, miu_log_cb, NULL) != E_MIU_ERR_SUCCESS) {
 		pr_error("%s failed at %s\n", __func__,
 			 "miu_initialize failed");
 	} else {
@@ -237,7 +237,7 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 	int retval = -1;
 	char *nvm_path = NULL;
 
-	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+	if (miu_initialize(miu_progress_cb, miu_log_cb, NULL) != E_MIU_ERR_SUCCESS) {
 		pr_error("%s failed at %s\n", __func__, "miu_initialize failed");
 	} else {
 		if (!strcmp(argv[1], "apply")) {

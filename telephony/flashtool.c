@@ -21,7 +21,7 @@
 
 void cmd_flash_modem_fw(char *filename)
 {
-	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
+	if (miu_initialize(miu_progress_cb, miu_log_cb, filename) != E_MIU_ERR_SUCCESS) {
 		fprintf(stderr, "%s initialization has failed\n", __func__);
 	} else {
 		if (miu_flash_modem_fw(filename, 0) != E_MIU_ERR_SUCCESS) {
