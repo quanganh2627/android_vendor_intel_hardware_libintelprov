@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2013 Intel Corporation
+ * Copyright 2011-2014 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,38 +14,23 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
-#include <stdarg.h>
 #include <stdio.h>
-#include "miu.h"
+#include <stdarg.h>
+#include "logs.h"
 
-static void miu_progress_cb(int progress, int total)
+void miu_progress_cb(int progress, int total)
 {
 	printf("Progress: %d / %d\n", progress, total);
 }
 
-static void miu_log_cb(const char *msg, ...)
+void miu_log_cb(const char *msg, ...)
 {
 	va_list ap;
 
 	if (msg != NULL) {
 		va_start(ap, msg);
 		vprintf(msg, ap);
+		printf("\n");
 		va_end(ap);
-	}
-}
-
-void cmd_flash_modem_fw(char *filename)
-{
-	if (miu_initialize(miu_progress_cb, miu_log_cb) != E_MIU_ERR_SUCCESS) {
-		fprintf(stderr, "%s failed at %s\n", __func__,
-			"miu_initialize failed");
-	} else {
-		if (miu_flash_modem_fw(filename, 0) != E_MIU_ERR_SUCCESS) {
-			fprintf(stderr, "Failed flashing modem FW!\n");
-			miu_dispose();
-			exit(1);
-		}
-		miu_dispose();
 	}
 }

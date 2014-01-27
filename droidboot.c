@@ -49,7 +49,7 @@
 #endif
 
 #ifdef BOARD_HAVE_MODEM
-#include "telephony_droidboot.h"
+#include "telephony/droidboot.h"
 #endif
 
 static int oem_write_osip_header(int argc, char **argv);
