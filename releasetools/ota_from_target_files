@@ -348,7 +348,7 @@ def MakeRecoveryPatch(output_zip, recovery_img, boot_img):
   Item.Get("system/recovery-from-boot.p", dir=False)
 
   if OPTIONS.full_gpt == True:
-    HEADER_START = -512
+    HEADER_START = -2048
     HEADER_END = None
   else:
     # Bytes 0x200 - 0x3E0 have the LFSTK digital signature. So we can use it as

@@ -36,7 +36,7 @@
 
 /* Needs to agree with ota_from_target_files.MakeRecoveryPatch() */
 #define OSIP_SIG_SIZE		480
-#define ANDROID_SIG_SIZE	512
+#define ANDROID_SIG_SIZE	2048
 
 #define LOGPERROR(x)	LOGE("%s failed: %s", x, strerror(errno))
 
