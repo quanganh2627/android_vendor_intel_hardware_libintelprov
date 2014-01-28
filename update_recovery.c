@@ -350,7 +350,7 @@ int main(int argc, char **argv)
 			LOGE("Can't find recovery console in the OSIP");
 			exit(EXIT_FAILURE);
 		}
-		unsigned_image = osip.desc[recovery_index].attribute == ATTR_UNSIGNED_KERNEL;
+		unsigned_image = osip.desc[recovery_index].attribute & ATTR_UNSIGNED_KERNEL;
 	}
 
 	if (unsigned_image) {
