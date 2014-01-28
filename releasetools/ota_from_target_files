@@ -876,7 +876,9 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   script.AppendScript(temp_script)
  
   # Do device-specific installation (eg, write radio image).
+  script.Mount("/config")
   device_specific.IncrementalOTA_InstallEnd()
+  script.Unmount("/config");
 
   if OPTIONS.extra_script is not None:
     script.AppendExtra(OPTIONS.extra_script)
