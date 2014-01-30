@@ -69,19 +69,21 @@ static int read_recovery_signature(void **buf)
 			goto err;
 		}
 
-		img_size = read_bootimage_hdr(fd, &hdr);
+		img_size = bootimage_size(fd, &hdr, false);
 		if (img_size <= 0) {
 			error("Invalid image\n");
 			goto err;
 		}
 
+		sig_size = hdr.sig_size;
 
-		if (lseek(fd, img_size - ANDROID_SIG_SIZE, SEEK_SET) < 0) {
+		if (lseek(fd, img_size, SEEK_SET) < 0) {
 			LOGPERROR("lseek");
 			goto err;
 		}
 	} else {
 		int offset;
+		sig_size = OSIP_SIG_SIZE;
 		fd = open(MMC_DEV_POS, O_RDONLY);
 		if (fd < 0) {
 			LOGPERROR("open");
@@ -353,10 +355,10 @@ int main(int argc, char **argv)
 		unsigned_image = osip.desc[recovery_index].attribute & ATTR_UNSIGNED_KERNEL;
 	}
 
-	if (unsigned_image) {
+	if (unsigned_image || !check_sha1) {
 		/* We can't do any quick checks if unsigned images
 		 * are used. Examine the whole image */
-		LOGI("Detected unsigned kernel images in use");
+		LOGI("Checking full recovery image");
 		if (tgt_sha1 != NULL){
 			if (check_recovery_image(tgt_sha1, &needs_patching)) {
 				LOGE("Can't examine current recovery console SHA1");
@@ -367,13 +369,9 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 	} else {
-		if (check_sha1 != NULL){
-			if (check_recovery_header(check_sha1, &needs_patching)) {
-				LOGE("Can't compare recovery console SHA1 sums");
-				exit(EXIT_FAILURE);
-			}
-		}else{
-			LOGE("check SHA1 option was not detected correctly");
+		LOGI("Checking recovery image's signature");
+		if (check_recovery_header(check_sha1, &needs_patching)) {
+			LOGE("Can't compare recovery console SHA1 sums");
 			exit(EXIT_FAILURE);
 		}
 	}

@@ -97,18 +97,6 @@ static int pages(struct boot_img_hdr *hdr, int blob_size)
         return (blob_size + hdr->page_size - 1) / hdr->page_size;
 }
 
-static size_t bootimage_size(struct boot_img_hdr *hdr)
-{
-        size_t size;
-
-        size = (1 + pages(hdr, hdr->kernel_size) +
-                pages(hdr, hdr->ramdisk_size) +
-                pages(hdr, hdr->second_size) +
-		pages(hdr, hdr->sig_size)) *
-                        hdr->page_size;
-        return size;
-}
-
 int open_bootimage(const char *name)
 {
 	char *block_dev;
@@ -128,9 +116,9 @@ out:
 }
 
 /* Fill hdr with bootimage's header and return image's size */
-ssize_t read_bootimage_hdr(int fd, struct boot_img_hdr *hdr)
+ssize_t bootimage_size(int fd, struct boot_img_hdr *hdr, bool include_sig)
 {
-	ssize_t ret = -1;
+	ssize_t size = -1;
 
 	if (safe_read(fd, hdr, sizeof(*hdr))) {
 		error("Failed to read image header: %s\n", strerror(errno));
@@ -142,10 +130,15 @@ ssize_t read_bootimage_hdr(int fd, struct boot_img_hdr *hdr)
 		goto out;
 	}
 
-	ret = bootimage_size(hdr);
+	size = (1 + pages(hdr, hdr->kernel_size) +
+	       pages(hdr, hdr->ramdisk_size) +
+	       pages(hdr, hdr->second_size)) * hdr->page_size;
+
+	if (include_sig)
+		size += pages(hdr, hdr->sig_size) * hdr->page_size;
 
 out:
-	return ret;
+	return size;
 }
 
 static int read_image_full_gpt(const char *name, void **data)
@@ -161,7 +154,7 @@ static int read_image_full_gpt(const char *name, void **data)
 		goto out;
 	}
 
-	size = read_bootimage_hdr(fd, &hdr);
+	size = bootimage_size(fd, &hdr, true);
 	if (size <= 0) {
 		error("Invalid %s image\n", name);
 		goto out;
