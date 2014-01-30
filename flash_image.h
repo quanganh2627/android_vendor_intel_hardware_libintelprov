@@ -27,7 +27,7 @@ int flash_fastboot_kernel(void *data, unsigned sz);
 int flash_splashscreen_image(void *data, unsigned sz);
 int flash_esp(void *data, unsigned sz);
 int full_gpt(void);
-ssize_t read_bootimage_hdr(int fd, struct boot_img_hdr *hdr);
+ssize_t bootimage_size(int fd, struct boot_img_hdr *hdr, bool include_sig);
 int open_bootimage(const char *name);
 
 #endif	/* _FLASH_IMAGE_H_ */
