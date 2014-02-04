@@ -420,6 +420,59 @@ static int oem_reboot(int argc, char **argv)
 	return android_reboot(ANDROID_RB_RESTART2, 0, target_os);
 }
 
+#ifndef EXTERNAL
+static int oem_mount(int argc, char **argv) {
+	int ret = 0;
+	char *partname = NULL;
+	char *mountpoint = NULL;
+
+	/* Check parameters */
+	if (argc != 3) {
+		LOGE("fastboot mount command takes two parameters\n");
+		fastboot_fail("Usage: mount <partition_name> <fs_type>");
+		return -EINVAL;
+	}
+
+	/* look for partition name in by-label tree */
+	ret = asprintf(&partname, BASE_PLATFORM_INTEL_LABEL"/%s", argv[1]);
+	if (ret < 0) {
+		fastboot_fail("asprintf partname failed");
+		goto end;
+	}
+
+	/* mount in a sub-folder of /mnt */
+	ret = asprintf(&mountpoint, "/mnt/%s", argv[1]);
+	if (ret < 0) {
+		fastboot_fail("asprintf mountpoint failed");
+		goto end;
+	}
+	LOGI("Mounting partition %s in %s (type %s)\n", partname, mountpoint, argv[2]);
+
+	ret = mkdir(mountpoint, S_IRWXU | S_IRWXG | S_IRWXO);
+	if (ret == -1 && errno != EEXIST) {
+		fastboot_fail("mkdir failed");
+		LOGE("mkdir failed : %s\n", strerror(errno));
+		ret = -errno;
+		goto end;
+        }
+
+	ret = mount(partname, mountpoint, argv[2],
+		    MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
+	if (ret == -1) {
+		fastboot_fail("mount failed");
+		LOGE("mount failed : %s\n", strerror(errno));
+		ret = -errno;
+		goto end;
+	}
+
+end:
+	free(partname);
+	free(mountpoint);
+
+	return ret;
+}
+#endif
+
 #ifdef USE_GUI
 #define PROP_FILE					"/default.prop"
 #define SERIAL_NUM_FILE			"/sys/class/android_usb/android0/iSerial"
@@ -631,6 +684,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("wipe", oem_wipe_partition);
 #ifndef EXTERNAL
 	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
+	ret |= aboot_register_oem_cmd("mount", oem_mount);
 	ret |= libintel_droidboot_token_init();
 #endif
 
