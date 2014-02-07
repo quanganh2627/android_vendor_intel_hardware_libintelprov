@@ -60,6 +60,12 @@ struct update_info{
 	uint32_t reserved;
 };
 
+typedef struct {
+	int val_0;
+	int val_1;
+	int val_2;
+} sec_version_t ;
+
 int ifwi_downgrade_allowed(const char *ifwi)
 {
 	uint8_t pti_field;
@@ -660,7 +666,7 @@ static void print_capsule_header(struct capsule *c) {
 				refs->sec_offset + sizeof(*sig));
 }
 
-static bool check_capsule(struct capsule *c, u32 iafw_version, u32 sec_version, u32 pdr_version)
+static bool check_capsule(struct capsule *c, u32 iafw_version, sec_version_t sec_version, u32 pdr_version)
 {
 	u8* cdata = (u8*)c;
 	struct capsule_signature *sig = &(c->header.sig);
@@ -710,13 +716,20 @@ static bool check_capsule(struct capsule *c, u32 iafw_version, u32 sec_version, 
 		while (get_fw_version_tag_offset(&sec_data, cdata + refs->sec_size))
 		{
 			/* Endianess reordering to get SECFW version needed info */
-			u32 sec_mn2_version_msb = MN2_VER_BYTESREORDER(sec_data);;
-			u32 sec_mn2_version_lsb = MN2_VER_BYTESREORDER((sec_data + 4));;
-			printf("SEC $MN2 at offset 0x%02x version %d.%d\n", sec_data - cdata, sec_mn2_version_msb, sec_mn2_version_lsb);
+			sec_version_t sec_mn2_version;
+			sec_mn2_version.val_2 = MN2_VER_BYTESREORDER(sec_data);
+			sec_mn2_version.val_1 = sec_data[5] <<8 | sec_data[4];
+			sec_mn2_version.val_0 = sec_data[7] <<8 | sec_data[6];
+			printf("SEC $MN2 at offset 0x%02x version %d.%d.%d\n", sec_data - cdata, sec_mn2_version.val_2,
+					sec_mn2_version.val_1, sec_mn2_version.val_0);
 
-			if (sec_mn2_version_lsb != sec_version)
+			if ((sec_mn2_version.val_0 != sec_version.val_0) ||
+				(sec_mn2_version.val_1 != sec_version.val_1) ||
+				(sec_mn2_version.val_2 != sec_version.val_2))
 			{
-				printf("SECFW version mismatch current %d capsule $MN2 %d\n", sec_version, sec_mn2_version_lsb);
+				printf("SECFW version mismatch current %d.%d.%d capsule $MN2 %d.%d.%d\n",
+						sec_version.val_2, sec_version.val_1, sec_version.val_0,
+						sec_mn2_version.val_2, sec_mn2_version.val_1, sec_mn2_version.val_0);
 				printf("Capsule update requested\n");
 				return true;
 			}
@@ -739,8 +752,7 @@ int flash_capsule(void *data, unsigned sz)
 	u32 iafw_version = 0;
 
 	char sec_version_str[PROPERTY_VALUE_MAX];
-	u32 sec_version_msb = 0;
-	u32 sec_version = 0;
+	sec_version_t sec_version;
 
 	char pdr_version_str[PROPERTY_VALUE_MAX];
 	u32 pdr_version_msb = 0;
@@ -752,17 +764,16 @@ int flash_capsule(void *data, unsigned sz)
 	property_get("sys.pdr.version", pdr_version_str, "00.00");
 
 	sscanf(iafw_stage1_version_str, "%x.%x", &iafw_version_msb, &iafw_version);
-	sscanf(sec_version_str, "%*d.%*d.%d.%d", &sec_version_msb, &sec_version);
 	iafw_version |= iafw_version_msb << 16;
-	sec_version += (sec_version_msb * 100);
+	sscanf(sec_version_str, "%*d.%d.%d.%d", &sec_version.val_2, &sec_version.val_1, &sec_version.val_0);
 	sscanf(pdr_version_str, "%x.%x", &pdr_version_msb, &pdr_version);
 	pdr_version |= pdr_version_msb << 16;
 
 	printf("current iafw version: %s (0x%02x)\n",iafw_stage1_version_str,
 		iafw_version);
 
-	printf("current sec version: %s (%d)\n",sec_version_str,
-		sec_version);
+	printf("current sec version: %s (%d.%d.%d)\n",sec_version_str,
+		sec_version.val_2, sec_version.val_1, sec_version.val_0);
 
 	printf("current pdr version: %s (0x%2x)\n",pdr_version_str,
 		pdr_version);

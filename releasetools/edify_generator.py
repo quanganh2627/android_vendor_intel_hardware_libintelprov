@@ -256,6 +256,10 @@ class EdifyGenerator(object):
     """Append text verbatim to the output script."""
     self.script.append(extra)
 
+  def Unmount(self, mount_point):
+    self.script.append('unmount("%s");' % (mount_point,))
+    self.mounts.remove(mount_point)
+
   def UnmountAll(self):
     for p in sorted(self.mounts):
       self.script.append('unmount("%s");' % (p,))
@@ -286,15 +290,12 @@ class EdifyGenerator(object):
   def DeleteTmpImage(self, name):
     self.script.append('delete("/tmp/%s");' % (name,))
 
-  def ExtractOsip(self, name):
-    """Fetch an existing stitched os image"""
-    self.script.append('extract_osip("/tmp/%s.img", "%s");' % (name, name))
+  def ExtractImage(self, name):
+    """Fetch an existing os image"""
+    self.script.append('extract_image("/tmp/%s.img", "%s");' % (name, name))
 
-  def FlashOsip(self, name):
-    self.script.append('flash_osip("/tmp/%s.img", "%s");' % (name, name))
-
-  def FlashImageByLabel(self, img, label):
-    self.script.append('flash_image_by_label("/tmp/%s", "%s");' % (img, label))
+  def FlashOSImage(self, img, label):
+    self.script.append('flash_os_image("/tmp/%s", "%s");' % (img, label))
 
   def FlashImageAtOffset(self, img, offset):
     self.script.append('flash_image_at_offset("/tmp/%s", "%d");' % (img, offset))

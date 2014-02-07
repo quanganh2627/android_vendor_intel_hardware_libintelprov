@@ -18,13 +18,14 @@
 #define UTIL_H
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 int file_write(const char *filename, const void *what, size_t sz);
 int file_string_write(const char *filename, const char *what);
 void dump_trace_file(const char *filename);
 int file_read(const char *filename, void **datap, size_t *szp);
 int file_size(const char *filename);
-void *file_mmap(const char *filename, size_t length);
+void *file_mmap(const char *filename, size_t length, bool writable);
 int safe_read(int fd, void *data, size_t size);
 int snhexdump(char *str, size_t size, const unsigned char *data, unsigned int sz);
 void hexdump_buffer(const unsigned char *buffer, unsigned int buffer_size, void

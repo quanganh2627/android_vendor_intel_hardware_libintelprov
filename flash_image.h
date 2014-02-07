@@ -17,6 +17,8 @@
 #ifndef _FLASH_IMAGE_H_
 #define _FLASH_IMAGE_H_
 
+#include <bootimg.h>
+
 int flash_image(void *data, unsigned sz, const char *name);
 int read_image(const char *name, void **data);
 int flash_android_kernel(void *data, unsigned sz);
@@ -25,5 +27,7 @@ int flash_fastboot_kernel(void *data, unsigned sz);
 int flash_splashscreen_image(void *data, unsigned sz);
 int flash_esp(void *data, unsigned sz);
 int full_gpt(void);
+ssize_t read_bootimage_hdr(int fd, struct boot_img_hdr *hdr);
+int open_bootimage(const char *name);
 
 #endif	/* _FLASH_IMAGE_H_ */

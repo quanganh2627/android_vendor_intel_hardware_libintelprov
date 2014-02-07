@@ -40,110 +40,51 @@
 #include "flash_image.h"
 
 #ifdef BOARD_HAVE_MODEM
-#include "telephony_updater.h"
+#include "telephony/updater.h"
 #endif
 
-Value *ExtractOsipFn(const char *name, State *state, int argc, Expr *argv[]) {
-    Value *ret = NULL;
-    char *filename = NULL;
-    char *source = NULL;
-    int osii_index;
-    void *data = NULL;
-    size_t size;
+Value *ExtractImageFn(const char *name, State * state, int argc, Expr * argv[])
+{
+	Value *ret = NULL;
+	char *filename = NULL;
+	char *source = NULL;
+	void *data = NULL;
+	int size;
 
-    if (ReadArgs(state, argv, 2, &filename, &source) < 0) {
-        return NULL;
-    }
+	if (ReadArgs(state, argv, 2, &filename, &source) < 0) {
+		return NULL;
+	}
 
-    if (filename == NULL || strlen(filename) == 0) {
-        ErrorAbort(state, "filename argument to %s can't be empty", name);
-        goto done;
-    }
+	if (filename == NULL || strlen(filename) == 0) {
+		ErrorAbort(state, "filename argument to %s can't be empty", name);
+		goto done;
+	}
 
-    if (source == NULL || strlen(source) == 0) {
-        ErrorAbort(state, "source argument to %s can't be empty", name);
-        goto done;
-    }
+	if (source == NULL || strlen(source) == 0) {
+		ErrorAbort(state, "source argument to %s can't be empty", name);
+		goto done;
+	}
 
-    osii_index = get_named_osii_index(source);
-    if (osii_index < 0) {
-        ErrorAbort(state, "Can't get OSII index for %s", source);
-        goto done;
-    }
+	if ((size = read_image(source, &data)) < 0) {
+		ErrorAbort(state, "Couldn't read image %s", source);
+		goto done;
+	}
 
-    if (read_osimage_data(&data, &size, osii_index) < 0) {
-        ErrorAbort(state, "Couldn't read osip[%d]", osii_index);
-        goto done;
-    }
+	if (file_write(filename, data, size) < 0) {
+		ErrorAbort(state, "Couldn't write %s data to %s", source, filename);
+		goto done;
+	}
 
-    if (file_write(filename, data, size) < 0) {
-        ErrorAbort(state, "Couldn't write osii[%d] data to %s", osii_index,
-                   filename);
-        goto done;
-    }
-
-    ret = StringValue(strdup(""));
+	ret = StringValue(strdup(""));
 done:
-    if (source)
-        free(source);
-    if (filename)
-        free(filename);
-    if (data)
-        free(data);
+	if (source)
+		free(source);
+	if (filename)
+		free(filename);
+	if (data)
+		free(data);
 
-    return ret;
-}
-
-Value *FlashOsipFn(const char *name, State *state, int argc, Expr *argv[]) {
-    Value *ret = NULL;
-    char *filename = NULL;
-    char *destination = NULL;
-    int osii_index;
-    void *image_data = NULL;
-    size_t image_size;
-
-    if (ReadArgs(state, argv, 2, &filename, &destination) < 0) {
-        return NULL;
-    }
-
-    if (filename == NULL || strlen(filename) == 0) {
-        ErrorAbort(state, "filename argument to %s can't be empty", name);
-        goto done;
-    }
-
-    if (destination == NULL || strlen(destination) == 0) {
-        ErrorAbort(state, "destination argument to %s can't be empty", name);
-        goto done;
-    }
-
-    if (file_read(filename, &image_data, &image_size)) {
-        ErrorAbort(state, "Cannot open os image %s", filename);
-        goto done;
-    }
-
-    osii_index = get_named_osii_index(destination);
-
-    if (osii_index < 0) {
-        ErrorAbort(state, "Can't get OSII index for %s", destination);
-        goto done;
-    }
-
-    if (write_stitch_image(image_data, image_size, osii_index)) {
-        ErrorAbort(state, "Error writing %s image %s to OSIP%d",
-                   destination, filename, osii_index);
-        goto done;
-    }
-
-    ret = StringValue(strdup(""));
-done:
-    if (image_data)
-        free(image_data);
-    if (destination)
-        free(destination);
-    if (filename)
-        free(filename);
-
-    return ret;
+	return ret;
 }
 
 Value *ExecuteOsipFunction(const char *name, State *state, int argc, Expr *argv[], int (*action)(char*)) {
@@ -605,7 +546,7 @@ Value *TxemanufBistTest(const char *name, State *state, int argc, Expr *argv[]) 
     return CommandFunction(txemanuf_bist_test, name, state, argc, argv);
 }
 
-Value *FlashImageByLabel(const char *name, State *state, int argc, Expr *argv[]) {
+Value *FlashOSImage(const char *name, State *state, int argc, Expr *argv[]) {
     Value *funret = NULL;
     char *filename, *image_name;
     void *data;
@@ -621,11 +562,11 @@ Value *FlashImageByLabel(const char *name, State *state, int argc, Expr *argv[])
         goto exit;
     }
 
-    int length = file_size(name);
+    int length = file_size(filename);
     if (length == -1)
         goto free;
 
-    data = file_mmap(name, length);
+    data = file_mmap(filename, length, true);
     if (data == MAP_FAILED)
         goto free;
 
@@ -676,7 +617,7 @@ Value *FlashImageAtOffset(const char *name, State *state, int argc, Expr *argv[]
     if (length == -1)
         goto free;
 
-    data = file_mmap(filename, length);
+    data = file_mmap(filename, length, false);
     if (data == MAP_FAILED) {
         goto free;
     }
@@ -753,7 +694,6 @@ Value *FlashPartition(const char *name, State *state, int argc, Expr *argv[]) {
 
 void Register_libintel_updater(void)
 {
-    RegisterFunction("flash_osip", FlashOsipFn);
     RegisterFunction("flash_ifwi", FlashIfwiFn);
 #ifdef TEE_FRAMEWORK
     RegisterFunction("flash_bom_token", FlashBomFn);
@@ -762,7 +702,7 @@ void Register_libintel_updater(void)
 #ifdef BOARD_HAVE_MODEM
     RegisterTelephonyFunctions();
 #endif
-    RegisterFunction("extract_osip", ExtractOsipFn);
+    RegisterFunction("extract_image", ExtractImageFn);
     RegisterFunction("invalidate_os", InvalidateOsFn);
     RegisterFunction("restore_os", RestoreOsFn);
 
@@ -783,7 +723,7 @@ void Register_libintel_updater(void)
     RegisterFunction("txemanuf_bist_test", TxemanufBistTest);
     RegisterFunction("flash_partition", FlashPartition);
     RegisterFunction("flash_image_at_offset", FlashImageAtOffset);
-    RegisterFunction("flash_image_by_label", FlashImageByLabel);
+    RegisterFunction("flash_os_image", FlashOSImage);
 
     util_init(recovery_error, NULL);
 }

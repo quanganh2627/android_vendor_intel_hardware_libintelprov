@@ -38,6 +38,7 @@ endif
 
 common_libintelprov_includes := \
 	$(call include-path-for, libc-private) \
+	$(call include-path-for, mkbootimg) \
 	$(TARGET_OUT_HEADERS)/IFX-modem
 
 chaabi_dir := $(TOP)/vendor/intel/hardware/PRIVATE/chaabi
@@ -76,15 +77,14 @@ LOCAL_C_INCLUDES := $(call include-path-for, recovery) $(common_libintelprov_inc
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
 ifeq ($(BOARD_HAVE_MODEM),true)
-LOCAL_SRC_FILES += telephony/telephony_updater.c
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/telephony
+LOCAL_SRC_FILES += telephony/updater.c telephony/logs.c
 LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
 LOCAL_WHOLE_STATIC_LIBRARIES += libxml2 libtcs libmiu
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
 endif
-ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield morganfield),)
+ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
   LOCAL_CFLAGS += -DMRFLD
 endif
 ifeq ($(external_release),no)
@@ -140,8 +140,7 @@ LOCAL_SRC_FILES := droidboot.c $(common_libintelprov_files)
 
 LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
 ifeq ($(BOARD_HAVE_MODEM),true)
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/telephony
-LOCAL_SRC_FILES += telephony/telephony_droidboot.c
+LOCAL_SRC_FILES += telephony/droidboot.c
 LOCAL_WHOLE_STATIC_LIBRARIES += libxml2 libtcs libmiu
 LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
 endif
@@ -164,7 +163,7 @@ LOCAL_CFLAGS += -DUSE_GUI
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
 LOCAL_CFLAGS += -DCLVT
-else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield morganfield),)
+else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
 LOCAL_CFLAGS += -DMRFLD
 endif
 ifeq ($(TARGET_PARTITIONING_SCHEME),"full-gpt")
@@ -186,13 +185,12 @@ ifeq ($(BOARD_HAVE_MODEM),true)
 LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
 LOCAL_SHARED_LIBRARIES += libicuuc
 LOCAL_STATIC_LIBRARIES += libmiu libtcs libxml2
-LOCAL_SRC_FILES += telephony/telephony_flashtool.c
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/telephony
+LOCAL_SRC_FILES += telephony/flashtool.c telephony/logs.c
 endif
 
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
 LOCAL_CFLAGS += -DCLVT
-else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield morganfield),)
+else ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
 LOCAL_CFLAGS += -DMRFLD
 endif
 

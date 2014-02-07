@@ -36,7 +36,7 @@
 
 /* Needs to agree with ota_from_target_files.MakeRecoveryPatch() */
 #define OSIP_SIG_SIZE		480
-#define ANDROID_SIG_SIZE	512
+#define ANDROID_SIG_SIZE	2048
 
 #define LOGPERROR(x)	LOGE("%s failed: %s", x, strerror(errno))
 
@@ -50,7 +50,6 @@ static int read_recovery_signature(void **buf)
 	int fd = -1;
 	int sig_size;
 	int fgpt = full_gpt();
-	int ret = -1;
 
 	sig_size = fgpt ? ANDROID_SIG_SIZE : OSIP_SIG_SIZE;
 
@@ -61,12 +60,23 @@ static int read_recovery_signature(void **buf)
 	}
 
 	if (fgpt) {
-		fd = open(BASE_PLATFORM_INTEL_LABEL"/recovery", O_RDONLY);
+		struct boot_img_hdr hdr;
+		ssize_t img_size;
+
+		fd = open_bootimage(RECOVERY_OS_NAME);
 		if (fd < 0) {
 			LOGPERROR("open");
 			goto err;
 		}
-		if (lseek(fd, -ANDROID_SIG_SIZE, SEEK_END) < 0) {
+
+		img_size = read_bootimage_hdr(fd, &hdr);
+		if (img_size <= 0) {
+			error("Invalid image\n");
+			goto err;
+		}
+
+
+		if (lseek(fd, img_size - ANDROID_SIG_SIZE, SEEK_SET) < 0) {
 			LOGPERROR("lseek");
 			goto err;
 		}
@@ -143,7 +153,8 @@ static int check_recovery_image(const char *tgt_sha1, int *needs_patching)
 
 	if ((sz = read_image(RECOVERY_OS_NAME, &data)) == -1) {
 		LOGE("failed to read recovery image");
-		return -1;
+		*needs_patching = 1;
+		return 0;
 	}
 	SHA_hash(data, sz, tgt_digest);
 
@@ -339,7 +350,7 @@ int main(int argc, char **argv)
 			LOGE("Can't find recovery console in the OSIP");
 			exit(EXIT_FAILURE);
 		}
-		unsigned_image = osip.desc[recovery_index].attribute == ATTR_UNSIGNED_KERNEL;
+		unsigned_image = osip.desc[recovery_index].attribute & ATTR_UNSIGNED_KERNEL;
 	}
 
 	if (unsigned_image) {

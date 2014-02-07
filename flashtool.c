@@ -15,7 +15,7 @@
 #include "txemanuf.h"
 
 #ifdef BOARD_HAVE_MODEM
-#include "telephony_flashtool.h"
+#include "telephony/flashtool.h"
 #endif
 
 #define PROP_BUILD_ID	"ro.build.display.id"
