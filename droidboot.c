@@ -279,6 +279,38 @@ out:
 }
 #endif
 
+#define CONFIG_FILE "/mnt/config/local_config"
+
+/* argv[1] : config name */
+static int oem_config(int argc, char **argv)
+{
+	int ret = 0;
+	int written;
+	int len;
+	FILE *f;
+
+	if (argc != 2) {
+		fastboot_fail("oem config must be called with 1 parameter\n");
+		return -1;
+	}
+
+	if ((f = fopen(CONFIG_FILE, "w")) == NULL) {
+		LOGE("open %s error!\n", CONFIG_FILE);
+		return -1;
+	}
+
+	len = strlen(argv[1]);
+	written = fwrite(argv[1], 1, len, f);
+	if (written != len) {
+		LOGE("write %s error: %d\n", CONFIG_FILE, ferror(f));
+		ret = -1;
+	}
+
+	fclose(f);
+
+	return ret;
+}
+
 static int oem_fastboot2adb(int argc, char **argv)
 {
 	char value[PROPERTY_VALUE_MAX];
@@ -577,6 +609,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("fastboot2adb", oem_fastboot2adb);
 	ret |= aboot_register_oem_cmd("reboot", oem_reboot);
 	ret |= aboot_register_oem_cmd("wipe", oem_wipe_partition);
+	ret |= aboot_register_oem_cmd("config", oem_config);
 #ifndef EXTERNAL
 	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
 	ret |= aboot_register_oem_cmd("mount", oem_mount);
