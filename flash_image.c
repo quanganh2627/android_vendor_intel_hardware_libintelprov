@@ -173,7 +173,7 @@ static int read_image_full_gpt(const char *name, void **data)
 	}
 
 	*data = malloc(size);
-	if (!data) {
+	if (!*data) {
 		error("Memory allocation failure\n");
 		goto close;
 	}
