@@ -357,10 +357,35 @@ int oem_partition_cmd_handler(int argc, char **argv)
 #define MOUNT_POINT_SIZE    50      /* /dev/<whatever> */
 #define BUFFER_SIZE         4000000 /* 4Mb */
 
+static int get_mountpoint(char *name, char *mnt_point)
+{
+	int size;
+	if (name[0] == '/') {
+		size = snprintf(mnt_point, MOUNT_POINT_SIZE, "%s", name);
+
+		if (size == -1 || size > MOUNT_POINT_SIZE - 1) {
+			error("Mount point parameter size exceeds limit");
+			return -1;
+		}
+	} else {
+		if (!strcmp(name, "userdata")) {
+			strcpy(mnt_point, "/data");
+		} else {
+			size = snprintf(mnt_point, MOUNT_POINT_SIZE, "/%s", name);
+
+			if (size == -1 || size > MOUNT_POINT_SIZE - 1) {
+				error("Mount point size exceeds limit");
+				return -1;
+			}
+		}
+	}
+
+	return 0;
+}
+
 int oem_erase_partition(int argc, char **argv)
 {
 	int retval = -1;
-	int size;
 	char mnt_point[MOUNT_POINT_SIZE] = "";
 
 	if (argc != 2) {
@@ -369,25 +394,8 @@ int oem_erase_partition(int argc, char **argv)
 		goto end;
 	}
 
-	if (argv[1][0] == '/') {
-		size = snprintf(mnt_point, MOUNT_POINT_SIZE, "%s", argv[1]);
-
-		if (size == -1 || size > MOUNT_POINT_SIZE-1) {
-			error("Mount point parameter size exceeds limit");
-			goto end;
-		}
-	} else {
-		if (!strcmp(argv[1], "userdata")) {
-			strcpy(mnt_point, "/data");
-		} else {
-			size = snprintf(mnt_point, MOUNT_POINT_SIZE, "/%s", argv[1]);
-
-			if (size == -1 || size > MOUNT_POINT_SIZE-1) {
-				error("Mount point size exceeds limit");
-				goto end;
-			}
-		}
-	}
+	if (get_mountpoint(argv[1], mnt_point))
+		goto end;
 
 	print("CMD '%s %s'...\n", argv[0], mnt_point);
 
@@ -480,4 +488,27 @@ void oem_partition_init(struct ufdisk *new_ufdisk)
 		ufdisk.umount_all = fake_umount_all;
 	if (!ufdisk.create_partition)
 		ufdisk.create_partition = fake_create_partition;
+}
+
+int oem_wipe_partition(int argc, char **argv)
+{
+	int retval = -1;
+	char mnt_point[MOUNT_POINT_SIZE] = "";
+
+	if (argc != 2) {
+                error("oem erase called with wrong parameter!");
+		goto end;
+	}
+
+	if (get_mountpoint(argv[1], mnt_point))
+		goto end;
+
+	print("CMD '%s %s'...\n", argv[0], mnt_point);
+
+	retval = nuke_volume(mnt_point, BUFFER_SIZE);
+	if (retval != 0)
+		error("wipe partition failed: %s\n", mnt_point);
+
+end:
+	return retval;
 }

@@ -23,6 +23,7 @@ int oem_partition_cmd_handler(int argc, char **argv);
 int oem_erase_partition(int argc, char **argv);
 int oem_repart_partition(int argc, char **argv);
 int oem_retrieve_partitions(int argc, char **argv);
+int oem_wipe_partition(int argc, char **argv);
 void oem_partition_disable_cmd_reload();
 
 struct ufdisk {
