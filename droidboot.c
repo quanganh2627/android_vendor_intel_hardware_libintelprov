@@ -628,6 +628,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("restore_factory", oem_restore_factory);
 	ret |= aboot_register_oem_cmd("fastboot2adb", oem_fastboot2adb);
 	ret |= aboot_register_oem_cmd("reboot", oem_reboot);
+	ret |= aboot_register_oem_cmd("wipe", oem_wipe_partition);
 #ifndef EXTERNAL
 	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
 	ret |= libintel_droidboot_token_init();
