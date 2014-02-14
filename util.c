@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/mman.h>
+#include <sys/sendfile.h>
 
 #include "util.h"
 
@@ -115,6 +116,62 @@ int file_write(const char *filename, const void *data, size_t sz)
 	fsync(fd);
 	close(fd);
 	return 0;
+}
+
+/**
+ * Copies a file from specified source to destination.
+ *
+ * @param [in] src Source file to copy.
+ * @param [in] dst Destination file to copy to.
+ *
+ * @return 0 if successful
+ * @return -1 otherwise
+ */
+int file_copy(const char *src, const char *dst)
+{
+	int ret = -1;
+	int in_fd = -1;
+	int out_fd = -1;
+	struct stat sb;
+	off_t offset = 0;
+
+	if (!src || !dst) {
+		error("Wrong input");
+		goto out;
+	}
+
+	in_fd = open(src, O_RDONLY);
+	if (in_fd < 0) {
+		error("Cannot open source file (errno = %d)", errno);
+		goto out;
+	}
+
+	out_fd = open(dst, O_RDWR | O_CREAT | O_TRUNC, FILEMODE);
+	if (out_fd < 0) {
+		error("Cannot create destination file (errno = %s)", strerror(errno));
+		goto out;
+	}
+
+	if (fstat(in_fd, &sb) == -1) {
+		error("Failed obtaining file status");
+		goto out;
+	}
+
+	if (sendfile(out_fd, in_fd, &offset, sb.st_size) == -1) {
+		error("Copying file failed (errno = %s)", strerror(errno));
+	}
+
+out:
+	if (in_fd >= 0)
+		close(in_fd);
+	if (out_fd >= 0) {
+		if (close(out_fd) < 0)
+			error("Error while closing %s: %d", dst, errno);
+		else
+			ret = 0;
+	}
+
+	return ret;
 }
 
 int file_size(const char *filename)

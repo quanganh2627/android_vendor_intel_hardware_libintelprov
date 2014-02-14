@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
+#include <libgen.h>
+#include <limits.h>
 #include <stdio.h>
-#include "miu.h"
-#include "logs.h"
 
-void cmd_flash_modem_fw(char *filename)
+#include "common.h"
+#include "util.h"
+
+void cmd_push_mdm_fw(const char *filename)
 {
-	if (miu_initialize(miu_progress_cb, miu_log_cb, filename) != E_MIU_ERR_SUCCESS) {
-		fprintf(stderr, "%s initialization has failed\n", __func__);
-	} else {
-		if (miu_flash_modem_fw(filename, 0) != E_MIU_ERR_SUCCESS) {
-			fprintf(stderr, "Failed flashing modem FW!\n");
-			miu_dispose();
-			exit(1);
-		}
-		miu_dispose();
-	}
+	char output[PATH_MAX];
+	snprintf(output, sizeof(output), "%s/%s", TELEPHONY_PROVISIONING,
+			basename(filename));
+	if (!file_copy(filename, output)) {
+		fprintf(stdout, "file %s successfully written", output);
+		set_file_permission(filename);
+	} else
+		fprintf(stderr, "failed to write %s", output);
 }

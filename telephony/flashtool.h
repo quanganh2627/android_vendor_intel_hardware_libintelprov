@@ -17,6 +17,6 @@
 #ifndef __TELEPHONY_FLASHTOOL_HEADER__
 #define __TELEPHONY_FLASHTOOL_HEADER__
 
-void cmd_flash_modem_fw(char *filename);
+void cmd_push_mdm_fw(const char *filename);
 
 #endif /* __TELEPHONY_FLASHTOOL_HEADER__ */

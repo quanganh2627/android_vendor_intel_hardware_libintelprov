@@ -77,9 +77,8 @@ LOCAL_C_INCLUDES := $(call include-path-for, recovery) $(common_libintelprov_inc
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
 ifeq ($(BOARD_HAVE_MODEM),true)
-LOCAL_SRC_FILES += telephony/updater.c telephony/logs.c
 LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
-LOCAL_WHOLE_STATIC_LIBRARIES += libxml2 libtcs libmiu
+LOCAL_SRC_FILES += telephony/updater.c telephony/common.c
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
@@ -140,8 +139,7 @@ LOCAL_SRC_FILES := droidboot.c $(common_libintelprov_files)
 
 LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
 ifeq ($(BOARD_HAVE_MODEM),true)
-LOCAL_SRC_FILES += telephony/droidboot.c
-LOCAL_WHOLE_STATIC_LIBRARIES += libxml2 libtcs libmiu
+LOCAL_SRC_FILES += telephony/droidboot.c telephony/common.c
 LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
 endif
 
@@ -183,9 +181,7 @@ LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 
 ifeq ($(BOARD_HAVE_MODEM),true)
 LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
-LOCAL_SHARED_LIBRARIES += libicuuc
-LOCAL_STATIC_LIBRARIES += libmiu libtcs libxml2
-LOCAL_SRC_FILES += telephony/flashtool.c telephony/logs.c
+LOCAL_SRC_FILES += telephony/flashtool.c telephony/common.c
 endif
 
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)

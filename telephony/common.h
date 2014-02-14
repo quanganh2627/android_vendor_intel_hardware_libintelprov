@@ -14,23 +14,13 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
-#include <stdarg.h>
-#include "logs.h"
+#ifndef __TELEPHONY_COMMON_HEADER__
+#define __TELEPHONY_COMMON_HEADER__
 
-void miu_progress_cb(int progress, int total)
-{
-	printf("Progress: %d / %d\n", progress, total);
-}
+#define CONFIG_FOLDER "/config"
+#define TELEPHONY_PROVISIONING "/config/telephony/provisioning"
 
-void miu_log_cb(const char *msg, ...)
-{
-	va_list ap;
+int set_file_permission(const char *filename);
+int create_config_folder(void);
 
-	if (msg != NULL) {
-		va_start(ap, msg);
-		vprintf(msg, ap);
-		printf("\n");
-		va_end(ap);
-	}
-}
+#endif /* __TELEPHONY_COMMON_HEADER__ */

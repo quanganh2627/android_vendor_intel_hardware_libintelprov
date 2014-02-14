@@ -228,7 +228,7 @@ int main(int argc, char ** argv)
 		break;
 #ifdef BOARD_HAVE_MODEM
 	case CMD_WRITE_3G_FW:
-		cmd_flash_modem_fw(filename);
+		cmd_push_mdm_fw(filename);
 		break;
 #endif
 	case CMD_WRITE_FPT_IFWI:

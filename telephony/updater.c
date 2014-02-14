@@ -14,93 +14,43 @@
  * limitations under the License.
  */
 
-
-#include <stdio.h>
 #include <edify/expr.h>
 #include <updater/updater.h>
-#include "logs.h"
-#include "miu.h"
+#include <libgen.h>
 
-#define MODEM_PATH "/tmp/radio_firmware.bin"
-#define MODEM_NAME "radio_firmware"
+#include "common.h"
+#include "util.h"
 
-static Value *FlashModemFn(const char *name, State * state, int argc, Expr * argv[])
+static Value* push_file(const char *name, State * state, int argc, Expr * argv[])
 {
 	Value *ret = NULL;
-	int err;
-	ZipArchive modem_za;
+	char output[PATH_MAX];
 	char *filename = NULL;
-	e_miu_flash_options_t flash_options = 0;
 
-	if (ReadArgs(state, argv, 1, &filename) < 0)
-		return NULL;
+	create_config_folder();
 
-	if (filename == NULL || strlen(filename) == 0) {
-		ErrorAbort(state, "filename argument to %s can't be empty", name);
-		goto done;
+	if (ReadArgs(state, argv, 1, &filename) < 0) {
+		ErrorAbort(state, "wrong parameter");
+		goto out;
 	}
 
-	err = mzOpenZipArchive(filename, &modem_za);
-	if (err) {
-		printf("Failed to open zip archive %s\n", filename);
+	if (filename == NULL || strlen(filename) == 0) {
+		ErrorAbort(state, "filename argument %s cannot be empty", name);
+		goto out;
+	}
+
+	snprintf(output, sizeof(output), "%s/%s", TELEPHONY_PROVISIONING, basename(filename));
+	if (!file_copy(filename, output) && ! set_file_permission(output))
 		ret = StringValue(strdup(""));
-		goto done;
-	}
-	printf("miu using archive %s\n", filename);
-	mzCloseZipArchive(&modem_za);
+	else
+		ErrorAbort(state, "failed to create file %s", filename);
 
-
-	if (miu_initialize(miu_progress_cb, miu_log_cb, filename) != E_MIU_ERR_SUCCESS) {
-		printf("%s failed at %s\n", __func__, "miu_initialize failed");
-	} else {
-		if (miu_flash_modem_fw(filename, flash_options) !=
-			E_MIU_ERR_SUCCESS) {
-			printf("error during 3G Modem flashing!\n");
-		}
-		miu_dispose();
-	}
-
-	ret = StringValue(strdup(""));
-
-done:
-	if (filename)
-		free(filename);
-
-	return ret;
-}
-
-static Value *FlashNvmFn(const char *name, State * state, int argc, Expr * argv[])
-{
-	Value *ret = NULL;
-	char *filename = NULL;
-
-	if (ReadArgs(state, argv, 1, &filename) < 0)
-		return NULL;
-
-	if (filename == NULL || strlen(filename) == 0) {
-		ErrorAbort(state, "filename argument to %s can't be empty", name);
-		goto done;
-	}
-
-	if (miu_initialize(miu_progress_cb, miu_log_cb, filename) != E_MIU_ERR_SUCCESS) {
-		printf("%s failed at %s\n", __func__, "miu_initialize failed");
-	} else {
-		if (miu_flash_modem_nvm(filename, NULL) != E_MIU_ERR_SUCCESS)
-			printf("error during 3G Modem NVM config!\n");
-		miu_dispose();
-	}
-
-	ret = StringValue(strdup(""));
-
-done:
-	if (filename)
-		free(filename);
-
+out:
+	free(filename);
 	return ret;
 }
 
 void RegisterTelephonyFunctions(void)
 {
-	RegisterFunction("flash_modem", FlashModemFn);
-	RegisterFunction("flash_nvm", FlashNvmFn);
+	RegisterFunction("flash_modem", push_file);
 }

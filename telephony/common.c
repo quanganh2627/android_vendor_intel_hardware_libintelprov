@@ -14,10 +14,29 @@
  * limitations under the License.
  */
 
-#ifndef __TELEPHONY_LOGS_HEADER__
-#define __TELEPHONY_LOGS_HEADER__
+#include <unistd.h>
+#include <pwd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include "common.h"
 
-void miu_progress_cb(int progress, int total);
-void miu_log_cb(const char *msg, ...);
+#define FILE_PERMISSION (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP)
 
-#endif /* __TELEPHONY_LOGS_HEADER__ */
+int set_file_permission(const char *filename)
+{
+	int ret = -1;
+	struct passwd *pwd = getpwnam("radio");
+	if (pwd) {
+		uid_t uid = pwd->pw_uid;
+		ret = chown(filename, uid, uid);
+		ret |= chmod(filename, FILE_PERMISSION);
+	}
+	return ret;
+}
+
+int create_config_folder(void)
+{
+	int ret = mkdir(TELEPHONY_PROVISIONING, FILE_PERMISSION);
+	ret |= set_file_permission(TELEPHONY_PROVISIONING);
+	return ret;
+}
