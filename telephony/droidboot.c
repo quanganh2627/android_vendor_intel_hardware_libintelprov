@@ -17,13 +17,39 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <roots.h>
+/* roots header brings LOG definition. We need to remove them
+ * as droidboot_plugin will define them.
+ */
+#ifdef LOGE
+#undef LOGE
+#endif
+#ifdef LOGW
+#undef LOGW
+#endif
+#ifdef LOGI
+#undef LOGI
+#endif
+#ifdef LOGV
+#undef LOGV
+#endif
+#ifdef LOGD
+#undef LOGD
+#endif
 #include <droidboot_plugin.h>
+#include <sys/stat.h>
+#include <string.h>
 #include "fastboot.h"
 #include "util.h"
 #include "miu.h"
 
 #define IMG_RADIO "/radio.img"
 #define IMG_RADIO_RND "/radio_rnd.img"
+#define IMC_FLASHLESS_MODEM_FW_COPY_PATH		"/config/telephony/modembinary.fls"
+#define IMC_FLASHLESS_MODEM_NVM_COPY_PATH		"/config/telephony/patch_nvm.tlv"
+#define IMC_FLASHLESS_MODEM_RND_CERT_COPY_PATH		"/config/telephony/rnd_cert.bin"
+#define IMC_FLASHLESS_MODEM_RND_CERT_EXPORT_PATH	"/logs/modem_rnd_certif.bin"
+#define IMC_FLASHLESS_MODEM_FW_FILE_MODE		S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
 #define INFO_MSG_LEN (size_t)128
 
 static bool is_log_enabled = false;
@@ -75,13 +101,33 @@ static void miu_log_cb(const char *msg, ...)
 static int flash_modem(e_miu_flash_options_t flash_options)
 {
 	int ret = -1;
+	int miu_ret = E_MIU_ERR_SUCCESS;
 
-	if (miu_initialize(miu_progress_cb, miu_log_cb, IMG_RADIO) != E_MIU_ERR_SUCCESS) {
-		pr_error("%s initialization has failed\n", __func__);
+	miu_ret = miu_initialize(miu_progress_cb, miu_log_cb, IMG_RADIO);
+	if (miu_ret != E_MIU_ERR_SUCCESS) {
+		if (miu_ret != E_MIU_ERR_ZIP_ENTRY_NOT_FOUND) {
+			pr_error("%s initialization has failed\n", __func__);
+		} else {
+			pr_info("%s: Not a ZIP. FLS format expected.\n", __func__);
+			if (ensure_path_mounted("/config") != 0) {
+				pr_error("%s config mount point is not available.\n",
+					__func__);
+				goto out;
+			}
+			ret = miu_file_copy(IMG_RADIO,
+						IMC_FLASHLESS_MODEM_FW_COPY_PATH,
+						IMC_FLASHLESS_MODEM_FW_FILE_MODE);
+			pr_info("%s miu_file_copy invoked with %s, %s, return: %d\n",
+				__func__,
+				IMG_RADIO,
+				IMC_FLASHLESS_MODEM_FW_COPY_PATH,
+				ret);
+		}
 	} else {
 		if (is_log_enabled)
 			flash_options |= E_MIU_FLASH_ENABLE_LOGS;
 
+		pr_info("%s: ZIP format - MIU will be invoked.\n", __func__);
 		/* Update modem SW. */
 		if (miu_flash_modem_fw(IMG_RADIO, flash_options) == E_MIU_ERR_SUCCESS) {
 			ret = 0;
@@ -91,6 +137,7 @@ static int flash_modem(e_miu_flash_options_t flash_options)
 			ret = -1;
 		}
 	}
+out:
 	miu_dispose();
 	unlink(IMG_RADIO);
 
@@ -165,20 +212,25 @@ static int flash_modem_read_rnd(void *data, unsigned sz)
 {
 	int ret = -1;
 
-	if (miu_initialize(miu_progress_cb, miu_log_cb, NULL) != E_MIU_ERR_SUCCESS) {
-		pr_error("%s failed at %s\n", __func__,
-			 "miu_initialize failed");
-	} else {
-		/* Get RND Cert (print out in stdout) */
-		if (miu_read_modem_rnd_cert(IMG_RADIO) == E_MIU_ERR_SUCCESS) {
-			ret = 0;
-			pr_info("%s successful\n", __func__);
-		} else {
-			pr_error("%s flash has failed\n", __func__);
-		}
+	/* Current scalibility design is limited and don t handle RND cert
+	 * in POS properly. Following change are assuming user provide proper
+	 * certificate and directly copy it to proper location. Further
+	 * review are needed in miu, in order to enhance RND cert handling.
+	 */
+	if (ensure_path_mounted("/config") != 0) {
+		pr_error("%s config mount point is not available.\n",
+			__func__);
+		goto out;
 	}
-	miu_dispose();
-	unlink(IMG_RADIO);
+	ret = miu_file_copy(IMC_FLASHLESS_MODEM_RND_CERT_COPY_PATH,
+				IMC_FLASHLESS_MODEM_RND_CERT_EXPORT_PATH,
+				IMC_FLASHLESS_MODEM_FW_FILE_MODE);
+	pr_info("%s miu_file_copy invoked with %s, %s, return: %d\n",
+		__func__,
+		IMC_FLASHLESS_MODEM_RND_CERT_COPY_PATH,
+		IMC_FLASHLESS_MODEM_RND_CERT_EXPORT_PATH,
+		ret);
+out:
 	return ret;
 }
 
@@ -186,27 +238,31 @@ static int flash_modem_write_rnd(void *data, unsigned sz)
 {
 	int ret = -1;
 
+	if (ensure_path_mounted("/config") != 0) {
+		pr_error("%s config mount point is not available.\n",
+			__func__);
+		goto out;
+	}
+
 	if (file_write(IMG_RADIO_RND, data, sz)) {
 		pr_error("Couldn't write radio_rnd image to %s", IMG_RADIO_RND);
-		return ret;
+		goto out;
 	}
-	if (miu_initialize(miu_progress_cb, miu_log_cb, NULL) != E_MIU_ERR_SUCCESS) {
-		pr_error("%s failed at %s\n", __func__,
-			 "miu_initialize failed");
-	} else {
-		/* Flash RND Cert */
-		if (miu_write_modem_rnd_cert(IMG_RADIO, IMG_RADIO_RND) ==
-				E_MIU_ERR_SUCCESS) {
-			ret = 0;
-			pr_info("%s successful\n", __func__);
-		} else {
-			pr_error("%s failed at %s\n", __func__,
-				 "miu_read_modem_rnd_cert");
-		}
-	}
-	miu_dispose();
-	unlink(IMG_RADIO);
-	unlink(IMG_RADIO_RND);
+
+	/* Current scalibility design is limited and don t handle RND cert
+	 * in POS properly. Following change are assuming user provide proper
+	 * certificate and directly copy it to proper location. Further
+	 * review are needed in miu, in order to enhance RND cert handling.
+	 */
+	ret = miu_file_copy(IMG_RADIO_RND,
+			    IMC_FLASHLESS_MODEM_RND_CERT_COPY_PATH,
+			    IMC_FLASHLESS_MODEM_FW_FILE_MODE);
+	pr_info("%s miu_file_copy invoked with %s, %s, return: %d\n",
+		__func__,
+		IMG_RADIO_RND,
+		IMC_FLASHLESS_MODEM_RND_CERT_COPY_PATH,
+		ret);
+out:
 	return ret;
 }
 
@@ -214,21 +270,15 @@ static int flash_modem_erase_rnd(void *data, unsigned sz)
 {
 	int ret = -1;
 
-	if (miu_initialize(miu_progress_cb, miu_log_cb, NULL) != E_MIU_ERR_SUCCESS) {
-		pr_error("%s failed at %s\n", __func__,
-			 "miu_initialize failed");
-	} else {
-		/* Erase RND Cert */
-		if (miu_erase_modem_rnd_cert(IMG_RADIO) == E_MIU_ERR_SUCCESS) {
-			ret = 0;
-			pr_info("%s successful\n", __func__);
-		} else {
-			pr_error("%s failed at %s\n", __func__,
-				 "miu_read_modem_rnd_cert");
-		}
+	/* Current scalibility design is limited and don t handle RND cert
+	 * in POS properly. Following change are assuming user provide proper
+	 * certificate and directly copy it to proper location. Further
+	 * review are needed in miu, in order to enhance RND cert handling.
+	 */
+	pr_info("%s: Erase certificate cmd called.\n", __func__);
+	if ((ret = unlink(IMC_FLASHLESS_MODEM_RND_CERT_COPY_PATH)) < 0) {
+		pr_error("rnd certificate cannot be erased !\n");
 	}
-	miu_dispose();
-	unlink(IMG_RADIO);
 	return ret;
 }
 
@@ -237,44 +287,74 @@ static int oem_nvm_cmd_handler(int argc, char **argv)
 	int retval = -1;
 	char *nvm_path = NULL;
 
-	if (miu_initialize(miu_progress_cb, miu_log_cb, NULL) != E_MIU_ERR_SUCCESS) {
-		pr_error("%s failed at %s\n", __func__, "miu_initialize failed");
-	} else {
-		if (!strcmp(argv[1], "apply")) {
-			pr_info("Applying nvm...");
+	if (!strcmp(argv[1], "apply")) {
+		pr_info("Applying nvm...");
 
-			if (argc < 3) {
-				pr_error("oem_nvm_cmd_handler called with wrong parameter!\n");
-				retval = -1;
-				return retval;
+		if (argc < 3) {
+			pr_error("oem_nvm_cmd_handler called with wrong parameter!\n");
+			goto out_nomiu;
+		}
+		nvm_path = argv[2];
+		if (ensure_path_mounted("/config") != 0) {
+			pr_error("%s config mount point is not available.\n",
+				__func__);
+			goto out_nomiu;
+		}
+
+		/* Search the file type - either zip or tlv, default is zip */
+		if (strstr(nvm_path, ".tlv") != NULL) {
+			/* If tlv - copy file directly */
+			pr_info("%s: TLV format detected.\n", __func__);
+			retval = miu_file_copy(nvm_path,
+				IMC_FLASHLESS_MODEM_NVM_COPY_PATH,
+				IMC_FLASHLESS_MODEM_FW_FILE_MODE);
+			pr_info("%s miu_file_copy invoked with %s, %s, return: %d\n",
+				__func__,
+				nvm_path,
+				IMC_FLASHLESS_MODEM_NVM_COPY_PATH,
+				retval);
+			goto out_nomiu;
+		} else {
+			/* If zip - then use miu APIs */
+			pr_info("%s: Expected ZIP format. Starting MIU.\n", __func__);
+			if (strstr(nvm_path, ".zip") == NULL) {
+				pr_error("%s: Not a ZIP format. Exit.\n", __func__);
+				goto out_nomiu;
 			}
-			nvm_path = argv[2];
-
+			if (miu_initialize(miu_progress_cb, miu_log_cb, NULL) != E_MIU_ERR_SUCCESS) {
+				pr_error("%s failed at %s\n", __func__, "miu_initialize failed");
+				goto out;
+			}
 			if (miu_flash_modem_nvm(nvm_path, NULL) == E_MIU_ERR_SUCCESS) {
 				retval = 0;
 				pr_info("%s successful\n", __func__);
 			} else {
 				pr_error("%s failed with error: %i\n", __func__,
 					retval);
-				retval = -1;
 			}
-		} else if (!strcmp(argv[1], "identify")) {
-			pr_info("Identifying nvm...");
-
-			if (miu_read_modem_nvm_id(NULL, 0) == E_MIU_ERR_SUCCESS) {
-				retval = 0;
-				pr_info("%s successful\n", __func__);
-			} else {
-				pr_error("%s failed with error: %i\n", __func__,
-					retval);
-				retval = -1;
-			}
-		} else {
-			pr_error("Unknown command. Use %s [apply].\n", "nvm");
-			retval = -1;
 		}
+	} else if (!strcmp(argv[1], "identify")) {
+		pr_info("Identifying nvm...");
+
+		if (miu_initialize(miu_progress_cb, miu_log_cb, NULL) != E_MIU_ERR_SUCCESS) {
+			pr_error("%s failed at %s\n", __func__, "miu_initialize failed");
+			goto out;
+		}
+
+		if (miu_read_modem_nvm_id(NULL, 0) == E_MIU_ERR_SUCCESS) {
+			retval = 0;
+			pr_info("%s successful\n", __func__);
+		} else {
+			pr_error("%s failed with error: %i\n", __func__,
+				retval);
+		}
+	} else {
+		pr_error("Unknown command. Use %s [apply].\n", "nvm");
+		goto out_nomiu;
 	}
+out:
 	miu_dispose();
+out_nomiu:
 	return retval;
 }
 
