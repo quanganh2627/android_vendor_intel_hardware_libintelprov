@@ -209,8 +209,17 @@ error:
 	free(sg_list);
 
 end:
-	if (print_pos > 0)
-		output_data(print_data, print_pos);
+	if (print_pos <= 0)
+		return ret;
+
+	if (FRU_DATAGROUP == (uint32_t)dg) {
+		uint32_t i;
+
+		/* Need to bit swap each byte */
+		for (i = 0; i < print_pos; i++)
+			print_data[i] = print_data[i] << 4 | print_data[i] >> 4;
+	}
+	output_data(print_data, print_pos);
 
 	return ret;
 }
