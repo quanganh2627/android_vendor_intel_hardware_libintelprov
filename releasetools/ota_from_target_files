@@ -409,7 +409,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
   # be installed on top of.  For now, we expect the API just won't
   # change very often.
   script = edify_generator.EdifyGenerator(3, OPTIONS.info_dict)
-  no_modem=OPTIONS.info_dict["no_modem"]
+  has_modem=OPTIONS.info_dict["has_modem"]
   intel_capsule=OPTIONS.info_dict["intel_capsule"]
   intel_ulpmc=OPTIONS.info_dict["intel_ulpmc"]
   intel_chaabi_token=OPTIONS.info_dict["intel_chaabi_token"]
@@ -423,7 +423,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
   device_specific = common.DeviceSpecificParams(
       input_zip=input_zip,
       input_version=OPTIONS.info_dict["recovery_api_version"],
-      no_modem=no_modem,
+      has_modem=has_modem,
       intel_capsule=intel_capsule,
       intel_ulpmc=intel_ulpmc,
       intel_chaabi_token=intel_chaabi_token,
@@ -512,7 +512,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
   Item.Get("system").SetPermissions(script)
 
   script.ShowProgress(0.1, 0)
-  if no_modem != "true":
+  if has_modem == "true":
     script.Mount("/config")
     device_specific.FullOTA_InstallEnd()
 
@@ -590,7 +590,7 @@ def GetCompatibleProduct(product):
 def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   source_version = OPTIONS.source_info_dict["recovery_api_version"]
   target_version = OPTIONS.target_info_dict["recovery_api_version"]
-  no_modem = OPTIONS.target_info_dict["no_modem"]
+  has_modem = OPTIONS.target_info_dict["has_modem"]
   intel_capsule = OPTIONS.target_info_dict["intel_capsule"]
   intel_ulpmc = OPTIONS.target_info_dict["intel_ulpmc"]
   intel_chaabi_token = OPTIONS.target_info_dict["intel_chaabi_token"]
@@ -614,7 +614,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
       target_zip=target_zip,
       target_version=target_version,
       target_tmp=OPTIONS.target_tmp,
-      no_modem=no_modem,
+      has_modem=has_modem,
       intel_capsule=intel_capsule,
       intel_ulpmc=intel_ulpmc,
       intel_chaabi_token=intel_chaabi_token,
@@ -906,7 +906,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   script.AppendScript(temp_script)
  
   # Do device-specific installation (eg, write radio image).
-  if no_modem != "true":
+  if has_modem == "true":
     script.Mount("/config")
     device_specific.IncrementalOTA_InstallEnd()
     script.Unmount("/config");
