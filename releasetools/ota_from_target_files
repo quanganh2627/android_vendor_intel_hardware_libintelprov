@@ -67,6 +67,7 @@ import subprocess
 import tempfile
 import time
 import zipfile
+from struct import unpack
 
 try:
   from hashlib import sha1 as sha1
@@ -87,13 +88,7 @@ OPTIONS.omit_prereq = False
 OPTIONS.extra_script = None
 OPTIONS.aslr_mode = True
 OPTIONS.worker_threads = 3
-OPTIONS.no_modem = False
 OPTIONS.intel_ota = False
-OPTIONS.intel_capsule = False
-OPTIONS.intel_ulpmc = False
-OPTIONS.intel_chaabi_token = False
-OPTIONS.do_partitioning = False
-OPTIONS.full_gpt = False
 
 # Following is a hack for release scripts to be able to create OTA packages
 # using the ABS targets, and not rely on invoking this script separately. This
@@ -326,6 +321,9 @@ def AppendAssertions(script, input_zip):
   comp_device = GetCompatibleProduct(device)
   script.AssertDevice(device, comp_device)
 
+def BootImgPage(data, page_size):
+  return (data + page_size - 1) / page_size
+
 def MakeRecoveryPatch(output_zip, recovery_img, boot_img):
   """Generate a binary patch that creates the recovery image starting
   with the boot image.  (Most of the space in these images is just the
@@ -347,25 +345,41 @@ def MakeRecoveryPatch(output_zip, recovery_img, boot_img):
   common.ZipWriteStr(output_zip, "recovery/recovery-from-boot.p", patch)
   Item.Get("system/recovery-from-boot.p", dir=False)
 
-  if OPTIONS.full_gpt == True:
-    HEADER_START = -2048
-    HEADER_END = None
+  sig_size = 0
+  if recovery_img.data[0:8] == 'ANDROID!':
+    # Bootimg header
+    kernel_size, _, ramdisk_size, _, second_size, _, _, page_size, sig_size = unpack('9I', recovery_img.data[8:44])
+
+    if sig_size != 0:
+      sig_offset = (BootImgPage(kernel_size, page_size) +
+                    BootImgPage(ramdisk_size, page_size) +
+                    BootImgPage(second_size, page_size) +
+                    1) * page_size;
+      HEADER_START = sig_offset
+      HEADER_END = sig_offset + sig_size
   else:
     # Bytes 0x200 - 0x3E0 have the LFSTK digital signature. So we can use it as
     # a basis of comparison to see if the recovery image needs patching
     # We must skip over the OSIP here, hence the 512 byte offset
+    sig_size = 480
     HEADER_START = 512
-    HEADER_END = HEADER_START + 480
+    HEADER_END = HEADER_START + sig_size
 
-  header_sha1 = common.sha1(recovery_img.data[HEADER_START:HEADER_END]).hexdigest()
+  if sig_size != 0:
+    header_sha1 = common.sha1(recovery_img.data[HEADER_START:HEADER_END]).hexdigest()
+  else:
+    header_sha1 = None
+
   sh = """#!/system/bin/sh
-update_recovery --check-sha1 %(header_sha1)s \\
-                --src-sha1 %(src_sha1)s \\
-                --tgt-sha1 %(tgt_sha1)s \\
-                --tgt-size %(tgt_size)d \\
-                --patch /system/recovery-from-boot.p
-""" % { 'header_sha1': header_sha1,
-        'src_sha1'   : boot_img.sha1,
+update_recovery \\
+"""
+  if sig_size != 0:
+    sh += "	--check-sha1 %s \\\n" % (header_sha1)
+  sh += """	--src-sha1 %(src_sha1)s \\
+	--tgt-sha1 %(tgt_sha1)s \\
+	--tgt-size %(tgt_size)d \\
+	--patch /system/recovery-from-boot.p
+""" % { 'src_sha1'   : boot_img.sha1,
         'tgt_sha1'   : recovery_img.sha1,
         'tgt_size'   : recovery_img.size }
   common.ZipWriteStr(output_zip, "recovery/etc/install-recovery.sh", sh)
@@ -395,6 +409,11 @@ def WriteFullOTAPackage(input_zip, output_zip):
   # be installed on top of.  For now, we expect the API just won't
   # change very often.
   script = edify_generator.EdifyGenerator(3, OPTIONS.info_dict)
+  no_modem=OPTIONS.info_dict["no_modem"]
+  intel_capsule=OPTIONS.info_dict["intel_capsule"]
+  intel_ulpmc=OPTIONS.info_dict["intel_ulpmc"]
+  intel_chaabi_token=OPTIONS.info_dict["intel_chaabi_token"]
+  do_partitioning=OPTIONS.info_dict["do_partitioning"]
 
   metadata = {"post-build": GetBuildProp("ro.build.fingerprint", input_zip),
               "pre-device": GetBuildProp("ro.product.device", input_zip),
@@ -404,6 +423,11 @@ def WriteFullOTAPackage(input_zip, output_zip):
   device_specific = common.DeviceSpecificParams(
       input_zip=input_zip,
       input_version=OPTIONS.info_dict["recovery_api_version"],
+      no_modem=no_modem,
+      intel_capsule=intel_capsule,
+      intel_ulpmc=intel_ulpmc,
+      intel_chaabi_token=intel_chaabi_token,
+      do_partitioning=do_partitioning,
       output_zip=output_zip,
       script=script,
       input_tmp=OPTIONS.input_tmp,
@@ -419,10 +443,10 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   script.ShowProgress(0.5, 0)
 
-  if OPTIONS.intel_chaabi_token == True:
+  if intel_chaabi_token == "true":
     script.StartUpdate()
 
-  if OPTIONS.do_partitioning:
+  if do_partitioning == "true":
     partition_file = common.GetBootableImage("partition.tbl", "partition.tbl",
                                              OPTIONS.input_tmp, "BOOT")
     common.ZipWriteStr(output_zip, partition_file.name, partition_file.data)
@@ -433,7 +457,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
 
   script.InvalidateOs("boot")
 
-  if OPTIONS.intel_chaabi_token == True:
+  if intel_chaabi_token == "true":
     script.PackageExtract("ifwi.zip")
     script.FlashBomToken("ifwi.zip")
 
@@ -455,9 +479,9 @@ def WriteFullOTAPackage(input_zip, output_zip):
   images = {}
   name_list = ["boot", "recovery", "fastboot", "esp", "ifwi"]
 
-  if OPTIONS.intel_capsule == True:
+  if intel_capsule == "true":
     name_list.append("capsule")
-  if OPTIONS.intel_ulpmc == True:
+  if intel_ulpmc == "true":
     name_list.append("ulpmc")
 
   for name in name_list:
@@ -488,7 +512,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
   Item.Get("system").SetPermissions(script)
 
   script.ShowProgress(0.1, 0)
-  if OPTIONS.no_modem == False:
+  if no_modem != "true":
     script.Mount("/config")
     device_specific.FullOTA_InstallEnd()
 
@@ -498,7 +522,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
   script.UnmountAll()
   script.RestoreOs("boot")
 
-  if OPTIONS.intel_chaabi_token == True:
+  if intel_chaabi_token == "true":
     script.FinalizeUpdate()
 
   script.AddToZip(input_zip, output_zip)
@@ -566,6 +590,12 @@ def GetCompatibleProduct(product):
 def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   source_version = OPTIONS.source_info_dict["recovery_api_version"]
   target_version = OPTIONS.target_info_dict["recovery_api_version"]
+  no_modem = OPTIONS.target_info_dict["no_modem"]
+  intel_capsule = OPTIONS.target_info_dict["intel_capsule"]
+  intel_ulpmc = OPTIONS.target_info_dict["intel_ulpmc"]
+  intel_chaabi_token = OPTIONS.target_info_dict["intel_chaabi_token"]
+  do_partitioning = OPTIONS.target_info_dict["do_partitioning"]
+
 
   if source_version == 0:
     print ("WARNING: generating edify script for a source that "
@@ -584,6 +614,11 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
       target_zip=target_zip,
       target_version=target_version,
       target_tmp=OPTIONS.target_tmp,
+      no_modem=no_modem,
+      intel_capsule=intel_capsule,
+      intel_ulpmc=intel_ulpmc,
+      intel_chaabi_token=intel_chaabi_token,
+      do_partitioning=do_partitioning,
       output_zip=output_zip,
       script=script,
       metadata=metadata,
@@ -647,9 +682,9 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   name_list = ["boot", "recovery", "fastboot", "esp", "ifwi"]
 
-  if OPTIONS.intel_capsule == True:
+  if intel_capsule == "true":
     name_list.append("capsule")
-  if OPTIONS.intel_ulpmc == True:
+  if intel_ulpmc == "true":
     name_list.append("ulpmc")
 
   for name in name_list:
@@ -678,7 +713,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
       # skip the ifwi flashing if it is the same as src targetfiles
       if not common.IfwiDiffers(src_img, tgt_img):
         continue
-    if OPTIONS.do_partitioning == True or name == "ifwi" or metadata["fromgb"] or name == "capsule" or name == "ulpmc" or name == "esp":
+    if do_partitioning == "true" or name == "ifwi" or metadata["fromgb"] or name == "capsule" or name == "ulpmc" or name == "esp":
       # we dont make incremental images
       full_images[name] = tgt_img
       continue
@@ -734,7 +769,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   script.Comment("---- start making changes here ----")
 
-  if OPTIONS.do_partitioning:
+  if do_partitioning == "true":
     partition_file = common.GetBootableImage("partition.tbl", "partition.tbl",
                                              OPTIONS.input_tmp, "BOOT")
     common.ZipWriteStr(output_zip, partition_file.name, partition_file.data)
@@ -871,9 +906,10 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   script.AppendScript(temp_script)
  
   # Do device-specific installation (eg, write radio image).
-  script.Mount("/config")
-  device_specific.IncrementalOTA_InstallEnd()
-  script.Unmount("/config");
+  if no_modem != "true":
+    script.Mount("/config")
+    device_specific.IncrementalOTA_InstallEnd()
+    script.Unmount("/config");
 
   if OPTIONS.extra_script is not None:
     script.AppendExtra(OPTIONS.extra_script)
@@ -917,18 +953,6 @@ def main(argv):
       OPTIONS.worker_threads = int(a)
     elif o in ("--intel_ota"):
       OPTIONS.intel_ota = True
-    elif o in ("--no_modem"):
-      OPTIONS.no_modem = True
-    elif o in ("--intel_capsule"):
-      OPTIONS.intel_capsule = True
-    elif o in ("--intel_ulpmc"):
-      OPTIONS.intel_ulpmc = True
-    elif o in ("--intel_chaabi_token"):
-      OPTIONS.intel_chaabi_token = True
-    elif o in ("--do_partitioning"):
-      OPTIONS.do_partitioning = True
-    elif o in ("--full_gpt"):
-      OPTIONS.full_gpt = True
     else:
       return False
     return True
@@ -944,12 +968,6 @@ def main(argv):
                                               "worker_threads=",
                                               "aslr_mode=",
                                               "intel_ota",
-                                              "no_modem",
-                                              "intel_capsule",
-                                              "intel_ulpmc",
-                                              "intel_chaabi_token",
-                                              "do_partitioning",
-                                              "full_gpt",
                                               ],
                              extra_option_handler=option_handler)
 
