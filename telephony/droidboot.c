@@ -67,10 +67,6 @@ static int push_mdm_package(void *data, unsigned sz)
 	/* This command can be used for a fls or a zip file. So we cannot
 	 * define the extension */
 	pr_info("Pushing fls or zip update");
-
-	/* @TODO: remove this file deletion */
-	unlink("/config/telephony/modembinary.fls");
-
 	return push_file(data, TELEPHONY_PROVISIONING"/package", sz);
 }
 

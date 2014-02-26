@@ -17,7 +17,6 @@
 #include <edify/expr.h>
 #include <updater/updater.h>
 #include <libgen.h>
-#include <unistd.h>
 
 #include "common.h"
 #include "util.h"
@@ -41,8 +40,6 @@ static Value* push_file(const char *name, State * state, int argc, Expr * argv[]
 	}
 
 	snprintf(output, sizeof(output), "%s/%s", TELEPHONY_PROVISIONING, basename(filename));
-	/* @TODO: remove this file deletion */
-	unlink("/config/telephony/modembinary.fls");
 	if (!file_copy(filename, output) && ! set_file_permission(output))
 		ret = StringValue(strdup(""));
 	else

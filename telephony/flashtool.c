@@ -17,7 +17,6 @@
 #include <libgen.h>
 #include <limits.h>
 #include <stdio.h>
-#include <unistd.h>
 
 #include "common.h"
 #include "util.h"
@@ -32,8 +31,4 @@ void cmd_push_mdm_fw(const char *filename)
 		set_file_permission(filename);
 	} else
 		fprintf(stderr, "failed to write %s", output);
-
-	/* @TODO: remove this file deletion */
-	unlink("/config/telephony/modembinary.fls");
-
 }
