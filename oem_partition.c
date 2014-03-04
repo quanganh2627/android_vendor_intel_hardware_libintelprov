@@ -309,6 +309,8 @@ int oem_partition_start_handler(int argc, char **argv)
 
 int oem_partition_stop_handler(int argc, char **argv)
 {
+	/* WA BZ 174666 : unmount /factory to be sure that mount_all does not fail */
+	ensure_path_unmounted("/factory");
 	property_set("sys.partitioning", "0");
 	print("Stop partitioning\n");
 	return 0;
