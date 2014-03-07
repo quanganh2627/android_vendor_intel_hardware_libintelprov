@@ -27,8 +27,8 @@ void cmd_push_mdm_fw(const char *filename)
 	snprintf(output, sizeof(output), "%s/%s", TELEPHONY_PROVISIONING,
 			basename(filename));
 	if (!file_copy(filename, output)) {
-		fprintf(stdout, "file %s successfully written", output);
+		fprintf(stdout, "file %s successfully written\n", output);
 		set_file_permission(filename);
 	} else
-		fprintf(stderr, "failed to write %s", output);
+		fprintf(stderr, "failed to write %s\n", output);
 }

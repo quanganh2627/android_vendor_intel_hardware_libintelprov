@@ -28,8 +28,8 @@ int set_file_permission(const char *filename)
 	struct passwd *pwd = getpwnam("radio");
 	if (pwd) {
 		uid_t uid = pwd->pw_uid;
-		ret = chown(filename, uid, uid);
-		ret |= chmod(filename, FILE_PERMISSION);
+		if (!chown(filename, uid, uid))
+			ret = chmod(filename, FILE_PERMISSION);
 	}
 	return ret;
 }
@@ -37,6 +37,7 @@ int set_file_permission(const char *filename)
 int create_config_folder(void)
 {
 	int ret = mkdir(TELEPHONY_PROVISIONING, FILE_PERMISSION);
-	ret |= set_file_permission(TELEPHONY_PROVISIONING);
+	if (!ret)
+		ret = set_file_permission(TELEPHONY_PROVISIONING);
 	return ret;
 }
