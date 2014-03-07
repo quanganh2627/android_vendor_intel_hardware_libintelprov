@@ -205,6 +205,7 @@ out:
 #define K_MAX_ARGS 256
 #define K_MAX_ARG_LEN 256
 
+#ifndef EXTERNAL
 static int wait_property(char *prop, char *value, int timeout_sec)
 {
 	int i;
@@ -259,6 +260,7 @@ static int oem_restore_factory(int argc, char **argv)
 
 	return 0;
 }
+#endif	/* EXTERNAL */
 
 static int oem_get_batt_info_handler(int argc, char **argv)
 {
@@ -319,7 +321,6 @@ static int oem_fru_handler(int argc, char **argv)
 out:
 	return ret;
 }
-#endif
 
 #define CONFIG_FILE "/mnt/config/local_config"
 
@@ -368,6 +369,7 @@ static int oem_fastboot2adb(int argc, char **argv)
 	}
 	return ret;
 }
+#endif	/* EXTERNAL */
 
 static int oem_reboot(int argc, char **argv)
 {
@@ -597,12 +599,15 @@ static void dump_system_versions()
 void libintel_droidboot_init(void)
 {
 	int ret = 0;
-	char platform_prop[PROPERTY_VALUE_MAX] = { '\0', };
 	char build_type_prop[PROPERTY_VALUE_MAX] = { '\0', };
+	char platform_prop[PROPERTY_VALUE_MAX] = { '\0', };
 	struct ufdisk ufdisk = {
 		.umount_all = ufdisk_umount_all,
 		.create_partition = ufdisk_create_partition
 	};
+
+	property_get("ro.board.platform", platform_prop, '\0');
+	property_get("ro.build.type", build_type_prop, '\0');
 
 	oem_partition_init(&ufdisk);
 	util_init(fastboot_fail, fastboot_info);
@@ -618,24 +623,6 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("capsule", flash_capsule);
 	ret |= aboot_register_flash_cmd("ulpmc", flash_ulpmc);
 
-	if (property_get("ro.board.platform", platform_prop, '\0') &&
-	    property_get("ro.build.type", build_type_prop, '\0')) {
-		if ((strcmp(platform_prop, "baytrail") == 0) && (strcmp(build_type_prop, "eng") == 0)) {
-			aboot_register_flash_cmd("fpt_ifwi", flash_fpt_data_ifwi);
-			aboot_register_flash_cmd("fpt_txe", flash_fpt_data_txe);
-			aboot_register_flash_cmd("fpt_pdr", flash_fpt_data_pdr);
-			aboot_register_flash_cmd("fpt_bios", flash_fpt_data_bios);
-			aboot_register_flash_cmd("fpt_fpfs", flash_fpt_data_fpfs);
-			aboot_register_flash_cmd("txemanuf", flash_txemanuf_data);
-
-			aboot_register_oem_cmd("fpt_writeitem", fpt_writeitem);
-			aboot_register_oem_cmd("fpt_writevalidbit", fpt_writevalidbit);
-			aboot_register_oem_cmd("fpt_closemnf", fpt_closemnf);
-			aboot_register_oem_cmd("txemanuf_eof_test", txemanuf_eof_test);
-			aboot_register_oem_cmd("txemanuf_bist_test", txemanuf_bist_test);
-		}
-	}
-
 	if (strcmp(build_type_prop, "user")) {
 		ret |= aboot_register_oem_cmd("dnx_timeout", oem_dnx_timeout);
 		ret |= aboot_register_oem_cmd("custom_boot" , oem_custom_boot);
@@ -650,16 +637,32 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("retrieve_partitions", oem_retrieve_partitions);
 	ret |= aboot_register_oem_cmd("stop_partitioning", oem_partition_stop_handler);
 	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
+	ret |= aboot_register_oem_cmd("reboot", oem_reboot);
+	ret |= aboot_register_oem_cmd("wipe", oem_wipe_partition);
+#ifndef EXTERNAL
+	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
+	ret |= aboot_register_oem_cmd("config", oem_config);
+	ret |= aboot_register_oem_cmd("mount", oem_mount);
+	ret |= libintel_droidboot_token_init();
+
 	ret |= aboot_register_oem_cmd("backup_factory", oem_backup_factory);
 	ret |= aboot_register_oem_cmd("restore_factory", oem_restore_factory);
 	ret |= aboot_register_oem_cmd("fastboot2adb", oem_fastboot2adb);
-	ret |= aboot_register_oem_cmd("reboot", oem_reboot);
-	ret |= aboot_register_oem_cmd("wipe", oem_wipe_partition);
-	ret |= aboot_register_oem_cmd("config", oem_config);
-#ifndef EXTERNAL
-	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
-	ret |= aboot_register_oem_cmd("mount", oem_mount);
-	ret |= libintel_droidboot_token_init();
+
+	if ((strcmp(platform_prop, "baytrail") == 0) && (strcmp(build_type_prop, "eng") == 0)) {
+		aboot_register_flash_cmd("fpt_ifwi", flash_fpt_data_ifwi);
+		aboot_register_flash_cmd("fpt_txe", flash_fpt_data_txe);
+		aboot_register_flash_cmd("fpt_pdr", flash_fpt_data_pdr);
+		aboot_register_flash_cmd("fpt_bios", flash_fpt_data_bios);
+		aboot_register_flash_cmd("fpt_fpfs", flash_fpt_data_fpfs);
+		aboot_register_flash_cmd("txemanuf", flash_txemanuf_data);
+
+		aboot_register_oem_cmd("fpt_writeitem", fpt_writeitem);
+		aboot_register_oem_cmd("fpt_writevalidbit", fpt_writevalidbit);
+		aboot_register_oem_cmd("fpt_closemnf", fpt_closemnf);
+		aboot_register_oem_cmd("txemanuf_eof_test", txemanuf_eof_test);
+		aboot_register_oem_cmd("txemanuf_bist_test", txemanuf_bist_test);
+	}
 #endif
 
 #ifdef BOARD_HAVE_MODEM
