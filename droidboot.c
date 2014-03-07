@@ -263,6 +263,7 @@ static int oem_write_osip_header(int argc, char **argv)
 	return 0;
 }
 
+#ifndef EXTERNAL
 static int wait_property(char *prop, char *value, int timeout_sec)
 {
 	int i;
@@ -317,6 +318,7 @@ static int oem_restore_factory(int argc, char **argv)
 
 	return 0;
 }
+#endif	/* EXTERNAL */
 
 static int oem_get_batt_info_handler(int argc, char **argv)
 {
@@ -377,7 +379,6 @@ static int oem_fru_handler(int argc, char **argv)
 out:
 	return ret;
 }
-#endif
 
 static int oem_fastboot2adb(int argc, char **argv)
 {
@@ -394,6 +395,7 @@ static int oem_fastboot2adb(int argc, char **argv)
 	}
 	return ret;
 }
+#endif	/* EXTERNAL */
 
 static int oem_reboot(int argc, char **argv)
 {
@@ -571,8 +573,6 @@ static void dump_system_versions()
 void libintel_droidboot_init(void)
 {
 	int ret = 0;
-	char platform_prop[PROPERTY_VALUE_MAX] = { '\0', };
-	char build_type_prop[PROPERTY_VALUE_MAX] = { '\0', };
 	struct ufdisk ufdisk = {
 		.umount_all = ufdisk_umount_all,
 		.create_partition = ufdisk_create_partition
@@ -595,6 +595,28 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("capsule", flash_capsule);
 	ret |= aboot_register_flash_cmd("ulpmc", flash_ulpmc);
 
+	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);
+	ret |= aboot_register_oem_cmd("erase", oem_erase_partition);
+	ret |= aboot_register_oem_cmd("repart", oem_repart_partition);
+
+	ret |= aboot_register_oem_cmd("write_osip_header", oem_write_osip_header);
+	ret |= aboot_register_oem_cmd("start_partitioning", oem_partition_start_handler);
+	ret |= aboot_register_oem_cmd("partition", oem_partition_cmd_handler);
+	ret |= aboot_register_oem_cmd("retrieve_partitions", oem_retrieve_partitions);
+	ret |= aboot_register_oem_cmd("stop_partitioning", oem_partition_stop_handler);
+	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
+	ret |= aboot_register_oem_cmd("reboot", oem_reboot);
+	ret |= aboot_register_oem_cmd("wipe", oem_wipe_partition);
+#ifndef EXTERNAL
+	char build_type_prop[PROPERTY_VALUE_MAX] = { '\0', };
+	char platform_prop[PROPERTY_VALUE_MAX] = { '\0', };
+	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
+	ret |= libintel_droidboot_token_init();
+
+	ret |= aboot_register_oem_cmd("backup_factory", oem_backup_factory);
+	ret |= aboot_register_oem_cmd("restore_factory", oem_restore_factory);
+	ret |= aboot_register_oem_cmd("fastboot2adb", oem_fastboot2adb);
+
 	if (property_get("ro.board.platform", platform_prop, '\0') &&
 	    property_get("ro.build.type", build_type_prop, '\0')) {
 		if ((strcmp(platform_prop, "baytrail") == 0) &&
@@ -613,25 +635,6 @@ void libintel_droidboot_init(void)
 			aboot_register_oem_cmd("txemanuf_bist_test", txemanuf_bist_test);
 		}
 	}
-
-	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);
-	ret |= aboot_register_oem_cmd("erase", oem_erase_partition);
-	ret |= aboot_register_oem_cmd("repart", oem_repart_partition);
-
-	ret |= aboot_register_oem_cmd("write_osip_header", oem_write_osip_header);
-	ret |= aboot_register_oem_cmd("start_partitioning", oem_partition_start_handler);
-	ret |= aboot_register_oem_cmd("partition", oem_partition_cmd_handler);
-	ret |= aboot_register_oem_cmd("retrieve_partitions", oem_retrieve_partitions);
-	ret |= aboot_register_oem_cmd("stop_partitioning", oem_partition_stop_handler);
-	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
-	ret |= aboot_register_oem_cmd("backup_factory", oem_backup_factory);
-	ret |= aboot_register_oem_cmd("restore_factory", oem_restore_factory);
-	ret |= aboot_register_oem_cmd("fastboot2adb", oem_fastboot2adb);
-	ret |= aboot_register_oem_cmd("reboot", oem_reboot);
-	ret |= aboot_register_oem_cmd("wipe", oem_wipe_partition);
-#ifndef EXTERNAL
-	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
-	ret |= libintel_droidboot_token_init();
 #endif
 
 #ifdef BOARD_HAVE_MODEM
