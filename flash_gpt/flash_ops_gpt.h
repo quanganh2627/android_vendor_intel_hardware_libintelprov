@@ -23,18 +23,37 @@
 #ifdef CONFIG_INTELPROV_GPT
 
 bool is_gpt(void);
-int flash_image_gpt(void *data, unsigned sz, const char*name);
+int flash_image_gpt(void *data, unsigned sz, const char *name);
 int read_image_gpt(const char *name, void **data);
 int read_image_signature_gpt(void **buf, char *name);
 int is_image_signed_gpt(const char *name);
 
-#else  /* CONFIG_INTELPROV_GPT */
+#else	/* CONFIG_INTELPROV_GPT */
 
-bool is_gpt(void) {return false;}
-int flash_image_gpt(void *data, unsigned sz, const char*name) {return stub_operation(__func__);}
-int read_image_gpt(const char *name, void **data) {return stub_operation(__func__);}
-int read_image_signature_gpt(void **buf, char *name) {return stub_operation(__func__);}
-int is_image_signed_gpt(const char *name) {return stub_operation(__func__);}
+bool is_gpt(void)
+{
+	return false;
+}
+
+int flash_image_gpt(void *data, unsigned sz, const char *name)
+{
+	return stub_operation(__func__);
+}
+
+int read_image_gpt(const char *name, void **data)
+{
+	return stub_operation(__func__);
+}
+
+int read_image_signature_gpt(void **buf, char *name)
+{
+	return stub_operation(__func__);
+}
+
+int is_image_signed_gpt(const char *name)
+{
+	return stub_operation(__func__);
+}
 
 #endif	/* CONFIG_INTELPROV_GPT */
 

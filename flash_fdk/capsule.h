@@ -67,6 +67,6 @@ typedef struct {
 	int val_0;
 	int val_1;
 	int val_2;
-} sec_version_t ;
+} sec_version_t;
 
 #endif

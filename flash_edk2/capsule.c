@@ -34,8 +34,7 @@
 bool is_edk2(void)
 {
 	struct stat buf;
-	return (stat(ESP_DEVICE, &buf) == 0
-		&& S_ISBLK(buf.st_mode));
+	return (stat(ESP_DEVICE, &buf) == 0 && S_ISBLK(buf.st_mode));
 }
 
 /* This function is workaround replacement of ensure_path_mounted we
@@ -51,8 +50,7 @@ static int ensure_esp_mounted()
 		return ret;
 	}
 
-	ret = mount(ESP_DEVICE, ESP_MOUNT_POINT, ESP_FS_TYPE,
-		    MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
+	ret = mount(ESP_DEVICE, ESP_MOUNT_POINT, ESP_FS_TYPE, MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
 	/* EBUSY means that the filesystem is already mounted. */
 	if (ret == -1 && errno != EBUSY) {
 		error("%s: mount %s failed\n", __func__, ESP_MOUNT_POINT);
@@ -68,15 +66,13 @@ int flash_capsule_edk2(void *data, unsigned sz)
 
 	ret = ensure_esp_mounted();
 	if (ret != 0) {
-		error("%s: failed to ensure mount %s\n", __func__,
-		      ESP_MOUNT_POINT);
+		error("%s: failed to ensure mount %s\n", __func__, ESP_MOUNT_POINT);
 		return ret;
 	}
 
 	ret = file_write(CAPSULE_BIN_FILE, data, sz);
 	if (ret != 0) {
-		error("%s : write date to file %s failed\n", __func__,
-		      CAPSULE_BIN_FILE);
+		error("%s : write date to file %s failed\n", __func__, CAPSULE_BIN_FILE);
 		return ret;
 	}
 

@@ -30,8 +30,14 @@
 #define K_MAX_ARGS 256
 #define K_MAX_ARG_LEN 256
 
-static void fake_umount_all(void) {}
-static int fake_create_partition(void) { return -1; }
+static void fake_umount_all(void)
+{
+}
+
+static int fake_create_partition(void)
+{
+	return -1;
+}
 
 static struct ufdisk ufdisk = {
 	.umount_all = fake_umount_all,
@@ -48,20 +54,20 @@ static char **str_to_array(char *str, int *argc)
 
 	tokens = malloc(sizeof(char *) * K_MAX_ARGS);
 
-	if(tokens == NULL)
+	if (tokens == NULL)
 		return NULL;
 
 	num_tokens = 0;
 
-	for (j = 1, str1 = str; ; j++, str1 = NULL) {
+	for (j = 1, str1 = str;; j++, str1 = NULL) {
 		token = strtok_r(str1, " ", &saveptr1);
 
 		if (token == NULL)
 			break;
 
-		tokens[num_tokens] = (char *) malloc(sizeof(char) * K_MAX_ARG_LEN+1);
+		tokens[num_tokens] = (char *)malloc(sizeof(char) * K_MAX_ARG_LEN + 1);
 
-		if(tokens[num_tokens] == NULL)
+		if (tokens[num_tokens] == NULL)
 			break;
 
 		strncpy(tokens[num_tokens], token, K_MAX_ARG_LEN);
@@ -75,9 +81,12 @@ static char **str_to_array(char *str, int *argc)
 	return tokens;
 }
 
-static int (*indirected_cmd_reload)(int argc, char *argv[]) = cmd_reload;
+static int (*indirected_cmd_reload) (int argc, char *argv[]) = cmd_reload;
 
-static int cmd_noop(int argc, char **argv) { return 0; }
+static int cmd_noop(int argc, char **argv)
+{
+	return 0;
+}
 
 void oem_partition_disable_cmd_reload()
 {
@@ -90,9 +99,9 @@ static int oem_partition_gpt_sub_command(int argc, char **argv)
 	char *command = argv[0];
 	struct {
 		const char *name;
-		int (*fp)(int argc, char *argv[]);
+		int (*fp) (int argc, char *argv[]);
 	} cmds[] = {
-		{"create", cmd_create },
+		{"create", cmd_create},
 		{"add", cmd_add},
 		{"dump", cmd_show},
 		{"repair", cmd_repair},
@@ -104,7 +113,7 @@ static int oem_partition_gpt_sub_command(int argc, char **argv)
 	};
 
 	optind = 0;
-	for (i = 0; command && i < sizeof(cmds)/sizeof(cmds[0]); ++i)
+	for (i = 0; command && i < sizeof(cmds) / sizeof(cmds[0]); ++i)
 		if (0 == strncmp(cmds[i].name, command, strlen(command)))
 			return cmds[i].fp(argc, argv);
 
@@ -118,7 +127,7 @@ static int oem_partition_gpt_handler(FILE *fp)
 	int i;
 	char buffer[K_MAX_ARG_LEN];
 	char **argv = NULL;
-	char value[PROPERTY_VALUE_MAX] = {'\0'};
+	char value[PROPERTY_VALUE_MAX] = { '\0' };
 
 	property_get("sys.partitioning", value, NULL);
 	if (strcmp(value, "1")) {
@@ -128,28 +137,27 @@ static int oem_partition_gpt_handler(FILE *fp)
 
 	uuid_generator = uuid_generate;
 	while (fgets(buffer, sizeof(buffer), fp)) {
-		if (buffer[strlen(buffer)-1] == '\n')
-			buffer[strlen(buffer)-1]='\0';
+		if (buffer[strlen(buffer) - 1] == '\n')
+			buffer[strlen(buffer) - 1] = '\0';
 		argv = str_to_array(buffer, &argc);
 
-		if(argv != NULL) {
+		if (argv != NULL) {
 			ret = oem_partition_gpt_sub_command(argc, argv);
 
-			for(i = 0; i < argc ; i++) {
+			for (i = 0; i < argc; i++) {
 				if (argv[i]) {
 					free(argv[i]);
-					argv[i]=NULL;
+					argv[i] = NULL;
 				}
 			}
 			free(argv);
-			argv=NULL;
+			argv = NULL;
 
 			if (ret) {
 				error("GPT command failed\n");
 				return -1;
 			}
-		}
-		else {
+		} else {
 			error("GPT str_to_array error. Malformed string ?\n");
 			return -1;
 		}
@@ -167,9 +175,9 @@ static int oem_partition_mbr_handler(FILE *fp)
 	return ufdisk.create_partition();
 }
 
-static int nuke_volume(const char* volume, long int bufferSize)
+static int nuke_volume(const char *volume, long int bufferSize)
 {
-	Volume* v = volume_for_path(volume);
+	Volume *v = volume_for_path(volume);
 	int fd, count, count_w, offset;
 	char *pbuf = NULL, *pbufRead = NULL;
 	long int ret, retval;
@@ -201,24 +209,24 @@ static int nuke_volume(const char* volume, long int bufferSize)
 	}
 
 	pbuf = (char *)malloc(bufferSize);
-	if (pbuf == NULL){
+	if (pbuf == NULL) {
 		error("nuke_volume: malloc pbuf failed\n");
 		ret = -1;
 		goto end3;
 	}
 
 	pbufRead = (char *)malloc(bufferSize);
-	if (pbufRead == NULL){
+	if (pbufRead == NULL) {
 		error("nuke_volume: malloc pbufRead failed\n");
 		ret = -1;
 		goto end2;
 	}
 
-	memset(pbuf, 0xFF, bufferSize*sizeof(char));
+	memset(pbuf, 0xFF, bufferSize * sizeof(char));
 
 	size = lseek64(fd, 0, SEEK_END);
 
-	if(size == -1) {
+	if (size == -1) {
 		error("nuke_volume: lseek64 fd failed\n");
 		ret = -1;
 		goto end1;
@@ -247,7 +255,7 @@ static int nuke_volume(const char* volume, long int bufferSize)
 		count++;
 	} while (ret == bufferSize);
 
-	print("wrote ret %ld, count %d,  \"%s\"\n",ret, count, v->device);
+	print("wrote ret %ld, count %d,  \"%s\"\n", ret, count, v->device);
 
 	//now do readback check that data is as expected
 	offset = lseek(fd, 0, SEEK_SET);
@@ -267,23 +275,22 @@ static int nuke_volume(const char* volume, long int bufferSize)
 			goto end1;
 		}
 
-		retval = memcmp(pbuf, pbufRead,  bufferSize);
+		retval = memcmp(pbuf, pbufRead, bufferSize);
 		count++;
 		if (retval != 0) {
-			error("nuke_volume failed read back check!! \"%s\"\n",
-				 v->device);
+			error("nuke_volume failed read back check!! \"%s\"\n", v->device);
 			ret = -1;
 			goto end1;
 		}
 	} while (ret == bufferSize);
 
-	if (count != count_w){
+	if (count != count_w) {
 		error("nuke_volume: failed read back check, bad count %d\n", count);
 		ret = -1;
 		goto end1;
 	}
 
-	print("read back ret %ld, count %d \"%s\"\n",ret, count, v->device);
+	print("read back ret %ld, count %d \"%s\"\n", ret, count, v->device);
 	ret = 0;
 
 end1:
@@ -297,7 +304,6 @@ end3:
 	pbufRead = NULL;
 	return ret;
 }
-
 
 int oem_partition_start_handler(int argc, char **argv)
 {
@@ -337,7 +343,7 @@ int oem_partition_cmd_handler(int argc, char **argv)
 			return -1;
 		}
 
-		buffer[strlen(buffer)-1]='\0';
+		buffer[strlen(buffer) - 1] = '\0';
 
 		if (sscanf(buffer, "%*[^=]=%255s", partition_type) != 1) {
 			error("partition file is invalid");
@@ -356,8 +362,8 @@ int oem_partition_cmd_handler(int argc, char **argv)
 	return retval;
 }
 
-#define MOUNT_POINT_SIZE    50      /* /dev/<whatever> */
-#define BUFFER_SIZE         4000000 /* 4Mb */
+#define MOUNT_POINT_SIZE    50	/* /dev/<whatever> */
+#define BUFFER_SIZE         4000000	/* 4Mb */
 
 static int get_mountpoint(char *name, char *mnt_point)
 {
@@ -392,7 +398,7 @@ int oem_erase_partition(int argc, char **argv)
 
 	if (argc != 2) {
 		/* Should not pass here ! */
-                error("oem erase called with wrong parameter!");
+		error("oem erase called with wrong parameter!");
 		goto end;
 	}
 
@@ -449,7 +455,7 @@ int oem_retrieve_partitions(int argc, char **argv)
 	char boot_opt[] = "-p";
 	char *reload_argv[2];
 
-	if(argc != 1) {
+	if (argc != 1) {
 		error("oem retrieve_partitions does not require argument");
 		return -1;
 	}
@@ -498,7 +504,7 @@ int oem_wipe_partition(int argc, char **argv)
 	char mnt_point[MOUNT_POINT_SIZE] = "";
 
 	if (argc != 2) {
-                error("oem erase called with wrong parameter!");
+		error("oem erase called with wrong parameter!");
 		goto end;
 	}
 

@@ -28,14 +28,13 @@
 bool is_gpt(void)
 {
 	struct stat buf;
-	return (stat(BASE_PLATFORM_INTEL_LABEL"/fastboot", &buf) == 0
-		&& S_ISBLK(buf.st_mode));
+	return (stat(BASE_PLATFORM_INTEL_LABEL "/fastboot", &buf) == 0 && S_ISBLK(buf.st_mode));
 }
 
 char *get_gpt_path(const char *name)
 {
 	char *block_dev = malloc(BUFSIZ);
-	char base[] = BASE_PLATFORM_INTEL_LABEL"/";
+	char base[] = BASE_PLATFORM_INTEL_LABEL "/";
 	struct stat buf;
 
 	if (!name) {
@@ -82,7 +81,7 @@ int flash_image_gpt(void *data, unsigned sz, const char *name)
 
 static int pages(struct boot_img_hdr *hdr, int blob_size)
 {
-        return (blob_size + hdr->page_size - 1) / hdr->page_size;
+	return (blob_size + hdr->page_size - 1) / hdr->page_size;
 }
 
 int open_bootimage(const char *name)
@@ -94,7 +93,7 @@ int open_bootimage(const char *name)
 	if (!block_dev)
 		goto out;
 
-	fd =  open(block_dev, O_RDONLY);
+	fd = open(block_dev, O_RDONLY);
 	if (fd < 0)
 		error("Failed to open %s: %s\n", block_dev, strerror(errno));
 
@@ -104,7 +103,7 @@ out:
 }
 
 /* Fill hdr with bootimage's header and return image's size */
-ssize_t bootimage_size(int fd, struct boot_img_hdr *hdr, bool include_sig)
+ssize_t bootimage_size(int fd, struct boot_img_hdr * hdr, bool include_sig)
 {
 	ssize_t size = -1;
 
@@ -119,8 +118,7 @@ ssize_t bootimage_size(int fd, struct boot_img_hdr *hdr, bool include_sig)
 	}
 
 	size = (1 + pages(hdr, hdr->kernel_size) +
-	       pages(hdr, hdr->ramdisk_size) +
-	       pages(hdr, hdr->second_size)) * hdr->page_size;
+		pages(hdr, hdr->ramdisk_size) + pages(hdr, hdr->second_size)) * hdr->page_size;
 
 	if (include_sig)
 		size += pages(hdr, hdr->sig_size) * hdr->page_size;
@@ -223,7 +221,7 @@ int is_image_signed_gpt(const char *name)
 	int ret = -1;
 	int fd;
 
-	fd = open(BASE_PLATFORM_INTEL_LABEL"/recovery", O_RDONLY);
+	fd = open(BASE_PLATFORM_INTEL_LABEL "/recovery", O_RDONLY);
 	if (fd < 0) {
 		error("open: %s", strerror(errno));
 		goto out;

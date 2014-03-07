@@ -73,6 +73,6 @@ int fw_vercmp(struct firmware_versions *v1, struct firmware_versions *v2);
 int crack_update_fw(const char *fw_file, struct fw_version *ifwi_version);
 
 /* Crack ifwi firmware file to get the PTI Field. */
-int crack_update_fw_pti_field(const char *fw_file, uint8_t *pti_field);
+int crack_update_fw_pti_field(const char *fw_file, uint8_t * pti_field);
 
 #endif

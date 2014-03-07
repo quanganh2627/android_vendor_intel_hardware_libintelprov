@@ -56,7 +56,7 @@ static int oem_write_osip_header(int argc, char **argv);
 
 static int flash_testos(void *data, unsigned sz)
 {
-	oem_write_osip_header(0,0);
+	oem_write_osip_header(0, 0);
 	return write_stitch_image_ex(data, sz, 0, 1);
 }
 
@@ -84,9 +84,9 @@ static int oem_dnx_timeout(int argc, char **argv)
 
 	size = snprintf(option, OPTION_SIZE, "%s", argv[1]);
 
-	if (size == -1 || size > OPTION_SIZE-1) {
-	    fastboot_fail("Parameter size exceeds limit");
-	    goto end2;
+	if (size == -1 || size > OPTION_SIZE - 1) {
+		fastboot_fail("Parameter size exceeds limit");
+		goto end2;
 	}
 
 	fd = open(SYS_CURRENT_TIMEOUT, O_RDWR);
@@ -107,54 +107,54 @@ static int oem_dnx_timeout(int argc, char **argv)
 
 		fastboot_info(check);
 
-	} else { if (!strcmp(option, DNX_TIMEOUT_SET)) {
-		    /* Set new timeout */
+	} else {
+		if (!strcmp(option, DNX_TIMEOUT_SET)) {
+			/* Set new timeout */
 
-		    if (argc != 3) {
-			/* Should not pass here ! */
-			fastboot_fail("oem dnx_timeout --set not enough arguments");
-			goto end1;
-		    }
+			if (argc != 3) {
+				/* Should not pass here ! */
+				fastboot_fail("oem dnx_timeout --set not enough arguments");
+				goto end1;
+			}
+			// Get timeout value to set
+			size = snprintf(timeout, TIMEOUT_SIZE, "%s", argv[2]);
 
-		    // Get timeout value to set
-		    size = snprintf(timeout, TIMEOUT_SIZE, "%s", argv[2]);
+			if (size == -1 || size > TIMEOUT_SIZE - 1) {
+				fastboot_fail("Timeout value size exceeds limit");
+				goto end1;
+			}
 
-		    if (size == -1 || size > TIMEOUT_SIZE-1) {
-			fastboot_fail("Timeout value size exceeds limit");
-			goto end1;
-		    }
+			bytes = write(fd, timeout, size);
+			if (bytes != size) {
+				fastboot_fail("oem dnx_timeout failed to write file");
+				goto end1;
+			}
 
-		    bytes = write(fd, timeout, size);
-		    if (bytes != size) {
-			fastboot_fail("oem dnx_timeout failed to write file");
-			goto end1;
-		    }
+			offset = lseek(fd, 0, SEEK_SET);
+			if (offset == -1) {
+				fastboot_fail("oem dnx_timeout failed to set offset");
+				goto end1;
+			}
 
-		    offset = lseek(fd, 0, SEEK_SET);
-		    if (offset == -1) {
-			fastboot_fail("oem dnx_timeout failed to set offset");
-			goto end1;
-		    }
+			memset(check, 0, TIMEOUT_SIZE);
 
-		    memset(check, 0, TIMEOUT_SIZE);
-
-		    count = read(fd, check, TIMEOUT_SIZE);
-		    if (count <= 0) {
-			fastboot_fail("Failed to check");
-		    	goto end1;
-		    }
-
-		    // terminate string unconditionally to avoid buffer overflow
-		    check[TIMEOUT_SIZE-1] = '\0';
-		    if (check[strlen(check)-1] == '\n')
-			check[strlen(check)-1]= '\0';
-		    if (strcmp(check, timeout)) {
-			fastboot_fail("oem dnx_timeout called with wrong parameter");
-			goto end1;
-		    }
+			count = read(fd, check, TIMEOUT_SIZE);
+			if (count <= 0) {
+				fastboot_fail("Failed to check");
+				goto end1;
+			}
+			// terminate string unconditionally to avoid buffer overflow
+			check[TIMEOUT_SIZE - 1] = '\0';
+			if (check[strlen(check) - 1] == '\n')
+				check[strlen(check) - 1] = '\0';
+			if (strcmp(check, timeout)) {
+				fastboot_fail("oem dnx_timeout called with wrong parameter");
+				goto end1;
+			}
 		} else {
-		    fastboot_fail("Unknown command. Use fastboot oem dnx_timeout [--get/--set] command\n");
-		    goto end1;
+			fastboot_fail
+			    ("Unknown command. Use fastboot oem dnx_timeout [--get/--set] command\n");
+			goto end1;
 		}
 	}
 
@@ -198,9 +198,9 @@ static int wait_property(char *prop, char *value, int timeout_sec)
 	int i;
 	char v[PROPERTY_VALUE_MAX];
 
-	for(i = 0; i < timeout_sec; i++) {
+	for (i = 0; i < timeout_sec; i++) {
 		property_get(prop, v, NULL);
-		if(!strcmp(v, value))
+		if (!strcmp(v, value))
 			return 0;
 		sleep(1);
 	}
@@ -220,7 +220,7 @@ static int oem_backup_factory(int argc, char **argv)
 
 	property_set("sys.backup_factory", "backup");
 	ui_print("Backing up factory partition...\n");
-	if(wait_property("sys.backup_factory", "done", 60)) {
+	if (wait_property("sys.backup_factory", "done", 60)) {
 		fastboot_fail("Factory partition backing up timeout!\n");
 		return -1;
 	}
@@ -240,7 +240,7 @@ static int oem_restore_factory(int argc, char **argv)
 
 	property_set("sys.backup_factory", "restore");
 	ui_print("Restoring factory partition...\n");
-	if(wait_property("sys.backup_factory", "done", 60)) {
+	if (wait_property("sys.backup_factory", "done", 60)) {
 		fastboot_fail("Factory partition restore timeout!\n");
 		return -1;
 	}
@@ -296,9 +296,9 @@ static int oem_fru_handler(int argc, char **argv)
 	tmp[2] = 0;
 	for (i = 0; i < PMDB_FRU_SIZE; i++) {
 		/* FRU is passed by 4bits nibbles. Need to reorder them into hex values. */
-		tmp[0] = str[2*i+1];
-		tmp[1] = str[2*i];
-		if (!is_hex(tmp[0]) || ! is_hex(tmp[1]))
+		tmp[0] = str[2 * i + 1];
+		tmp[1] = str[2 * i];
+		if (!is_hex(tmp[0]) || !is_hex(tmp[1]))
 			fastboot_fail("fru value have non hexadecimal characters\n");
 		sscanf(tmp, "%2hhx", &fru[i]);
 	}
@@ -351,7 +351,8 @@ static int oem_reboot(int argc, char **argv)
 }
 
 #ifndef EXTERNAL
-static int oem_mount(int argc, char **argv) {
+static int oem_mount(int argc, char **argv)
+{
 	int ret = 0;
 	char *partname = NULL;
 	char *mountpoint = NULL;
@@ -364,7 +365,7 @@ static int oem_mount(int argc, char **argv) {
 	}
 
 	/* look for partition name in by-label tree */
-	ret = asprintf(&partname, BASE_PLATFORM_INTEL_LABEL"/%s", argv[1]);
+	ret = asprintf(&partname, BASE_PLATFORM_INTEL_LABEL "/%s", argv[1]);
 	if (ret < 0) {
 		fastboot_fail("asprintf partname failed");
 		goto end;
@@ -384,10 +385,9 @@ static int oem_mount(int argc, char **argv) {
 		LOGE("mkdir failed : %s\n", strerror(errno));
 		ret = -errno;
 		goto end;
-        }
+	}
 
-	ret = mount(partname, mountpoint, argv[2],
-		    MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
+	ret = mount(partname, mountpoint, argv[2], MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
 	if (ret == -1) {
 		fastboot_fail("mount failed");
 		LOGE("mount failed : %s\n", strerror(errno));
@@ -410,7 +410,7 @@ end:
 #define MAX_NAME_SIZE			128
 #define BUF_SIZE					256
 
-static char* strupr(char *str)
+static char *strupr(char *str)
 {
 	char *p = str;
 	while (*p != '\0') {
@@ -420,7 +420,7 @@ static char* strupr(char *str)
 	return str;
 }
 
-static int read_from_file(char* file, char *attr, char *value)
+static int read_from_file(char *file, char *attr, char *value)
 {
 	char *p;
 	char buf[BUF_SIZE];
@@ -430,11 +430,11 @@ static int read_from_file(char* file, char *attr, char *value)
 		LOGE("open %s error!\n", file);
 		return -1;
 	}
-	while(fgets(buf, BUF_SIZE, f)) {
+	while (fgets(buf, BUF_SIZE, f)) {
 		if ((p = strstr(buf, attr)) != NULL) {
-			p += strlen(attr)+1;
+			p += strlen(attr) + 1;
 			strncpy(value, p, MAX_NAME_SIZE);
-			value[MAX_NAME_SIZE-1] = '\0';
+			value[MAX_NAME_SIZE - 1] = '\0';
 			strupr(value);
 			break;
 		}
@@ -452,29 +452,29 @@ static int get_system_info(int type, char *info, unsigned sz)
 	char value[PROPERTY_VALUE_MAX];
 
 	switch (type) {
-		case IFWI_VERSION:
-			property_get("sys.ifwi.version", value, "");
-			snprintf(info, sz, "%s", value);
-			ret = 0;
+	case IFWI_VERSION:
+		property_get("sys.ifwi.version", value, "");
+		snprintf(info, sz, "%s", value);
+		ret = 0;
+		break;
+	case PRODUCT_NAME:
+		if ((ret = read_from_file(PROP_FILE, PRODUCT_NAME_ATTR, pro_name)) < 0)
 			break;
-		case PRODUCT_NAME:
-			if ((ret = read_from_file(PROP_FILE, PRODUCT_NAME_ATTR, pro_name)) < 0)
-				break;
-			snprintf(info, sz, "%s", pro_name);
-			ret = 0;
+		snprintf(info, sz, "%s", pro_name);
+		ret = 0;
+		break;
+	case SERIAL_NUM:
+		if ((f = fopen(SERIAL_NUM_FILE, "r")) == NULL)
 			break;
-		case SERIAL_NUM:
-			if ((f = fopen(SERIAL_NUM_FILE, "r")) == NULL)
-				break;
-			if (fgets(info, sz, f) == NULL) {
-				fclose(f);
-				break;
-			}
+		if (fgets(info, sz, f) == NULL) {
 			fclose(f);
-			ret = 0;
 			break;
-		default:
-			break;
+		}
+		fclose(f);
+		ret = 0;
+		break;
+	default:
+		break;
 	}
 
 	return ret;
@@ -518,15 +518,15 @@ struct property_format {
 };
 
 static struct property_format properties_format[] = {
-	{ "sys.ifwi.version",     "         ifwi:", NULL },
-	{ NULL,                   "---- components ----" , NULL },
-	{ "sys.scu.version",      "          scu:", NULL },
-	{ "sys.punit.version",    "        punit:", NULL },
-	{ "sys.valhooks.version", "    hooks/oem:", NULL },
-	{ "sys.ia32.version",     "         ia32:", NULL },
-	{ "sys.suppia32.version", "     suppia32:", NULL },
-	{ "sys.mia.version",      "          mIA:", NULL },
-	{ "sys.chaabi.version",   "       chaabi:", "CHAABI versions unreadable at runtime" },
+	{"sys.ifwi.version", "         ifwi:", NULL},
+	{NULL, "---- components ----", NULL},
+	{"sys.scu.version", "          scu:", NULL},
+	{"sys.punit.version", "        punit:", NULL},
+	{"sys.valhooks.version", "    hooks/oem:", NULL},
+	{"sys.ia32.version", "         ia32:", NULL},
+	{"sys.suppia32.version", "     suppia32:", NULL},
+	{"sys.mia.version", "          mIA:", NULL},
+	{"sys.chaabi.version", "       chaabi:", "CHAABI versions unreadable at runtime"},
 };
 
 static void dump_system_versions()
@@ -534,8 +534,7 @@ static void dump_system_versions()
 	char property[PROPERTY_VALUE_MAX];
 	unsigned int i;
 
-	for (i = 0 ; i < sizeof(properties_format)/ sizeof((properties_format)[0]) ; i++)
-	{
+	for (i = 0; i < sizeof(properties_format) / sizeof((properties_format)[0]); i++) {
 		struct property_format *fmt = &properties_format[i];
 
 		if (!fmt->name) {
@@ -577,8 +576,7 @@ void libintel_droidboot_init(void)
 
 	if (property_get("ro.board.platform", platform_prop, '\0') &&
 	    property_get("ro.build.type", build_type_prop, '\0')) {
-		if ((strcmp(platform_prop, "baytrail") == 0) &&
-		    (strcmp(build_type_prop, "eng") == 0)) {
+		if ((strcmp(platform_prop, "baytrail") == 0) && (strcmp(build_type_prop, "eng") == 0)) {
 			aboot_register_flash_cmd("fpt_ifwi", flash_fpt_data_ifwi);
 			aboot_register_flash_cmd("fpt_txe", flash_fpt_data_txe);
 			aboot_register_flash_cmd("fpt_pdr", flash_fpt_data_pdr);

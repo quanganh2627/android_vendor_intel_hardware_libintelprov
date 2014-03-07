@@ -27,13 +27,32 @@ int read_image_osip(const char *name, void **data);
 int read_image_signature_osip(void **buf, char *name);
 int is_image_signed_osip(const char *name);
 
-#else  /* CONFIG_INTELPROV_OSIP */
+#else	/* CONFIG_INTELPROV_OSIP */
 
-bool is_osip(void) {return false;}
-int flash_image_osip(void *data, unsigned sz, const char *name) {return stub_operation(__func__);};
-int read_image_osip(const char *name, void **data) {return stub_operation(__func__);};
-int read_image_signature_osip(void **buf, char *name) {return stub_operation(__func__);};
-int is_image_signed_osip(const char *name) {return stub_operation(__func__);};
+bool is_osip(void)
+{
+	return false;
+}
+
+int flash_image_osip(void *data, unsigned sz, const char *name)
+{
+	return stub_operation(__func__);
+};
+
+int read_image_osip(const char *name, void **data)
+{
+	return stub_operation(__func__);
+};
+
+int read_image_signature_osip(void **buf, char *name)
+{
+	return stub_operation(__func__);
+};
+
+int is_image_signed_osip(const char *name)
+{
+	return stub_operation(__func__);
+};
 
 #endif	/* CONFIG_INTELPROV_OSIP */
 

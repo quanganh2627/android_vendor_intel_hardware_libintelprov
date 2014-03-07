@@ -50,7 +50,7 @@ int safe_read(int fd, void *data, size_t size)
 	return 0;
 }
 
-int file_read(const char *filename, void **datap, size_t *szp)
+int file_read(const char *filename, void **datap, size_t * szp)
 {
 	struct stat sb;
 	size_t sz;
@@ -64,16 +64,14 @@ int file_read(const char *filename, void **datap, size_t *szp)
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
-		printf("file_read: can't open file %s: %s\n",
-				filename, strerror(errno));
+		printf("file_read: can't open file %s: %s\n", filename, strerror(errno));
 		return -1;
 	}
 
 	sz = sb.st_size;
 	data = malloc(sz);
 	if (!datap) {
-		printf("memory allocation failure: %s\n",
-				strerror(errno));
+		printf("memory allocation failure: %s\n", strerror(errno));
 		return -1;
 	}
 
@@ -97,16 +95,14 @@ int file_write(const char *filename, const void *data, size_t sz)
 
 	fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, FILEMODE);
 	if (fd < 0) {
-		printf("file_write: Can't open file %s: %s\n",
-				filename, strerror(errno));
+		printf("file_write: Can't open file %s: %s\n", filename, strerror(errno));
 		return -1;
 	}
 
 	while (sz) {
 		ret = write(fd, what, sz);
 		if (ret <= 0 && errno != EINTR) {
-			printf("file_write: Failed to write to %s: %s\n",
-					filename, strerror(errno));
+			printf("file_write: Failed to write to %s: %s\n", filename, strerror(errno));
 			close(fd);
 			return -1;
 		}
@@ -181,8 +177,7 @@ int file_size(const char *filename)
 
 	ret = stat(filename, &stat_buf);
 	if (ret == -1) {
-		error("Failed to get stat on %s file, %s.",
-		      filename, strerror(errno));
+		error("Failed to get stat on %s file, %s.", filename, strerror(errno));
 		return -1;
 	}
 
@@ -196,15 +191,13 @@ void *file_mmap(const char *filename, size_t length, bool writable)
 
 	fd = open(filename, writable ? O_RDWR : O_RDONLY);
 	if (fd == -1) {
-		error("Failed to open %s file, %s.",
-		      filename, strerror(errno));
+		error("Failed to open %s file, %s.", filename, strerror(errno));
 		goto exit;
 	}
 
 	ret = mmap(NULL, length, (writable ? PROT_WRITE : 0) | PROT_READ, MAP_SHARED, fd, 0);
 	if (ret == MAP_FAILED) {
-		error("Failed to map %s file into memory, %s.",
-		      filename, strerror(errno));
+		error("Failed to map %s file into memory, %s.", filename, strerror(errno));
 		goto close;
 	}
 
@@ -226,8 +219,7 @@ void dump_trace_file(const char *filename)
 
 	fp = fopen(filename, "r");
 	if (!fp) {
-		printf("can't open trace file %s: %s\n",
-				filename, strerror(errno));
+		printf("can't open trace file %s: %s\n", filename, strerror(errno));
 		return;
 	}
 
@@ -238,9 +230,9 @@ void dump_trace_file(const char *filename)
 
 int snhexdump(char *str, size_t size, const unsigned char *data, unsigned int sz)
 {
-	int ret=0;
-	while(sz > 0 && size >4) {
-		int len = snprintf(str, 4, "%02x ",*data);
+	int ret = 0;
+	while (sz > 0 && size > 4) {
+		int len = snprintf(str, 4, "%02x ", *data);
 		str += len;
 		size -= len;
 		sz--;
@@ -251,7 +243,7 @@ int snhexdump(char *str, size_t size, const unsigned char *data, unsigned int sz
 }
 
 void hexdump_buffer(const unsigned char *buffer, unsigned int buffer_size,
-		void (*printrow)(const char *text), unsigned int bytes_per_row)
+		    void (*printrow) (const char *text), unsigned int bytes_per_row)
 {
 	unsigned int left = buffer_size;
 	static char buffer_txt[1024];
@@ -259,9 +251,8 @@ void hexdump_buffer(const unsigned char *buffer, unsigned int buffer_size,
 	while (left > 0) {
 		unsigned int row = left < bytes_per_row ? left : bytes_per_row;
 		unsigned int rowlen = snhexdump(buffer_txt, sizeof(buffer_txt)
-				- 1, buffer, row);
-		snprintf(buffer_txt + rowlen,
-				sizeof(buffer_txt) - rowlen - 1, "\n");
+						- 1, buffer, row);
+		snprintf(buffer_txt + rowlen, sizeof(buffer_txt) - rowlen - 1, "\n");
 		printrow(buffer_txt);
 		buffer += row;
 		left -= row;
@@ -279,7 +270,8 @@ void twoscomplement(unsigned char *cs, unsigned char *buf, unsigned int size)
 	*cs = (~*cs) + 1;
 }
 
-int is_hex(char c) {
+int is_hex(char c)
+{
 	return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
 }
 
@@ -289,8 +281,8 @@ void eprintf(const char *msg)
 }
 
 /* Output stream management.  */
-static void (*error_fun)(const char *msg) = (void (*)(const char *))eprintf;
-static void (*print_fun)(const char *msg) = (void (*)(const char *))printf;
+static void (*error_fun) (const char *msg) = (void (*)(const char *))eprintf;
+static void (*print_fun) (const char *msg) = (void (*)(const char *))printf;
 
 #define MSG_BUF_LENGTH 256
 
@@ -342,8 +334,7 @@ static void run_program(const char *path, int output_fd, char *argv[])
 		goto exit;
 	}
 
-	if ((dup2(output_fd, STDOUT_FILENO) == -1) ||
-	    (dup2(output_fd, STDERR_FILENO) == -1)) {
+	if ((dup2(output_fd, STDOUT_FILENO) == -1) || (dup2(output_fd, STDERR_FILENO) == -1)) {
 		error("Failed to redirect %s program output.", path);
 		goto exit;
 	}
@@ -353,7 +344,6 @@ static void run_program(const char *path, int output_fd, char *argv[])
 	ret = execv(path, argv);
 	if (ret != -1)
 		goto exit;
-
 
 	FILE *file = fdopen(err_fd, "w");
 	if (file == NULL)
@@ -425,8 +415,7 @@ int call_program(const char *path, const char *log_file,
 
 	file = fdopen(fd, "r+");
 	if (file == NULL) {
-		error("Failed to fdopen on %s (already opened via open), %s.",
-		      log_file, strerror(errno));
+		error("Failed to fdopen on %s (already opened via open), %s.", log_file, strerror(errno));
 		goto close;
 	}
 
@@ -447,9 +436,8 @@ close:
 	return fun_ret;
 }
 
-
 /* Initialization.  */
-void util_init(void (*err_fun)(const char *), void (*pr_fun)(const char *))
+void util_init(void (*err_fun) (const char *), void (*pr_fun) (const char *))
 {
 	error_fun = err_fun ? err_fun : error_fun;
 	print_fun = pr_fun ? pr_fun : print_fun;

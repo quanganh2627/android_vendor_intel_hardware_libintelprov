@@ -39,7 +39,7 @@ static void teeprov_error(const char *msg)
 	LOGE("%s", msg);
 }
 
-static void usage (int status, const char *program_name)
+static void usage(int status, const char *program_name)
 {
 	if (program_name != NULL)
 		printf("Usage: %s [-o FILE] OPTION...\n", basename(program_name));
@@ -69,30 +69,27 @@ When used, -o option must the first.\n\
 
 /* Send a token read from FILE_PATH to Chaabi. Returns 0 on
    success.  */
-static int write_token_file (const char *file_path)
+static int write_token_file(const char *file_path)
 {
 	struct stat fd_stat;
 	int fd, ret, result;
 	void *data;
 
 	fd = open(file_path, O_RDONLY);
-	if (fd == -1)
-	{
+	if (fd == -1) {
 		raise_error("Failed to open token \"%s\" file, error: %s", file_path, strerror(errno));
 		return EXIT_FAILURE;
 	}
 
 	ret = fstat(fd, &fd_stat);
-	if (ret == -1)
-	{
+	if (ret == -1) {
 		raise_error("Failed to retrieve the token file stat, error: %s", strerror(errno));
 		result = EXIT_FAILURE;
 		goto close;
 	}
 
 	data = mmap(NULL, fd_stat.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	if (data == MAP_FAILED)
-	{
+	if (data == MAP_FAILED) {
 		raise_error("Failed to map file into memory, error: %s", strerror(errno));
 		result = EXIT_FAILURE;
 		goto close;
@@ -101,11 +98,10 @@ static int write_token_file (const char *file_path)
 	result = write_token(data, fd_stat.st_size);
 
 	ret = munmap(data, fd_stat.st_size);
-	if (ret != 0)
-	{
+	if (ret != 0) {
 		raise_error("Failed to unmap file, error: %s", strerror(errno));
 		if (result == 0)
-			raise_error("Exit without complaining because write_token has been successfully executed");
+			raise_error ("Exit without complaining because write_token has been successfully executed");
 		else
 			result = ret;
 		goto exit;
@@ -113,8 +109,7 @@ static int write_token_file (const char *file_path)
 
 close:
 	ret = close(fd);
-	if (ret != 0)
-	{
+	if (ret != 0) {
 		raise_error("Failed to close file, error: %s", strerror(errno));
 		result = ret;
 	}
@@ -123,8 +118,7 @@ exit:
 	return result;
 }
 
-static struct option const long_options[] =
-{
+static struct option const long_options[] = {
 	{"get-spid", no_argument, NULL, 's'},
 	{"get-fru", no_argument, NULL, 'f'},
 	{"get-part-id", no_argument, NULL, 'p'},
@@ -150,10 +144,8 @@ int main(int argc, char **argv)
 	error_fun = teeprov_error;
 	atexit(close_output_file_when_open);
 
-	while ((c = getopt_long (argc, argv, "sfplnuczw:r:R:o:hm:", long_options, NULL)) != -1)
-	{
-		switch (c)
-		{
+	while ((c = getopt_long(argc, argv, "sfplnuczw:r:R:o:hm:", long_options, NULL)) != -1) {
+		switch (c) {
 		case 's':
 			return get_spid(0, NULL);
 
@@ -191,8 +183,7 @@ int main(int argc, char **argv)
 			return remove_token(2, &argv[optind - 2]);
 
 		case 'o':
-			if (optind != 3)
-			{
+			if (optind != 3) {
 				raise_error("-o, --output-file=FILE MUST be the first option");
 				return EXIT_FAILURE;
 			}

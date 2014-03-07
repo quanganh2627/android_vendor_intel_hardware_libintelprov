@@ -28,9 +28,13 @@ int flash_token_umip_scu_emmc(void *data, size_t size);
 int update_ifwi_file_scu_emmc(void *data, size_t size);
 int check_ifwi_file_scu_emmc(void *data, size_t size);
 
-#else  /* CONFIG_INTELPROV_SCU_EMMC */
+#else	/* CONFIG_INTELPROV_SCU_EMMC */
 
-bool is_scu_emmc(void) {return false;}
+bool is_scu_emmc(void)
+{
+	return false;
+}
+
 #define flash_ifwi_scu_emmc(void *data, unsigned size) {return stub_operation(__func__);}
 #define flash_dnx_scu_emmc(void *data, unsigned size) {return stub_operation(__func__);}
 #define flash_token_umip_scu_emmc(void *data, size_t size) {return stub_operation(__func__);}

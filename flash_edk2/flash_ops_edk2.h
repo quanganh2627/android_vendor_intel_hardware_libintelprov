@@ -23,10 +23,17 @@
 bool is_edk2(void);
 int flash_capsule_edk2(void *data, unsigned sz);
 
-#else  /* CONFIG_INTELPROV_EDK2 */
+#else	/* CONFIG_INTELPROV_EDK2 */
 
-bool is_edk2(void) {return false;}
-int flash_capsule_edk2(void *data, unsigned sz) {return stub_operation(__func__);}
+bool is_edk2(void)
+{
+	return false;
+}
+
+int flash_capsule_edk2(void *data, unsigned sz)
+{
+	return stub_operation(__func__);
+}
 
 #endif	/* CONFIG_INTELPROV_EDK2 */
 

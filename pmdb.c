@@ -43,8 +43,8 @@ struct pmdb_field_s {
 };
 
 static struct pmdb_field_s pmdb_fields[] = {
-	{ "fru",	WM,	PMDB_FRU_OFFSET,	PMDB_FRU_SIZE },
-	{ "fru+cs",	WM,	PMDB_FRU_OFFSET,	PMDB_FRU_SIZE + CHECKSUM_SIZE },
+	{"fru", WM, PMDB_FRU_OFFSET, PMDB_FRU_SIZE},
+	{"fru+cs", WM, PMDB_FRU_OFFSET, PMDB_FRU_SIZE + CHECKSUM_SIZE},
 };
 
 static struct pmdb_field_s *pmdb_field(const char *name)
@@ -52,7 +52,7 @@ static struct pmdb_field_s *pmdb_field(const char *name)
 	unsigned int i;
 
 	for (i = 0; i < sizeof(pmdb_fields) / sizeof(*pmdb_fields); i++) {
-		if (!strcmp(pmdb_fields[i].name,name))
+		if (!strcmp(pmdb_fields[i].name, name))
 			return &pmdb_fields[i];
 	}
 	return 0;
@@ -65,7 +65,6 @@ static int pmdb_write_field(const char *name, unsigned char *buf, size_t size)
 	struct pmdb_field_s *field = pmdb_field(name);
 	if (!field)
 		goto done;
-
 
 	if (size != field->size) {
 		pr_error("invalid %s size", field->name);
@@ -84,10 +83,10 @@ int pmdb_write_fru(void *buf, unsigned size)
 {
 #ifdef TEE_FRAMEWORK
 	int ret;
-	struct FRU_RAW field_rep_unit = { FRU_RAW_TAG, { 0 } };
-	memcpy(field_rep_unit.fru_value,buf,min(size,sizeof(field_rep_unit.fru_value)));
+	struct FRU_RAW field_rep_unit = { FRU_RAW_TAG, {0} };
+	memcpy(field_rep_unit.fru_value, buf, min(size, sizeof(field_rep_unit.fru_value)));
 
-	ret = tee_token_write_tmp((uint8_t *)&field_rep_unit, sizeof(struct FRU_RAW), 0);
+	ret = tee_token_write_tmp((uint8_t *) & field_rep_unit, sizeof(struct FRU_RAW), 0);
 	fprintf(stderr, "Calling token_write -- ret = %d\n", ret);
 
 	return (0 != ret);

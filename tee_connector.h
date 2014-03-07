@@ -23,8 +23,8 @@
 /* In order to correctly redirect the error and information output,
    you MUST provide the following two functions before using the
    others.  */
-extern void (*print_fun)(const char *msg);
-extern void (*error_fun)(const char *msg);
+extern void (*print_fun) (const char *msg);
+extern void (*error_fun) (const char *msg);
 
 extern void raise_error(const char *fmt, ...);
 

@@ -25,9 +25,9 @@
 #define pr_perror(x)	fprintf(stderr, "update_ifwi_image: %s failed: %s\n", \
 		x, strerror(errno))
 
-#define CLVT_MINOR_CHECK 0x80 /* Mask applied to check IFWI compliance */
+#define CLVT_MINOR_CHECK 0x80	/* Mask applied to check IFWI compliance */
 
-struct update_info{
+struct update_info {
 	uint32_t ifwi_size;
 	uint32_t reset_after_update;
 	uint32_t reserved;
@@ -52,7 +52,7 @@ static int ifwi_downgrade_allowed(const char *ifwi)
 	return 0;
 }
 
-static int retry_write(char *buf, int cont, FILE *f)
+static int retry_write(char *buf, int cont, FILE * f)
 {
 	int w_bytes = 0, retry = 0;
 
@@ -97,17 +97,18 @@ int update_ifwi_file_scu_ipc(const char *dnx, const char *ifwi)
 	}
 
 	if (img_ifwi_rev.major != dev_fw_rev.ifwi.major) {
-		fprintf(stderr, "IFWI FW Major version numbers (file=%02X current=%02X) don't match, Update abort.\n",
-				img_ifwi_rev.major, dev_fw_rev.ifwi.major);
+		fprintf(stderr,
+			"IFWI FW Major version numbers (file=%02X current=%02X) don't match, Update abort.\n",
+			img_ifwi_rev.major, dev_fw_rev.ifwi.major);
 
 		/* Not an error case. Let update continue to next IFWI versions. */
 		goto end;
 	}
-
 #ifdef CLVT
 	if ((img_ifwi_rev.minor & CLVT_MINOR_CHECK) != (dev_fw_rev.ifwi.minor & CLVT_MINOR_CHECK)) {
-		fprintf(stderr, "IFWI FW Minor version numbers (file=%02X current=%02X mask=%02X) don't match, Update abort.\n",
-				img_ifwi_rev.minor, dev_fw_rev.ifwi.minor,CLVT_MINOR_CHECK);
+		fprintf(stderr,
+			"IFWI FW Minor version numbers (file=%02X current=%02X mask=%02X) don't match, Update abort.\n",
+			img_ifwi_rev.minor, dev_fw_rev.ifwi.minor, CLVT_MINOR_CHECK);
 
 		/* Not an error case. Let update continue to next IFWI versions. */
 		goto end;
@@ -116,7 +117,8 @@ int update_ifwi_file_scu_ipc(const char *dnx, const char *ifwi)
 
 	if (img_ifwi_rev.minor < dev_fw_rev.ifwi.minor) {
 		if (!ifwi_allowed) {
-			fprintf(stderr, "IFWI FW Minor downgrade not allowed (file=%02X current=%02X). Update abort.\n",
+			fprintf(stderr,
+				"IFWI FW Minor downgrade not allowed (file=%02X current=%02X). Update abort.\n",
 				img_ifwi_rev.minor, dev_fw_rev.ifwi.minor);
 
 			/* Not an error case. Let update continue to next IFWI versions. */
@@ -128,14 +130,16 @@ int update_ifwi_file_scu_ipc(const char *dnx, const char *ifwi)
 	}
 
 	if (img_ifwi_rev.minor == dev_fw_rev.ifwi.minor) {
-		fprintf(stderr, "IFWI FW Minor is not new than board's existing version (file=%02X current=%02X), Update abort.\n",
+		fprintf(stderr,
+			"IFWI FW Minor is not new than board's existing version (file=%02X current=%02X), Update abort.\n",
 			img_ifwi_rev.minor, dev_fw_rev.ifwi.minor);
 
 		/* Not an error case. Let update continue to next IFWI versions. */
 		goto end;
 	}
 
-	fprintf(stderr, "Found IFWI to be flashed (maj=%02X min=%02X)\n", img_ifwi_rev.major, img_ifwi_rev.minor);
+	fprintf(stderr, "Found IFWI to be flashed (maj=%02X min=%02X)\n", img_ifwi_rev.major,
+		img_ifwi_rev.minor);
 
 	f_src = fopen(dnx, "rb");
 	if (f_src == NULL) {
@@ -155,11 +159,11 @@ int update_ifwi_file_scu_ipc(const char *dnx, const char *ifwi)
 	}
 
 	while ((cont = fread(buff, 1, sizeof(buff), f_src)) > 0) {
-		if(retry_write(buff, cont, f_dst) == -1) {
-		fprintf(stderr,"DNX write failed\n");
-		fclose(f_dst);
-		ret = -1;
-		goto err;
+		if (retry_write(buff, cont, f_dst) == -1) {
+			fprintf(stderr, "DNX write failed\n");
+			fclose(f_dst);
+			ret = -1;
+			goto err;
 		}
 	}
 
@@ -184,14 +188,13 @@ int update_ifwi_file_scu_ipc(const char *dnx, const char *ifwi)
 	}
 
 	while ((cont = fread(buff, 1, sizeof(buff), f_src)) > 0) {
-		if(retry_write(buff, cont, f_dst) == -1) {
-		fprintf(stderr,"IFWI write failed\n");
-		fclose(f_dst);
-		ret = -1;
-		goto err;
+		if (retry_write(buff, cont, f_dst) == -1) {
+			fprintf(stderr, "IFWI write failed\n");
+			fclose(f_dst);
+			ret = -1;
+			goto err;
 		}
 	}
-
 
 	fclose(f_dst);
 
@@ -216,20 +219,17 @@ int update_ifwi_image_scu_ipc(void *data, size_t size, unsigned reset_flag)
 	 * terribly robust but there isn't any additional metadata
 	 * encoded within the IFWI image that can help us */
 	if (get_image_fw_rev(data, size, &img_fw_rev)) {
-		fprintf(stderr, "update_ifwi_image: Coudn't extract FW "
-				"version data from image\n");
+		fprintf(stderr, "update_ifwi_image: Coudn't extract FW " "version data from image\n");
 		return -1;
 	}
 	if (get_current_fw_rev(&dev_fw_rev)) {
-		fprintf(stderr, "update_ifwi_image: Couldn't query existing "
-				"IFWI version\n");
+		fprintf(stderr, "update_ifwi_image: Couldn't query existing " "IFWI version\n");
 		return -1;
 	}
 	if (img_fw_rev.ifwi.major != dev_fw_rev.ifwi.major) {
 		fprintf(stderr, "update_ifwi_image: IFWI FW Major version "
-				"numbers (file=%02X current=%02X don't match. "
-				"Abort.\n", img_fw_rev.ifwi.major,
-				dev_fw_rev.ifwi.major);
+			"numbers (file=%02X current=%02X don't match. "
+			"Abort.\n", img_fw_rev.ifwi.major, dev_fw_rev.ifwi.major);
 		return -1;
 	}
 
@@ -244,14 +244,13 @@ int update_ifwi_image_scu_ipc(void *data, size_t size, unsigned reset_flag)
 	packet->reset_after_update = reset_flag;
 	packet->reserved = 0;
 
-	printf("update_ifwi_image -- size: %d reset: %d\n",
-			packet->ifwi_size, packet->reset_after_update);
+	printf("update_ifwi_image -- size: %d reset: %d\n", packet->ifwi_size, packet->reset_after_update);
 	fd = open(IPC_DEVICE_NAME, O_RDWR);
 	if (fd < 0) {
 		pr_perror("open");
 		goto out;
 	}
-	sync(); /* reduce the chance of EMMC contention */
+	sync();			/* reduce the chance of EMMC contention */
 	ret = ioctl(fd, DEVICE_FW_UPGRADE, packet);
 	close(fd);
 	if (ret < 0)
@@ -260,7 +259,6 @@ out:
 	free(packet);
 	return ret;
 }
-
 
 #define BIN_DNX  "/tmp/__dnx.bin"
 #define BIN_IFWI "/tmp/__ifwi.bin"
@@ -278,7 +276,6 @@ int flash_dnx_scu_ipc(void *data, unsigned sz)
 int flash_ifwi_scu_ipc(void *data, unsigned sz)
 {
 	struct firmware_versions img_fw_rev;
-
 
 	if (access(BIN_DNX, F_OK)) {
 		error("dnx binary must be flashed to board first\n");

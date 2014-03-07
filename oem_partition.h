@@ -27,8 +27,8 @@ int oem_wipe_partition(int argc, char **argv);
 void oem_partition_disable_cmd_reload();
 
 struct ufdisk {
-	void (*umount_all)(void);
-	int (*create_partition)(void);
+	void (*umount_all) (void);
+	int (*create_partition) (void);
 };
 
 void oem_partition_init(struct ufdisk *ufdisk);

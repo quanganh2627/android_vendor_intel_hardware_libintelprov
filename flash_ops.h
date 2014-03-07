@@ -27,27 +27,27 @@ static inline int stub_operation(const char *func)
 }
 
 struct bootimage_operations {
-	int (*flash_image)(void *data, unsigned size, const char *name);
-	int (*read_image)(const char *name, void **data);
-	int (*read_image_signature)(void **buf, char *name);
-	int (*is_image_signed)(const char *name);
+	int (*flash_image) (void *data, unsigned size, const char *name);
+	int (*read_image) (const char *name, void **data);
+	int (*read_image_signature) (void **buf, char *name);
+	int (*is_image_signed) (const char *name);
 };
 
 struct ifwi_operations {
-	int (*flash_ifwi)(void *data, unsigned size);
-	int (*flash_dnx)(void *data, unsigned size);
-	int (*update_ifwi_image)(void *data, size_t size, unsigned reset_flag);
-	int (*update_ifwi_file)(void *buffer, size_t size);
-	int (*check_ifwi_file)(void *buffer, size_t size);
-	int (*flash_token_umip)(void *buffer, size_t size);
+	int (*flash_ifwi) (void *data, unsigned size);
+	int (*flash_dnx) (void *data, unsigned size);
+	int (*update_ifwi_image) (void *data, size_t size, unsigned reset_flag);
+	int (*update_ifwi_file) (void *buffer, size_t size);
+	int (*check_ifwi_file) (void *buffer, size_t size);
+	int (*flash_token_umip) (void *buffer, size_t size);
 };
 
 struct capsule_operations {
-	int (*flash_capsule)(void *data, unsigned size);
+	int (*flash_capsule) (void *data, unsigned size);
 };
 
-struct bootimage_operations* bootimage_ops(void);
-struct ifwi_operations* ifwi_ops(void);
-struct capsule_operations* capsule_ops(void);
+struct bootimage_operations *bootimage_ops(void);
+struct ifwi_operations *ifwi_ops(void);
+struct capsule_operations *capsule_ops(void);
 
 #endif	/* _FLASH_OPS_H_ */

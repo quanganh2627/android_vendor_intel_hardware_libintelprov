@@ -33,26 +33,23 @@ static int oem_uniqueid_handler(int argc, char **argv)
 {
 	int retval = -1;
 	ST_RESULT result;
-	uint8_t uniqueKey[ SECURE_TOKEN_UNIQUE_KEY_SIZE_IN_BYTES ];
-	char hexuniqueKey[ SECURE_TOKEN_UNIQUE_KEY_SIZE_IN_BYTES * 3 + 2 ];
+	uint8_t uniqueKey[SECURE_TOKEN_UNIQUE_KEY_SIZE_IN_BYTES];
+	char hexuniqueKey[SECURE_TOKEN_UNIQUE_KEY_SIZE_IN_BYTES * 3 + 2];
 
 	DX_CC_HostInit();
 	result = sep_sectoken_request_token(uniqueKey);
 	pr_info("sep_sectoken_request_token() == 0x%x\n", result);
-	if(ST_FAIL_SEP_DRIVER_OP == result)
-		pr_info("sep_sectoken_request_token() =="
-				"ST_FAIL_SEP_DRIVER_OP\n");
-	retval = ( result != ST_SUCCESSFUL );
+	if (ST_FAIL_SEP_DRIVER_OP == result)
+		pr_info("sep_sectoken_request_token() ==" "ST_FAIL_SEP_DRIVER_OP\n");
+	retval = (result != ST_SUCCESSFUL);
 
 	if (retval != 0)
 		fastboot_fail("cannot get uniqueid");
 	else {
-		snhexdump(hexuniqueKey, sizeof(hexuniqueKey)-1, uniqueKey,
-				SECURE_TOKEN_UNIQUE_KEY_SIZE_IN_BYTES);
-		pr_info("%s\n",hexuniqueKey);
-		hexdump_buffer(uniqueKey,
-				SECURE_TOKEN_UNIQUE_KEY_SIZE_IN_BYTES,
-				fastboot_info,16);
+		snhexdump(hexuniqueKey, sizeof(hexuniqueKey) - 1, uniqueKey,
+			  SECURE_TOKEN_UNIQUE_KEY_SIZE_IN_BYTES);
+		pr_info("%s\n", hexuniqueKey);
+		hexdump_buffer(uniqueKey, SECURE_TOKEN_UNIQUE_KEY_SIZE_IN_BYTES, fastboot_info, 16);
 	}
 	fastboot_okay("");
 	DX_CC_HostFinish();
@@ -66,21 +63,20 @@ static int flash_token(void *data, unsigned sz)
 
 	DX_CC_HostInit();
 
-	result = sep_sectoken_consume_token(data,sz);
-	pr_info("sep_sectoken_consume_token() == 0x%x\n",result);
+	result = sep_sectoken_consume_token(data, sz);
+	pr_info("sep_sectoken_consume_token() == 0x%x\n", result);
 
 	/* if the file is too small, it assumes that this is the
-		dummy file sent by the Phone Flash Tool.
-		So, it returns a success result to continue with the
-		fastboot command that sends the FRU */
-	if(result == ST_FAIL_SECURE_TOKEN_SIZE_TOO_SMALL_FAILURE)
-	{
+	   dummy file sent by the Phone Flash Tool.
+	   So, it returns a success result to continue with the
+	   fastboot command that sends the FRU */
+	if (result == ST_FAIL_SECURE_TOKEN_SIZE_TOO_SMALL_FAILURE) {
 		pr_info("Token is too small. Assuming it is a dummy token "
-				"for development, so return successful status.\n");
+			"for development, so return successful status.\n");
 		result = ST_SUCCESSFUL;
 	}
 
-	retval = ( result != ST_SUCCESSFUL );
+	retval = (result != ST_SUCCESSFUL);
 	DX_CC_HostFinish();
 	return retval;
 }

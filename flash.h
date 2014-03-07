@@ -54,5 +54,4 @@ int flash_esp(void *data, unsigned sz);
 int is_image_signed(const char *name);
 int flash_token_umip(void *data, size_t size);
 
-
 #endif	/* _FLASH_H_ */

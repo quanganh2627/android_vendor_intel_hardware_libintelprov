@@ -30,33 +30,32 @@
 static size_t pmdb_area_size(sep_pmdb_area_t type)
 {
 	size_t size = 0;
-	switch(type) {
-		case SEP_PMDB_WRITE_ONCE:
-			size = SEP_PMDB_WRITE_ONCE_SIZE;
-			break;
-		case SEP_PMDB_WRITE_MANY:
-			size = SEP_PMDB_WRITE_MANY_SIZE;
-			break;
+	switch (type) {
+	case SEP_PMDB_WRITE_ONCE:
+		size = SEP_PMDB_WRITE_ONCE_SIZE;
+		break;
+	case SEP_PMDB_WRITE_MANY:
+		size = SEP_PMDB_WRITE_MANY_SIZE;
+		break;
 	}
 	return size;
 }
 
-static int pmdb_read_modify_write(sep_pmdb_area_t type, uint8_t data[],
-		size_t size, unsigned int offset)
+static int pmdb_read_modify_write(sep_pmdb_area_t type, uint8_t data[], size_t size, unsigned int offset)
 {
 	uint8_t buffer[MAX_BUF_SIZE];
 	int ret = -1;
 
 	pmdb_result_t res;
-	if(offset + size > pmdb_area_size(type))
+	if (offset + size > pmdb_area_size(type))
 		goto done;
 
 	res = sep_pmdb_read(type, buffer, pmdb_area_size(type));
 	if (PMDB_SUCCESSFUL != res)
 		goto done;
 
-	memcpy(buffer+offset,data,size);
-	res = sep_pmdb_write(type,buffer,pmdb_area_size(type));
+	memcpy(buffer + offset, data, size);
+	res = sep_pmdb_write(type, buffer, pmdb_area_size(type));
 	if (PMDB_SUCCESSFUL != res)
 		goto done;
 
@@ -65,9 +64,8 @@ done:
 	return ret;
 }
 
-int pmdb_access_write(unsigned char *buf, enum pmdb_database db,
-		unsigned int offset, size_t size)
+int pmdb_access_write(unsigned char *buf, enum pmdb_database db, unsigned int offset, size_t size)
 {
-	return pmdb_read_modify_write((WO == db) ? SEP_PMDB_WRITE_ONCE:
-			SEP_PMDB_WRITE_MANY, buf, size, offset);
+	return pmdb_read_modify_write((WO == db) ? SEP_PMDB_WRITE_ONCE :
+				      SEP_PMDB_WRITE_MANY, buf, size, offset);
 }

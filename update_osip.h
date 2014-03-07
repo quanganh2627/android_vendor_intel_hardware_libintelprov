@@ -19,7 +19,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-
 #ifndef STORAGE_BASE_PATH
 #define STORAGE_BASE_PATH "/dev/block/mmcblk0"
 #endif
@@ -69,7 +68,7 @@ int read_OSIP(struct OSIP_header *osip);
 void dump_osip_header(struct OSIP_header *osip);
 void dump_OS_page(struct OSIP_header *osip, int os_index, int numpages);
 
-int read_osimage_data(void **data, size_t *size, int osii_index);
+int read_osimage_data(void **data, size_t * size, int osii_index);
 int write_stitch_image(void *data, size_t size, int osii_index);
 int write_stitch_image_ex(void *data, size_t size, int osii_index, int large_image);
 int get_named_osii_index(const char *destination);

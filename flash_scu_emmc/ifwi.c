@@ -56,9 +56,9 @@ static int write_image(int fd, char *image, unsigned size)
 		return -1;
 	}
 
-	while(size) {
-	/*If this condition is not present, the write*/
-	/*function errors out while writing the last chunk*/
+	while (size) {
+		/*If this condition is not present, the write */
+		/*function errors out while writing the last chunk */
 		ret = write(fd, ptr, size);
 		if (ret <= 0 && errno != EINTR) {
 			fprintf(stderr, "write_image(): image write failed with errno %d\n", errno);
@@ -72,7 +72,8 @@ static int write_image(int fd, char *image, unsigned size)
 	return 0;
 }
 
-static int force_rw(char *name) {
+static int force_rw(char *name)
+{
 	int ret, fd;
 
 	fd = open(name, O_WRONLY);
@@ -107,18 +108,20 @@ int check_ifwi_file_scu_emmc(void *data, size_t size)
 		fprintf(stderr, "Couldn't query existing IFWI version\n");
 		return -1;
 	}
-	fprintf(stderr, "Attempting to flash ifwi image version %04X.%04X over ifwi current version %04X.%04X\n",
-		img_fw_rev.ifwi.major,img_fw_rev.ifwi.minor,dev_fw_rev.ifwi.major,dev_fw_rev.ifwi.minor);
+	fprintf(stderr,
+		"Attempting to flash ifwi image version %04X.%04X over ifwi current version %04X.%04X\n",
+		img_fw_rev.ifwi.major, img_fw_rev.ifwi.minor, dev_fw_rev.ifwi.major, dev_fw_rev.ifwi.minor);
 
 	if (img_fw_rev.ifwi.major != dev_fw_rev.ifwi.major) {
-		fprintf(stderr, "IFWI FW Major version numbers (file=%04X current=%04X) don't match, Update abort.\n",
+		fprintf(stderr,
+			"IFWI FW Major version numbers (file=%04X current=%04X) don't match, Update abort.\n",
 			img_fw_rev.ifwi.major, dev_fw_rev.ifwi.major);
 
 		/* Not an error case. Let update continue to next IFWI versions. */
 		return 0;
 	}
 
-	if ( (img_fw_rev.ifwi.minor >> IFWI_TYPE_LSH) != (dev_fw_rev.ifwi.minor >> IFWI_TYPE_LSH) ) {
+	if ((img_fw_rev.ifwi.minor >> IFWI_TYPE_LSH) != (dev_fw_rev.ifwi.minor >> IFWI_TYPE_LSH)) {
 		fprintf(stderr, "IFWI FW Type (file=%1X current=%1X) don't match, Update abort.\n",
 			img_fw_rev.ifwi.minor >> IFWI_TYPE_LSH, dev_fw_rev.ifwi.minor >> IFWI_TYPE_LSH);
 
@@ -142,8 +145,8 @@ int update_ifwi_file_scu_emmc(void *data, size_t size)
 
 	if (size > BOOT_PARTITION_SIZE) {
 		fprintf(stderr, "flash_ifwi(): Truncating last %d bytes from the IFWI\n",
-		(size - BOOT_PARTITION_SIZE));
-		/* Since the last 144 bytes are the FUP header which are not required,*/
+			(size - BOOT_PARTITION_SIZE));
+		/* Since the last 144 bytes are the FUP header which are not required, */
 		/* we truncate it to fit into the boot partition. */
 		size = BOOT_PARTITION_SIZE;
 	}
@@ -167,11 +170,11 @@ int update_ifwi_file_scu_emmc(void *data, size_t size)
 		fprintf(stderr, "flash_ifwi(): UMIP token area read failed with errno %d\n", errno);
 		goto err_boot0;
 	}
-	if (lseek(boot0_fd, 0, SEEK_SET) < 0) { /* Seek to start of file */
+	if (lseek(boot0_fd, 0, SEEK_SET) < 0) {	/* Seek to start of file */
 		fprintf(stderr, "flash_ifwi(): lseek failed on boot0\n");
 		goto err_boot0;
 	}
-	ret = write_image(boot0_fd, (char*)data, size);
+	ret = write_image(boot0_fd, (char *)data, size);
 	if (ret) {
 		fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT0);
 		goto err_boot0;
@@ -208,7 +211,7 @@ int update_ifwi_file_scu_emmc(void *data, size_t size)
 			fprintf(stderr, "flash_ifwi(): lseek failed on boot1\n");
 			goto err_boot1;
 		}
-		ret = write_image(boot1_fd, (char*)data, size);
+		ret = write_image(boot1_fd, (char *)data, size);
 		if (ret) {
 			fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT1);
 			goto err_boot1;
@@ -240,7 +243,7 @@ err:
 
 int flash_dnx_scu_emmc(void *data, unsigned sz)
 {
-    return 0;
+	return 0;
 }
 
 int flash_ifwi_scu_emmc(void *data, unsigned size)

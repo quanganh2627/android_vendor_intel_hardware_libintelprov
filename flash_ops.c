@@ -22,7 +22,7 @@
 #include "flash_fdk/flash_ops_fdk.h"
 
 #include <stdio.h>
-struct bootimage_operations* bootimage_ops(void)
+struct bootimage_operations *bootimage_ops(void)
 {
 	if (is_gpt())
 		return &gpt_bootimage_operations;
@@ -33,7 +33,7 @@ struct bootimage_operations* bootimage_ops(void)
 	return NULL;
 }
 
-struct ifwi_operations* ifwi_ops(void)
+struct ifwi_operations *ifwi_ops(void)
 {
 	if (is_scu_ipc())
 		return &scu_ipc_ifwi_operations;
@@ -44,7 +44,7 @@ struct ifwi_operations* ifwi_ops(void)
 	return NULL;
 }
 
-struct capsule_operations* capsule_ops(void)
+struct capsule_operations *capsule_ops(void)
 {
 	if (is_edk2())
 		return &edk2_capsule_operations;

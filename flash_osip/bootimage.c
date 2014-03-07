@@ -27,8 +27,7 @@
 bool is_osip(void)
 {
 	struct stat buf;
-	return !(stat(BASE_PLATFORM_INTEL_LABEL"/fastboot", &buf) == 0
-		&& S_ISBLK(buf.st_mode));
+	return !(stat(BASE_PLATFORM_INTEL_LABEL "/fastboot", &buf) == 0 && S_ISBLK(buf.st_mode));
 }
 
 int read_image_osip(const char *name, void **data)

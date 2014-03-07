@@ -21,9 +21,12 @@
 
 int flash_ulpmc(void *data, unsigned sz);
 
-#else  /* CONFIG_INTELPROV_ULPMC */
+#else	/* CONFIG_INTELPROV_ULPMC */
 
-int flash_ulpmc(void *data, unsigned sz) {return stub_operation(__func__);};
+int flash_ulpmc(void *data, unsigned sz)
+{
+	return stub_operation(__func__);
+};
 
 #endif	/* CONFIG_INTELPROV_ULPMC */
 

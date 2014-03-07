@@ -27,13 +27,32 @@ int flash_dnx_scu_ipc(void *data, unsigned size);
 int update_ifwi_image_scu_ipc(void *data, size_t size, unsigned reset_flag);
 int update_ifwi_file_scu_ipc(const char *dnx, const char *ifwi);
 
-#else  /* CONFIG_INTELPROV_SCU_IPC */
+#else	/* CONFIG_INTELPROV_SCU_IPC */
 
-bool is_scu_ipc(void) {return false;}
-int flash_ifwi_scu_ipc(void *data, unsigned size) {return stub_operation(__func__);}
-int flash_dnx_scu_ipc(void *data, unsigned size) {return stub_operation(__func__);}
-int update_ifwi_image_scu_ipc(void *data, size_t size, unsigned reset_flag) {return stub_operation(__func__);}
-int update_ifwi_file_scu_ipc(const char *dnx, const char *ifwi) {return stub_operation(__func__);}
+bool is_scu_ipc(void)
+{
+	return false;
+}
+
+int flash_ifwi_scu_ipc(void *data, unsigned size)
+{
+	return stub_operation(__func__);
+}
+
+int flash_dnx_scu_ipc(void *data, unsigned size)
+{
+	return stub_operation(__func__);
+}
+
+int update_ifwi_image_scu_ipc(void *data, size_t size, unsigned reset_flag)
+{
+	return stub_operation(__func__);
+}
+
+int update_ifwi_file_scu_ipc(const char *dnx, const char *ifwi)
+{
+	return stub_operation(__func__);
+}
 
 #endif	/* CONFIG_INTELPROV_SCU_IPC */
 
@@ -44,4 +63,3 @@ struct ifwi_operations scu_ipc_ifwi_operations = {
 };
 
 #endif	/* _FLASH_OPS_SCU_IPC_H_ */
-

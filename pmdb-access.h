@@ -16,11 +16,9 @@
 #ifndef PMDB_ACESS_H
 #define PMDB_ACESS_H
 
-enum pmdb_database { WO=1, WM };
+enum pmdb_database { WO = 1, WM };
 
-int pmdb_access_write(unsigned char *buf, enum pmdb_database db, unsigned int
-		offset, size_t size);
-int pmdb_access_read(unsigned char *buf, enum pmdb_database db, unsigned int
-		offset, size_t size);
+int pmdb_access_write(unsigned char *buf, enum pmdb_database db, unsigned int offset, size_t size);
+int pmdb_access_read(unsigned char *buf, enum pmdb_database db, unsigned int offset, size_t size);
 
 #endif

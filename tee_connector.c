@@ -40,12 +40,14 @@ static const uint32_t SPID_DATAGROUP = 1;
 static const uint32_t SERIAL_NUMBER_DATAGROUP = 5;
 static const uint32_t FRU_DATAGROUP = 6;
 
-static const struct data_items SPID_ITEMS[] = { { "Customer ID",            11, 1, 2 },
-						{ "Vendor ID",              12, 1, 2 },
-						{ "Device Manufacturer ID", 12, 2, 2 },
-						{ "Platform Family ID",     10, 1, 2 },
-						{ "Product Line ID",        10, 2, 2 },
-						{ "Hardware Model ID",      10, 3, 2 } };
+static const struct data_items SPID_ITEMS[] = {
+	{"Customer ID", 11, 1, 2},
+	{"Vendor ID", 12, 1, 2},
+	{"Device Manufacturer ID", 12, 2, 2},
+	{"Platform Family ID", 10, 1, 2},
+	{"Product Line ID", 10, 2, 2},
+	{"Hardware Model ID", 10, 3, 2}
+};
 
 static const struct data_items ssn_item = { "System Serial Number", 11, 1, 32 };
 
@@ -62,8 +64,8 @@ static void default_error(const char *msg)
 }
 
 /* Set to output functions to dummy function.  */
-void (*print_fun)(const char *msg) = default_print;
-void (*error_fun)(const char *msg) = default_error;
+void (*print_fun) (const char *msg) = default_print;
+void (*error_fun) (const char *msg) = default_error;
 
 #define ERROR_MSG_LENGTH 256
 
@@ -82,12 +84,12 @@ void raise_error(const char *fmt, ...)
 /* When set, output will be sent to this file descriptor.  */
 static int output_fd = -1;
 
-static void output_data(uint8_t *data, size_t size)
+static void output_data(uint8_t * data, size_t size)
 {
 	size_t i;
 
 	if (output_fd != -1)
-		for (i = 0 ; i < size ; i++)
+		for (i = 0; i < size; i++)
 			write(output_fd, data + i, sizeof(uint8_t));
 	else
 		hexdump_buffer(data, size, print_fun, size);
@@ -96,8 +98,7 @@ static void output_data(uint8_t *data, size_t size)
 int set_output_file(const char *path)
 {
 	output_fd = creat(path, S_IWUSR);
-	if (output_fd == -1)
-	{
+	if (output_fd == -1) {
 		raise_error("Failed to open output file, error: %s", strerror(errno));
 		return EXIT_FAILURE;
 	}
@@ -125,8 +126,7 @@ static int parse_datagroup_id(char *arg)
 
 	errno = 0;
 	ret = strtoul(arg, &end, 10);
-	if (*end != '\0' || errno == ERANGE)
-	{
+	if (*end != '\0' || errno == ERANGE) {
 		raise_error("Invalid datagroup ID, error: %s", strerror(EINVAL));
 		return -1;
 	}
@@ -146,52 +146,46 @@ static int parse_token(int dg, int flags)
 		goto end;
 
 	size_t s;
-	for (s = 0; s < sg_count; s++)
-	{
+	for (s = 0; s < sg_count; s++) {
 		size_t it;
 		size_t item_count = 0;
 
 		ret = tee_token_itemids_get(dg, sg_list[s], &item_list, &item_count, flags);
-		if (ret != 0)
-		{
+		if (ret != 0) {
 			raise_error("tee_token_itemids_get call failed, return 0x%x\n", ret);
 			goto error;
 		}
 
-		for (it = 0; it < item_count; it++)
-		{
+		for (it = 0; it < item_count; it++) {
 			size_t payload_size = 0;
 			uint8_t payload[PAYLOAD_MAX_SIZE];
 
 			memset(payload, 0, PAYLOAD_MAX_SIZE);
 
 			ret = tee_token_item_size_get(dg, sg_list[s], item_list[it], &payload_size, flags);
-			if (ret != 0)
-			{
+			if (ret != 0) {
 				raise_error("tee_token_item_size_get call failed, return 0x%x\n", ret);
 				free(item_list);
 				goto error;
 			}
 
-			if (payload_size > PAYLOAD_MAX_SIZE)
-			{
+			if (payload_size > PAYLOAD_MAX_SIZE) {
 				raise_error("Returned payload size ( %u ) is more than max size ( %u )\n",
-					payload_size, PAYLOAD_MAX_SIZE);
+					    payload_size, PAYLOAD_MAX_SIZE);
 				free(item_list);
 				ret = 1;
 				goto error;
 			}
 
-			ret = tee_token_item_read(dg, sg_list[s], item_list[it], 0, payload, payload_size, flags);
-			if (ret != 0)
-			{
+			ret = tee_token_item_read(dg, sg_list[s], item_list[it], 0,
+						  payload, payload_size, flags);
+			if (ret != 0) {
 				raise_error("tee_token_item_read call failed, return 0x%x\n", ret);
 				free(item_list);
 				goto error;
 			}
 
-			if (print_pos + payload_size >= PRINT_BUFFER_SIZE)
-			{
+			if (print_pos + payload_size >= PRINT_BUFFER_SIZE) {
 				raise_error("Print buffer full\n");
 				free(item_list);
 				ret = 1;
@@ -212,7 +206,7 @@ end:
 	if (print_pos <= 0)
 		return ret;
 
-	if (FRU_DATAGROUP == (uint32_t)dg) {
+	if (FRU_DATAGROUP == (uint32_t) dg) {
 		uint32_t i;
 
 		/* Need to bit swap each byte */
@@ -232,13 +226,12 @@ int get_lifetime(int argc, char **argv)
 	uint8_t mac[TOKEN_MAC_LENGTH];
 
 	ret = tee_token_lifetimedata_get(&timestamp, nonce, mac);
-	if (ret != 0)
-	{
+	if (ret != 0) {
 		raise_error("tee_token_lifetimedata_get call failed, return=0x%x", ret);
 		return ret;
 	}
 
-	output_data((uint8_t *)&timestamp, sizeof(timestamp));
+	output_data((uint8_t *) & timestamp, sizeof(timestamp));
 	output_data(nonce, sizeof(nonce));
 	output_data(mac, sizeof(mac));
 
@@ -251,7 +244,7 @@ int get_ssn(int argc, char **argv)
 	uint8_t data[ssn_item.size];
 
 	ret = tee_token_item_read(SERIAL_NUMBER_DATAGROUP, ssn_item.subgroup_id,
-				ssn_item.item_id, 0, data, ssn_item.size, 0);
+				  ssn_item.item_id, 0, data, ssn_item.size, 0);
 	if (ret != 0)
 		raise_error("tee_token_item_read() call failed, return=0x%x", ret);
 	else
@@ -298,24 +291,20 @@ int get_spid(int argc, char **argv)
 	int ret;
 	size_t i, payload_size = 0;
 
-	for (i = 0 ; i < sizeof(SPID_ITEMS) / sizeof(struct data_items) ; i++)
+	for (i = 0; i < sizeof(SPID_ITEMS) / sizeof(struct data_items); i++)
 		payload_size += SPID_ITEMS[i].size;
 
-	uint8_t *payload = (uint8_t *)malloc(payload_size * sizeof(uint8_t));
-	if (!payload)
-	{
+	uint8_t *payload = (uint8_t *) malloc(payload_size * sizeof(uint8_t));
+	if (!payload) {
 		raise_error("Failed to allocate payload buffer, error: %s", strerror(ENOMEM));
 		return EXIT_FAILURE;
 	}
 	uint8_t *tmp = payload;
 
-	for (i = 0 ; i < sizeof(SPID_ITEMS) / sizeof(struct data_items) ; i++)
-	{
+	for (i = 0; i < sizeof(SPID_ITEMS) / sizeof(struct data_items); i++) {
 		ret = tee_token_item_read(SPID_DATAGROUP, SPID_ITEMS[i].subgroup_id,
-					  SPID_ITEMS[i].item_id, 0, tmp,
-					  SPID_ITEMS[i].size, 0);
-		if (ret != 0)
-		{
+					  SPID_ITEMS[i].item_id, 0, tmp, SPID_ITEMS[i].size, 0);
+		if (ret != 0) {
 			raise_error("tee_token_item_read() call failed, return=0x%x", ret);
 			goto exit;
 		}
@@ -335,7 +324,7 @@ int get_fru(int argc, char **argv)
 	return parse_token(FRU_DATAGROUP, 0);
 }
 
-int get_part_id (int argc, char **argv)
+int get_part_id(int argc, char **argv)
 {
 	int ret;
 	uint8_t partid_buf[TOKEN_PSID_LENGTH];
@@ -366,8 +355,7 @@ int read_token(int argc, char **argv)
 	int ret, datagroup_id;
 	struct tee_token_info info;
 
-	if (argc != 2)
-	{
+	if (argc != 2) {
 		raise_error("datagroup_id argument is missing");
 		return EXIT_FAILURE;
 	}
@@ -378,22 +366,20 @@ int read_token(int argc, char **argv)
 
 	bzero(&info, sizeof(info));
 	ret = tee_token_info_get(datagroup_id, &info, 0);
-	if (ret != 0)
-	{
+	if (ret != 0) {
 		raise_error("tee_token_info_get() call failed, return=0x%x", ret);
 		return ret;
 	}
 
-	if (info.lifetime.token_size == 0)
-	{
+	if (info.lifetime.token_size == 0) {
 		raise_error("Failed, token has been provided with the old format...");
 		return EXIT_FAILURE;
 	}
 
-	buf = (uint8_t *)malloc(info.lifetime.token_size * sizeof(uint32_t));
-	if (buf == NULL)
-	{
-		raise_error("Failed to alloc the buffer to retrieve the token data, error=%s", strerror(ENOMEM));
+	buf = (uint8_t *) malloc(info.lifetime.token_size * sizeof(uint32_t));
+	if (buf == NULL) {
+		raise_error("Failed to alloc the buffer to retrieve the token data, error=%s",
+			    strerror(ENOMEM));
 		return EXIT_FAILURE;
 	}
 
@@ -412,8 +398,7 @@ int read_token_payload(int argc, char **argv)
 {
 	int datagroup_id;
 
-	if (argc != 2)
-	{
+	if (argc != 2) {
 		raise_error("datagroup_id argument is missing");
 		return EXIT_FAILURE;
 	}
@@ -429,8 +414,7 @@ int remove_token(int argc, char **argv)
 {
 	int ret, datagroup_id;
 
-	if (argc != 2)
-	{
+	if (argc != 2) {
 		raise_error("datagroup_id argument is missing");
 		return EXIT_FAILURE;
 	}

@@ -71,16 +71,16 @@ struct FIP_header {
 struct fip_version_block_long {
 	uint16_t minor;
 	uint16_t major;
-	uint8_t  checksum;
-	uint8_t  reserved8;
+	uint8_t checksum;
+	uint8_t reserved8;
 	uint16_t reserved16;
 };
 
 struct fip_version_block_chxx_long {
 	uint16_t minor;
 	uint16_t major;
-	uint8_t  checksum;
-	uint8_t  reserved8;
+	uint8_t checksum;
+	uint8_t reserved8;
 	uint16_t reserved16;
 	uint16_t size;
 	uint16_t dest;
@@ -150,7 +150,7 @@ static int read_fw_revision(unsigned int *fw_revision, int len)
 
 	buf[ret] = 0;
 	p = strtok_r(buf, sep, &save);
-	for(i = 0; p && i < len; i++) {
+	for (i = 0; p && i < len; i++) {
 		ret = sscanf(p, "%x", &fw_revision[i]);
 		if (ret != 1) {
 			fprintf(stderr, "failed to parse fw_revision, ret = %d\n", ret);
@@ -264,9 +264,9 @@ int get_current_fw_rev_long(struct firmware_versions_long *v)
 
 	v->scubootstrap.minor = fw_revision[1] << 8 | fw_revision[0];
 	v->scubootstrap.major = fw_revision[3] << 8 | fw_revision[2];
-	v->scu.minor = fw_revision[5]  << 8 | fw_revision[4];
-	v->scu.major = fw_revision[7]  << 8 | fw_revision[6];
-	v->ia32.minor = fw_revision[9]  << 8 | fw_revision[8];
+	v->scu.minor = fw_revision[5] << 8 | fw_revision[4];
+	v->scu.major = fw_revision[7] << 8 | fw_revision[6];
+	v->ia32.minor = fw_revision[9] << 8 | fw_revision[8];
 	v->ia32.major = fw_revision[11] << 8 | fw_revision[10];
 	v->valhooks.minor = fw_revision[13] << 8 | fw_revision[12];
 	v->valhooks.major = fw_revision[15] << 8 | fw_revision[14];
@@ -317,17 +317,15 @@ int get_image_fw_rev(void *data, unsigned sz, struct firmware_versions *v)
 	if (v == NULL) {
 		fprintf(stderr, "Null pointer !\n");
 		return -1;
-	}
-	else
+	} else
 		memset((void *)v, 0, sizeof(struct firmware_versions));
 
-	while (sz >= sizeof(fip)){
+	while (sz >= sizeof(fip)) {
 
 		/* Scan for the FIP magic */
 		while (sz >= sizeof(fip)) {
 			memcpy(&magic, databytes, sizeof(magic));
-			if (magic == FIP_PATTERN)
-			{
+			if (magic == FIP_PATTERN) {
 				magic_found = 1;
 				break;
 			}
@@ -400,17 +398,15 @@ int get_image_fw_rev_long(void *data, unsigned sz, struct firmware_versions_long
 	if (v == NULL) {
 		fprintf(stderr, "Null pointer !\n");
 		return -1;
-	}
-	else
+	} else
 		memset((void *)v, 0, sizeof(struct firmware_versions_long));
 
-	while (sz >= sizeof(fip)){
+	while (sz >= sizeof(fip)) {
 
 		/* Scan for the FIP magic */
 		while (sz >= sizeof(fip)) {
 			memcpy(&magic, databytes, sizeof(magic));
-			if (magic == FIP_PATTERN)
-			{
+			if (magic == FIP_PATTERN) {
 				magic_found = 1;
 				break;
 			}
@@ -433,29 +429,29 @@ int get_image_fw_rev_long(void *data, unsigned sz, struct firmware_versions_long
 		v->scubootstrap.major = 0;
 
 		/* don't update if null */
-		if(fip.scuc_rev.minor != 0)
+		if (fip.scuc_rev.minor != 0)
 			v->scu.minor = fip.scuc_rev.minor;
-		if(fip.scuc_rev.major != 0)
+		if (fip.scuc_rev.major != 0)
 			v->scu.major = fip.scuc_rev.major;
-		if(fip.ia32_rev.minor != 0)
+		if (fip.ia32_rev.minor != 0)
 			v->ia32.minor = fip.ia32_rev.minor;
-		if(fip.ia32_rev.major != 0)
+		if (fip.ia32_rev.major != 0)
 			v->ia32.major = fip.ia32_rev.major;
-		if(fip.oem_rev.minor != 0)
+		if (fip.oem_rev.minor != 0)
 			v->valhooks.minor = fip.oem_rev.minor;
-		if(fip.oem_rev.major != 0)
+		if (fip.oem_rev.major != 0)
 			v->valhooks.major = fip.oem_rev.major;
-		if(fip.ifwi_rev.minor != 0)
+		if (fip.ifwi_rev.minor != 0)
 			v->ifwi.minor = fip.ifwi_rev.minor;
-		if(fip.ifwi_rev.major != 0)
+		if (fip.ifwi_rev.major != 0)
 			v->ifwi.major = fip.ifwi_rev.major;
-		if(fip.ch00_rev.minor != 0)
+		if (fip.ch00_rev.minor != 0)
 			v->chaabi.minor = fip.ch00_rev.minor;
-		if(fip.ch00_rev.major != 0)
+		if (fip.ch00_rev.major != 0)
 			v->chaabi.major = fip.ch00_rev.major;
-		if(fip.mia_rev.minor != 0)
+		if (fip.mia_rev.minor != 0)
 			v->mia.minor = fip.mia_rev.minor;
-		if(fip.mia_rev.major != 0)
+		if (fip.mia_rev.major != 0)
 			v->mia.major = fip.mia_rev.major;
 
 		databytes += sizeof(magic);
@@ -465,7 +461,8 @@ int get_image_fw_rev_long(void *data, unsigned sz, struct firmware_versions_long
 	return 0;
 }
 
-int crack_update_fw(const char *fw_file, struct fw_version *ifwi_version){
+int crack_update_fw(const char *fw_file, struct fw_version *ifwi_version)
+{
 	struct FIP_header fip;
 	FILE *fd;
 	int tmp = 0;
@@ -480,7 +477,7 @@ int crack_update_fw(const char *fw_file, struct fw_version *ifwi_version){
 	ifwi_version->major = 0;
 	ifwi_version->minor = 0;
 
-	while ((ifwi_version->minor == 0) && (ifwi_version->major == 0)){
+	while ((ifwi_version->minor == 0) && (ifwi_version->major == 0)) {
 
 		while (tmp != FIP_PATTERN) {
 			int cur;
@@ -504,7 +501,7 @@ int crack_update_fw(const char *fw_file, struct fw_version *ifwi_version){
 		}
 		ifwi_version->major = fip.ifwi_rev.major;
 		ifwi_version->minor = fip.ifwi_rev.minor;
-		tmp=0;
+		tmp = 0;
 
 	}
 	fclose(fd);
@@ -512,7 +509,8 @@ int crack_update_fw(const char *fw_file, struct fw_version *ifwi_version){
 	return 0;
 }
 
-int crack_update_fw_pti_field(const char *fw_file, uint8_t *pti_field){
+int crack_update_fw_pti_field(const char *fw_file, uint8_t * pti_field)
+{
 	FILE *fd;
 	int tmp = 0;
 	int location;
@@ -566,4 +564,3 @@ int crack_update_fw_pti_field(const char *fw_file, uint8_t *pti_field){
 	fclose(fd);
 	return 0;
 }
-

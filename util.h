@@ -23,15 +23,15 @@
 int file_write(const char *filename, const void *what, size_t sz);
 int file_string_write(const char *filename, const char *what);
 void dump_trace_file(const char *filename);
-int file_read(const char *filename, void **datap, size_t *szp);
+int file_read(const char *filename, void **datap, size_t * szp);
 int file_copy(const char *src, const char *dst);
 int file_size(const char *filename);
 void *file_mmap(const char *filename, size_t length, bool writable);
 int safe_read(int fd, void *data, size_t size);
 int snhexdump(char *str, size_t size, const unsigned char *data, unsigned int sz);
 void hexdump_buffer(const unsigned char *buffer, unsigned int buffer_size, void
-		(*printrow)(const char *text), unsigned int bytes_per_row);
-void twoscomplement( unsigned char *cs, unsigned char *buf, unsigned int size);
+		     (*printrow) (const char *text), unsigned int bytes_per_row);
+void twoscomplement(unsigned char *cs, unsigned char *buf, unsigned int size);
 int is_hex(char c);
 
 void error(const char *fmt, ...);
@@ -40,6 +40,6 @@ void print(const char *fmt, ...);
 int call_program(const char *path, const char *log_file,
 		 const char *pass_string, unsigned int timeout, char *argv[]);
 
-void util_init(void (*err_fun)(const char *), void (*pr_fun)(const char *));
+void util_init(void (*err_fun) (const char *), void (*pr_fun) (const char *));
 
 #endif

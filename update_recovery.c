@@ -86,20 +86,20 @@ static int check_recovery_image(const char *tgt_sha1, int *needs_patching)
 	}
 	SHA_hash(data, sz, tgt_digest);
 
-	*needs_patching = memcmp(tgt_digest, expected_tgt_digest,
-			SHA_DIGEST_SIZE);
+	*needs_patching = memcmp(tgt_digest, expected_tgt_digest, SHA_DIGEST_SIZE);
 	free(data);
 	return 0;
 }
 
 typedef struct {
-	unsigned char* buffer;
+	unsigned char *buffer;
 	ssize_t size;
 	ssize_t pos;
 } MemorySinkInfo;
 
-static ssize_t MemorySink(unsigned char* data, ssize_t len, void* token) {
-	MemorySinkInfo* msi = (MemorySinkInfo*)token;
+static ssize_t MemorySink(unsigned char *data, ssize_t len, void *token)
+{
+	MemorySinkInfo *msi = (MemorySinkInfo *) token;
 	if (msi->size - msi->pos < len) {
 		return -1;
 	}
@@ -108,9 +108,8 @@ static ssize_t MemorySink(unsigned char* data, ssize_t len, void* token) {
 	return len;
 }
 
-
 static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
-		unsigned int tgt_size, const char *patchfile)
+			  unsigned int tgt_size, const char *patchfile)
 {
 	MemorySinkInfo msi;
 	void *src_data;
@@ -150,9 +149,9 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 	}
 
 	msi.pos = 0;
-        if (tgt_size > TGT_SIZE_MAX){
-                LOGE("tgt_size is too big!");
-                goto out;
+	if (tgt_size > TGT_SIZE_MAX) {
+		LOGE("tgt_size is too big!");
+		goto out;
 	}
 	msi.size = tgt_size;
 	msi.buffer = malloc(tgt_size);
@@ -161,14 +160,13 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 		goto out;
 	}
 
-	if (file_read(patchfile, (void **)&patchval.data, (size_t *)&patchval.size)) {
+	if (file_read(patchfile, (void **)&patchval.data, (size_t *) & patchval.size)) {
 		LOGE("Coudln't read patch data");
 		goto out;
 	}
 	patchval.type = VAL_BLOB;
 
-	if (ApplyImagePatch(src_data, src_size, &patchval,
-				MemorySink, &msi, &ctx, NULL)) {
+	if (ApplyImagePatch(src_data, src_size, &patchval, MemorySink, &msi, &ctx, NULL)) {
 		LOGE("Patching process failed");
 		goto out;
 	}
@@ -202,12 +200,12 @@ static void usage(void)
 }
 
 static struct option long_options[] = {
-	{"src-sha1",   1, NULL, 's'},
-	{"tgt-sha1",   1, NULL, 't'},
-	{"tgt-size",   1, NULL, 'z'},
+	{"src-sha1", 1, NULL, 's'},
+	{"tgt-sha1", 1, NULL, 't'},
+	{"tgt-size", 1, NULL, 'z'},
 	{"check-sha1", 1, NULL, 'c'},
-	{"patch",      1, NULL, 'p'},
-	{"help",       0, NULL, 'h'},
+	{"patch", 1, NULL, 'p'},
+	{"help", 0, NULL, 'h'},
 	{0, 0, 0, 0}
 };
 
@@ -224,8 +222,7 @@ int main(int argc, char **argv)
 
 	while (1) {
 		int option_index = 0;
-		c = getopt_long(argc, argv, "s:t:z:c:p:h", long_options,
-				&option_index);
+		c = getopt_long(argc, argv, "s:t:z:c:p:h", long_options, &option_index);
 		if (c == -1)
 			break;
 
@@ -264,12 +261,12 @@ int main(int argc, char **argv)
 		/* We can't do any quick checks if unsigned images
 		 * are used. Examine the whole image */
 		LOGI("Checking full recovery image");
-		if (tgt_sha1 != NULL){
+		if (tgt_sha1 != NULL) {
 			if (check_recovery_image(tgt_sha1, &needs_patching)) {
 				LOGE("Can't examine current recovery console SHA1");
 				exit(EXIT_FAILURE);
 			}
-		}else{
+		} else {
 			LOGE("SHA1 option was not detected correctly");
 			exit(EXIT_FAILURE);
 		}
@@ -281,8 +278,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if ((src_sha1 != NULL) && (tgt_sha1 != NULL) && (patch_file != NULL) && (tgt_size!= 0))
-	{
+	if ((src_sha1 != NULL) && (tgt_sha1 != NULL) && (patch_file != NULL) && (tgt_size != 0)) {
 		if (needs_patching) {
 			LOGI("Installing new recovery image");
 			if (patch_recovery(src_sha1, tgt_sha1, tgt_size, patch_file)) {
@@ -292,9 +288,8 @@ int main(int argc, char **argv)
 		} else {
 			LOGI("Recovery image already installed");
 		}
-	}else{
+	} else {
 		LOGI("Update options were not successfully detected");
 	}
 	return 0;
 }
-

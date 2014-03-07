@@ -24,10 +24,17 @@
 bool is_fdk(void);
 int flash_capsule_fdk(void *data, unsigned sz);
 
-#else  /* CONFIG_INTELPROV_FDK */
+#else	/* CONFIG_INTELPROV_FDK */
 
-bool is_fdk(void) {return false;}
-int flash_capsule_fdk(void *data, unsigned sz) {return stub_operation(__func__);}
+bool is_fdk(void)
+{
+	return false;
+}
+
+int flash_capsule_fdk(void *data, unsigned sz)
+{
+	return stub_operation(__func__);
+}
 
 #endif	/* CONFIG_INTELPROV_FDK */
 

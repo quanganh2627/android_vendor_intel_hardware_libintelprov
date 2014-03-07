@@ -34,19 +34,18 @@ enum {
 static void usage(void)
 {
 	printf("\nusage: flashtool <options>\n"
-		"Available commands:\n"
-		"-i <entry name>       OSIP entry to manipulate, used with -w and -r\n"
-		"   Valid entry names are " ANDROID_OS_NAME " " RECOVERY_OS_NAME
-		" " FASTBOOT_OS_NAME "\n"
-		"-w <osupdate file>    Flash a file to the index, requires -i\n"
-		"-r <destination file> Read an osimage index into a file, requires -i\n"
-		"-v <firmware file>    Dump the FW versions in an IFWI release\n"
-		"-f <firmware file>    Flash an IFWI image\n"
-		"-g <firmware file>    Flash 3G firmware\n"
-		"-p <firmware file>    Flash IFWI using FPT\n"
-		"Run with no arguments to print out some system version information\n"
-		"and a dump of the OSIP\n"
-		);
+	       "Available commands:\n"
+	       "-i <entry name>       OSIP entry to manipulate, used with -w and -r\n"
+	       "   Valid entry names are " ANDROID_OS_NAME " " RECOVERY_OS_NAME
+	       " " FASTBOOT_OS_NAME "\n"
+	       "-w <osupdate file>    Flash a file to the index, requires -i\n"
+	       "-r <destination file> Read an osimage index into a file, requires -i\n"
+	       "-v <firmware file>    Dump the FW versions in an IFWI release\n"
+	       "-f <firmware file>    Flash an IFWI image\n"
+	       "-g <firmware file>    Flash 3G firmware\n"
+	       "-p <firmware file>    Flash IFWI using FPT\n"
+	       "Run with no arguments to print out some system version information\n"
+	       "and a dump of the OSIP\n");
 }
 
 static void cmd_show_data(void)
@@ -165,14 +164,14 @@ static void cmd_write_osip(char *entry, char *filename)
 	}
 }
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
 	int c;
 	char *entry = NULL;
 	char *filename = NULL;
 	int cmd = CMD_NONE;
 
-	while ( (c = getopt(argc, argv, "i:w:r:dv:hf:g:p:") ) != -1 ) {
+	while ((c = getopt(argc, argv, "i:w:r:dv:hf:g:p:")) != -1) {
 		switch (c) {
 		case 'i':
 			entry = strdup(optarg);
