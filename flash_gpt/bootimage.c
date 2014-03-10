@@ -70,6 +70,9 @@ int flash_image_gpt(void *data, unsigned sz, const char *name)
 	char *block_dev;
 	int ret;
 
+	if (!strcmp(name, TEST_OS_NAME))
+		name = ANDROID_OS_NAME;
+
 	block_dev = get_gpt_path(name);
 	if (!block_dev)
 		return -1;

@@ -52,14 +52,6 @@
 #include "telephony/droidboot.h"
 #endif
 
-static int oem_write_osip_header(int argc, char **argv);
-
-static int flash_testos(void *data, unsigned sz)
-{
-	oem_write_osip_header(0, 0);
-	return write_stitch_image_ex(data, sz, 0, 1);
-}
-
 #define DNX_TIMEOUT_CHANGE  "dnx_timeout"
 #define DNX_TIMEOUT_GET	    "--get"
 #define DNX_TIMEOUT_SET	    "--set"
@@ -170,28 +162,6 @@ end2:
 #define K_MAX_LINE_LEN 8192
 #define K_MAX_ARGS 256
 #define K_MAX_ARG_LEN 256
-
-static int oem_write_osip_header(int argc, char **argv)
-{
-	static struct OSIP_header default_osip = {
-		.sig = OSIP_SIG,
-		.intel_reserved = 0,
-		.header_rev_minor = 0,
-		.header_rev_major = 1,
-		.header_checksum = 0,
-		.num_pointers = 1,
-		.num_images = 1,
-		.header_size = 0
-	};
-
-	ui_print("Write OSIP header\n");
-	default_osip.header_checksum = get_osip_crc(&default_osip);
-	write_OSIP(&default_osip);
-	restore_osii("boot");
-	restore_osii("recovery");
-	restore_osii("fastboot");
-	return 0;
-}
 
 static int wait_property(char *prop, char *value, int timeout_sec)
 {

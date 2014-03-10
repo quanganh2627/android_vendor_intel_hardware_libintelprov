@@ -30,10 +30,6 @@
 #include "util.h"
 #include "flash.h"
 
-#define ANDROID_OS_NUM      0
-#define RECOVERY_OS_NUM     1
-#define FASTBOOT_OS_NUM     2
-
 #define UEFI_FW_IDX         0
 
 #define pr_perror(x)	fprintf(stderr, "%s failed: %s\n", x, strerror(errno))
@@ -697,4 +693,26 @@ int restore_osii(char *destination)
 	/* The OS image might have been invalidated.
 	 * Restore the pointers */
 	return update_osii(destination, DDR_LOAD_ADDX, ENTRY_POINT);
+}
+
+int oem_write_osip_header(int argc, char **argv)
+{
+	static struct OSIP_header default_osip = {
+		.sig = OSIP_SIG,
+		.intel_reserved = 0,
+		.header_rev_minor = 0,
+		.header_rev_major = 1,
+		.header_checksum = 0,
+		.num_pointers = 1,
+		.num_images = 1,
+		.header_size = 0
+	};
+
+	printf("Write OSIP header\n");
+	default_osip.header_checksum = get_osip_crc(&default_osip);
+	write_OSIP(&default_osip);
+	restore_osii("boot");
+	restore_osii("recovery");
+	restore_osii("fastboot");
+	return 0;
 }

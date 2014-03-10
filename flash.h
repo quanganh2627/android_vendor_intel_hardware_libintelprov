@@ -45,6 +45,7 @@ int flash_recovery_kernel(void *data, unsigned sz);
 int flash_fastboot_kernel(void *data, unsigned sz);
 int flash_splashscreen_image(void *data, unsigned sz);
 int flash_esp(void *data, unsigned sz);
+int flash_testos(void *data, unsigned sz);
 
 /* Returns:
  * -1: error

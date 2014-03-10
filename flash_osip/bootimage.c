@@ -50,7 +50,15 @@ int read_image_osip(const char *name, void **data)
 
 int flash_image_osip(void *data, unsigned sz, const char *name)
 {
-	int index = get_named_osii_index(name);
+	int index;
+
+	if (!strcmp(name, TEST_OS_NAME)) {
+		oem_write_osip_header(0, 0);
+		return write_stitch_image_ex(data, sz, ANDROID_OS_NUM, 1);
+
+	}
+
+	index = get_named_osii_index(name);
 
 	if (index < 0) {
 		error("Can't find OSII index!!\n");

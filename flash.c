@@ -102,3 +102,9 @@ int flash_esp(void *data, unsigned sz)
 {
 	return flash_image(data, sz, ESP_PART_NAME);
 }
+
+int flash_testos(void *data, unsigned sz)
+{
+	return flash_image(data, sz, TEST_OS_NAME);
+}
+

@@ -19,6 +19,12 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+enum osip_indexes {
+	ANDROID_OS_NUM,
+	RECOVERY_OS_NUM,
+	FASTBOOT_OS_NUM,
+};
+
 #ifndef STORAGE_BASE_PATH
 #define STORAGE_BASE_PATH "/dev/block/mmcblk0"
 #endif
@@ -77,6 +83,7 @@ int restore_osii(char *destination);
 int get_attribute_osii_index(int attr);
 int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba);
 int verify_osip_sizes(struct OSIP_header *osip);
+int oem_write_osip_header(int argc, char **argv);
 
 #define ATTR_SIGNED_KERNEL      0
 #define ATTR_UNSIGNED_KERNEL    1
