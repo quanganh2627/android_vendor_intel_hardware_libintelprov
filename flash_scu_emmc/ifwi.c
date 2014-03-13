@@ -21,16 +21,21 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <cutils/properties.h>
+#include <sys/mman.h>
 #include "fw_version_check.h"
 
+
 #define FORCE_RW_OPT "0"
-#define BOOT_PARTITION_SIZE 0x400000
-#define TOKEN_UMIP_AREA_ADDRESS 16384
-#define TOKEN_UMIP_AREA_SIZE 11264
-#define BOOT0 "/dev/block/mmcblk0boot0"
-#define BOOT1 "/dev/block/mmcblk0boot1"
-#define BOOT0_FORCE_RO "/sys/block/mmcblk0boot0/force_ro"
-#define BOOT1_FORCE_RO "/sys/block/mmcblk0boot1/force_ro"
+#define BOOT_IFWI_SIZE 0x400000
+#define BOOT_UMIP_SIZE 0x10000
+#define BOOT_UMIP_SECTOR_SIZE 0x200
+#define BOOT_UMIP_XOR_OFFSET 0x7
+#define BOOT_UMIP_3GPP_OFFSET 0x76F
+#define BOOT_IFWI_XOR_OFFSET 0x0112d8
+#define BOOT_DNX_TIMEOUT_OFFSET 0x400
+#define IFWI_OFFSET 0
+#define TOKEN_UMIP_AREA_OFFSET 0x4000
+#define TOKEN_UMIP_AREA_SIZE 0x2C00
 
 #define IFWI_TYPE_LSH 12
 
@@ -45,35 +50,7 @@ static void dump_fw_versions_long(struct firmware_versions_long *v)
 	fprintf(stderr, "	    mIA: %04X.%04X\n", v->mia.major, v->mia.minor);
 }
 
-static int write_image(int fd, char *image, unsigned size)
-{
-	int ret = 0;
-	char *ptr = NULL;
-
-	ptr = image;
-	if (!ptr) {
-		fprintf(stderr, "write_image(): Image is invalid\n");
-		return -1;
-	}
-
-	while (size) {
-		/*If this condition is not present, the write */
-		/*function errors out while writing the last chunk */
-		ret = write(fd, ptr, size);
-		if (ret <= 0 && errno != EINTR) {
-			fprintf(stderr, "write_image(): image write failed with errno %d\n", errno);
-			return -1;
-		}
-		ptr += ret;
-		size -= ret;
-	}
-
-	fsync(fd);
-	return 0;
-}
-
-static int force_rw(char *name)
-{
+static int force_rw(char *name) {
 	int ret, fd;
 
 	fd = open(name, O_WRONLY);
@@ -132,113 +109,150 @@ int check_ifwi_file_scu_emmc(void *data, size_t size)
 	return 1;
 }
 
-int update_ifwi_file_scu_emmc(void *data, size_t size)
+static uint32_t xor_compute(char *ptr, uint32_t size)
 {
-	int boot0_fd, boot1_fd, ret = 0;
+	uint32_t xor = 0;
+	uint32_t i;
+
+	for (i = 0; i < size; i+=4)
+		xor = xor ^ *(uint32_t *)(ptr + i);
+
+	return xor;
+}
+
+static uint8_t xor_factorize(uint32_t xor)
+{
+	return (uint8_t)((xor & 0xff) ^ ((xor >> 8) & 0xff) ^ ((xor >> 16) & 0xff) ^ ((xor >> 24) & 0xff));
+}
+
+static void xor_update(char *ptr)
+{
+	uint16_t i;
+	uint32_t xor;
+
+	/* update UMIP xor of sector 2 to 127 */
+	for (i = 2; i < 128; i++) {
+		xor = xor_compute(ptr + i * BOOT_UMIP_SECTOR_SIZE, BOOT_UMIP_SECTOR_SIZE);
+		*(ptr + 4 * i) = xor_factorize(xor);
+	}
+
+	/* update UMIP xor */
+	*(ptr + BOOT_UMIP_XOR_OFFSET) = 0;
+	xor = xor_compute(ptr, BOOT_UMIP_SIZE);
+	*(ptr + BOOT_UMIP_XOR_OFFSET) = xor_factorize(xor);
+
+	/* update IFWI xor */
+	*(uint32_t *)(ptr + BOOT_IFWI_XOR_OFFSET) = 0x0;
+	xor = xor_compute(ptr, BOOT_IFWI_SIZE);
+	*(uint32_t *)(ptr + BOOT_IFWI_XOR_OFFSET) = xor;
+}
+
+static int write_umip_emmc(uint32_t addr_offset, void *data, size_t size)
+{
+	int boot_fd = 0;
+	int boot_index;
+	char boot_partition[64];
+	char boot_partition_force_ro[64];
+	char *ptr;
 	char *token_data;
 
-	token_data = malloc(TOKEN_UMIP_AREA_SIZE);
-	if (!token_data) {
-		fprintf(stderr, "flash_ifwi(): Malloc error\n");
-		return -1;
+	if (addr_offset == IFWI_OFFSET) {
+		token_data = malloc(TOKEN_UMIP_AREA_SIZE);
+		if (!token_data) {
+			fprintf(stderr, "write_umip_emmc: Malloc error\n");
+			return -1;
+		}
+
+		if (size > BOOT_IFWI_SIZE) {
+			fprintf(stderr, "write_umip_emmc: Truncating last %d bytes from the IFWI\n",
+			(size - BOOT_IFWI_SIZE));
+			/* Since the last 144 bytes are the FUP header which are not required,*/
+			/* we truncate it to fit into the boot partition. */
+			size = BOOT_IFWI_SIZE;
+		}
 	}
 
-	if (size > BOOT_PARTITION_SIZE) {
-		fprintf(stderr, "flash_ifwi(): Truncating last %d bytes from the IFWI\n",
-			(size - BOOT_PARTITION_SIZE));
-		/* Since the last 144 bytes are the FUP header which are not required, */
-		/* we truncate it to fit into the boot partition. */
-		size = BOOT_PARTITION_SIZE;
+	for (boot_index = 0; boot_index < 2; boot_index++) {
+		snprintf(boot_partition, 64, "/dev/block/mmcblk0boot%d", boot_index);
+		snprintf(boot_partition_force_ro, 64, "/sys/block/mmcblk0boot%d/force_ro", boot_index);
+
+		if (force_rw(boot_partition_force_ro)) {
+			fprintf(stderr, "write_umip_emmc: unable to force_ro %s\n", boot_partition);
+			goto err_boot1;
+		}
+		boot_fd = open(boot_partition, O_RDWR);
+		if (boot_fd < 0) {
+			fprintf(stderr, "write_umip_emmc: failed to open %s\n", boot_partition);
+			goto err_boot1;
+		}
+
+		ptr = (char *)mmap(NULL, BOOT_IFWI_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, boot_fd, 0);
+		if (ptr == MAP_FAILED) {
+			fprintf(stderr, "write_umip_emmc: mmap failed on boot%d with error : %s\n", boot_index, strerror(errno));
+			goto err_boot1;
+		}
+
+		if (addr_offset == IFWI_OFFSET)
+			memcpy(token_data, ptr + TOKEN_UMIP_AREA_OFFSET, TOKEN_UMIP_AREA_SIZE);
+
+		/* Write the data */
+		if (addr_offset + size <= BOOT_IFWI_SIZE)
+			if (data == NULL)
+				memset(ptr + addr_offset, 0, size);
+			else
+				memcpy(ptr + addr_offset, data, size);
+		else {
+			fprintf(stderr, "write_umip_emmc: write failed\n");
+			goto err_boot2;
+		}
+
+		if (addr_offset == IFWI_OFFSET)
+			memcpy(ptr + TOKEN_UMIP_AREA_OFFSET, token_data, TOKEN_UMIP_AREA_SIZE);
+
+		/* Compute and write xor */
+		xor_update(ptr);
+
+		munmap(ptr, BOOT_IFWI_SIZE);
+		close(boot_fd);
 	}
 
-	ret = force_rw(BOOT0_FORCE_RO);
-	if (ret) {
-		fprintf(stderr, "flash_ifwi(): unable to force_ro %s\n", BOOT0);
-		goto err;
-	}
-	boot0_fd = open(BOOT0, O_RDWR);
-	if (boot0_fd < 0) {
-		fprintf(stderr, "flash_ifwi(): failed to open %s\n", BOOT0);
-		goto err;
-	}
-	if (lseek(boot0_fd, TOKEN_UMIP_AREA_ADDRESS, SEEK_SET) < 0) {
-		fprintf(stderr, "flash_ifwi(): lseek failed on boot0\n");
-		goto err_boot0;
-	}
-	ret = read(boot0_fd, token_data, TOKEN_UMIP_AREA_SIZE);
-	if (ret <= 0 && errno != EINTR) {
-		fprintf(stderr, "flash_ifwi(): UMIP token area read failed with errno %d\n", errno);
-		goto err_boot0;
-	}
-	if (lseek(boot0_fd, 0, SEEK_SET) < 0) {	/* Seek to start of file */
-		fprintf(stderr, "flash_ifwi(): lseek failed on boot0\n");
-		goto err_boot0;
-	}
-	ret = write_image(boot0_fd, (char *)data, size);
-	if (ret) {
-		fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT0);
-		goto err_boot0;
-	}
-	if (lseek(boot0_fd, TOKEN_UMIP_AREA_ADDRESS, SEEK_SET) < 0) {
-		fprintf(stderr, "flash_ifwi: lseek failed on boot0\n");
-		goto err_boot0;
-	}
-	ret = write_image(boot0_fd, token_data, TOKEN_UMIP_AREA_SIZE);
-	close(boot0_fd);
-	if (ret)
-		fprintf(stderr, "flash_ifwi(): Restore UMIP token area to %s failed\n", BOOT0);
-	else {
-		ret = force_rw(BOOT1_FORCE_RO);
-		if (ret) {
-			fprintf(stderr, "flash_ifwi(): unable to force_ro %s\n", BOOT1);
-			goto err;
-		}
-		boot1_fd = open(BOOT1, O_RDWR);
-		if (boot1_fd < 0) {
-			fprintf(stderr, "flash_ifwi(): failed to open %s\n", BOOT1);
-			goto err;
-		}
-		if (lseek(boot1_fd, TOKEN_UMIP_AREA_ADDRESS, SEEK_SET) < 0) {
-			fprintf(stderr, "flash_ifwi(): lseek failed on boot1\n");;
-			goto err_boot1;
-		}
-		ret = read(boot1_fd, token_data, TOKEN_UMIP_AREA_SIZE);
-		if (ret <= 0 && errno != EINTR) {
-			fprintf(stderr, "flash_ifwi(): UMIP token area read failed with errno %d\n", errno);
-			goto err_boot1;
-		}
-		if (lseek(boot1_fd, 0, SEEK_SET) < 0) {
-			fprintf(stderr, "flash_ifwi(): lseek failed on boot1\n");
-			goto err_boot1;
-		}
-		ret = write_image(boot1_fd, (char *)data, size);
-		if (ret) {
-			fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT1);
-			goto err_boot1;
-		}
-		if (lseek(boot1_fd, TOKEN_UMIP_AREA_ADDRESS, SEEK_SET) < 0) {
-			fprintf(stderr, "flash_ifwi: lseek failed on boot1\n");
-			goto err_boot1;
-		}
-		ret = write_image(boot1_fd, token_data, TOKEN_UMIP_AREA_SIZE);
-		close(boot1_fd);
-		if (ret)
-			fprintf(stderr, "flash_ifwi(): write to %s failed\n", BOOT1);
-	}
-	free(token_data);
-	return ret;
+	if (addr_offset == IFWI_OFFSET)
+		free(token_data);
+	return 0;
 
-err_boot0:
-	close(boot0_fd);
-	goto err;
+err_boot2:
+	munmap(ptr, BOOT_IFWI_SIZE);
 
 err_boot1:
-	close(boot1_fd);
-	goto err;
-
-err:
-	free(token_data);
+	if (addr_offset == IFWI_OFFSET)
+		free(token_data);
+	close(boot_fd);
 	return -1;
+}
+
+int update_ifwi_file_scu_emmc(void *data, size_t size)
+{
+	return write_umip_emmc(IFWI_OFFSET, data, size);
+}
+
+int flash_token_umip_scu_emmc(void *data, size_t size)
+{
+	return write_umip_emmc(TOKEN_UMIP_AREA_OFFSET, data, TOKEN_UMIP_AREA_SIZE);
+}
+
+int flash_custom_boot_scu_emmc(void *data, size_t size)
+{
+	return write_umip_emmc(BOOT_UMIP_3GPP_OFFSET, data, 1);
+}
+
+int erase_token_umip_scu_emmc(void *data, size_t size)
+{
+	return write_umip_emmc(TOKEN_UMIP_AREA_OFFSET, NULL, TOKEN_UMIP_AREA_SIZE);
+}
+
+int flash_dnx_timeout_scu_emmc(void *data, size_t size)
+{
+	return write_umip_emmc(BOOT_DNX_TIMEOUT_OFFSET, data, 1);
 }
 
 int flash_dnx_scu_emmc(void *data, unsigned sz)
@@ -255,110 +269,6 @@ int flash_ifwi_scu_emmc(void *data, unsigned size)
 		return update_ifwi_file_scu_emmc(data, size);
 
 	return ret;
-}
-
-int flash_token_umip_scu_emmc(void *data, size_t size)
-{
-	uint32_t *ptr = (uint32_t *) data;
-	int boot0_fd, boot1_fd, ret = 0;
-	int token_size = size;
-	uint32_t xor = 0;
-	int token_size32 = token_size / sizeof(uint32_t);
-	int i;
-	int padding_size = TOKEN_UMIP_AREA_SIZE - token_size - sizeof(uint32_t);
-	char *ptr_padding = calloc(1, padding_size);
-
-	if (!ptr_padding) {
-		fprintf(stderr, "write_token_umip: calloc failed\n");
-		return -1;
-	}
-	/* 32-bit XOR compensation calculation
-	 * The token just added shall avoid any effect on xor calculation (checksum)
-	 * 32-bit XOR compensation is written in UMIP just after the token
-	 */
-	for (i = 0; i < token_size32; i++) {
-		xor = xor ^ *ptr;
-		ptr++;
-	}
-
-	ret = force_rw(BOOT0_FORCE_RO);
-	if (ret) {
-		fprintf(stderr, "write_token_umip: unable to force_ro %s\n", BOOT0);
-		goto err;
-	}
-	boot0_fd = open(BOOT0, O_RDWR);
-	if (boot0_fd < 0) {
-		fprintf(stderr, "write_token_umip: failed to open %s\n", BOOT0);
-		goto err;
-	}
-	if (lseek(boot0_fd, TOKEN_UMIP_AREA_ADDRESS, SEEK_SET) < 0) {
-		fprintf(stderr, "write_token_umip: lseek failed on boot0\n");
-		goto err_boot0;
-	}
-	/* Write the token */
-	ret = write_image(boot0_fd, (char *)data, token_size);
-	if (ret) {
-		fprintf(stderr, "flash_token_umip(): write token to %s failed\n", BOOT0);
-		goto err_boot0;
-	}
-	/* Write the XOR Compensation */
-	ret = write_image(boot0_fd, (char *)&xor, sizeof(uint32_t));
-	if (ret) {
-		fprintf(stderr, "flash_token_umip(): write xor to %s failed\n", BOOT0);
-		goto err_boot0;
-	}
-	/* Write the padding bytes */
-	ret = write_image(boot0_fd, ptr_padding, padding_size);
-	close(boot0_fd);
-	if (ret)
-		fprintf(stderr, "flash_token_umip(): padding -- write to %s failed\n", BOOT0);
-	else {
-		ret = force_rw(BOOT1_FORCE_RO);
-		if (ret) {
-			fprintf(stderr, "write_token_umip: unable to force_ro %s\n", BOOT1);
-			goto err;
-		}
-		boot1_fd = open(BOOT1, O_RDWR);
-		if (boot1_fd < 0) {
-			fprintf(stderr, "write_token_umip: failed to open %s\n", BOOT1);
-			goto err;
-		}
-		if (lseek(boot1_fd, TOKEN_UMIP_AREA_ADDRESS, SEEK_SET) < 0) {
-			fprintf(stderr, "write_token_umip: lseek failed on boot1\n");
-			goto err_boot1;
-		}
-		/* Write the token */
-		ret = write_image(boot1_fd, (char *)data, token_size);
-		if (ret) {
-			fprintf(stderr, "flash_token_umip(): write token to %s failed\n", BOOT1);
-			goto err_boot1;
-		}
-		/* Write the XOR compensation */
-		ret = write_image(boot1_fd, (char *)&xor, sizeof(uint32_t));
-		if (ret) {
-			fprintf(stderr, "flash_token_umip(): write xor to %s failed\n", BOOT1);
-			goto err_boot1;
-		}
-		/* Write the padding bytes */
-		ret = write_image(boot1_fd, ptr_padding, padding_size);
-		close(boot1_fd);
-		if (ret)
-			fprintf(stderr, "flash_token_umip(): padding -- write to %s failed\n", BOOT1);
-	}
-	free(ptr_padding);
-	return ret;
-
-err_boot0:
-	close(boot0_fd);
-	goto err;
-
-err_boot1:
-	close(boot1_fd);
-	goto err;
-
-err:
-	free(ptr_padding);
-	return -1;
 }
 
 bool is_scu_emmc(void)

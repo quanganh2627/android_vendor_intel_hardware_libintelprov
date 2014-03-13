@@ -23,6 +23,21 @@ static void *o;
 #define ops_call(op, func, ...) \
 	(o = op##_ops()) && ((struct op##_operations *)o)->func ? ((struct op##_operations *)o)->func(__VA_ARGS__) : stub_operation(#func)
 
+int flash_dnx_timeout(void *data, size_t size)
+{
+	return ops_call(ifwi, flash_dnx_timeout, data, size);
+}
+
+int erase_token_umip(void)
+{
+	return ops_call(ifwi, erase_token_umip);
+}
+
+int flash_custom_boot(void *data, size_t size)
+{
+	return ops_call(ifwi, flash_custom_boot, data, size);
+}
+
 int flash_token_umip(void *data, size_t size)
 {
 	return ops_call(ifwi, flash_token_umip, data, size);

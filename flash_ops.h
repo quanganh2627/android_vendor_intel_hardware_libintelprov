@@ -34,12 +34,15 @@ struct bootimage_operations {
 };
 
 struct ifwi_operations {
-	int (*flash_ifwi) (void *data, unsigned size);
-	int (*flash_dnx) (void *data, unsigned size);
-	int (*update_ifwi_image) (void *data, size_t size, unsigned reset_flag);
-	int (*update_ifwi_file) (void *buffer, size_t size);
-	int (*check_ifwi_file) (void *buffer, size_t size);
-	int (*flash_token_umip) (void *buffer, size_t size);
+	int (*flash_ifwi)(void *data, unsigned size);
+	int (*flash_dnx)(void *data, unsigned size);
+	int (*update_ifwi_image)(void *data, size_t size, unsigned reset_flag);
+	int (*update_ifwi_file)(void *buffer, size_t size);
+	int (*check_ifwi_file)(void *buffer, size_t size);
+	int (*flash_token_umip)(void *buffer, size_t size);
+	int (*erase_token_umip)(void);
+	int (*flash_custom_boot)(void *buffer, size_t size);
+	int (*flash_dnx_timeout)(void *buffer, size_t size);
 };
 
 struct capsule_operations {

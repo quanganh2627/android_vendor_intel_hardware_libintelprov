@@ -52,110 +52,94 @@
 #include "telephony/droidboot.h"
 #endif
 
-#define DNX_TIMEOUT_CHANGE  "dnx_timeout"
-#define DNX_TIMEOUT_GET	    "--get"
-#define DNX_TIMEOUT_SET	    "--set"
-#define SYS_CURRENT_TIMEOUT "/sys/devices/platform/intel_mid_umip/current_timeout"
-#define TIMEOUT_SIZE	    20
-#define OPTION_SIZE	    6
+#define PARAMETER_VALUE_SIZE		10
+static int oem_custom_boot(int argc, char **argv)
+{
+	int retval = -1;
+	int size;
+	unsigned int value;
+	char custom_boot_value[PARAMETER_VALUE_SIZE] = "";
+
+	if (argc != 2) {
+		fastboot_fail("oem custom_boot requires one argument");
+		goto out;
+	}
+
+	size = snprintf(custom_boot_value, PARAMETER_VALUE_SIZE, "%s", argv[1]);
+	if (size < 0 || size > PARAMETER_VALUE_SIZE - 1) {
+		fastboot_fail("Parameter size exceeds limit");
+		goto out;
+	}
+
+	value = strtoul(custom_boot_value, NULL, 0);
+	if (EINVAL == value || ERANGE == value) {
+		fastboot_fail("Unable to read parameter");
+		goto out;
+	}
+
+	retval = flash_custom_boot((void *)&value, sizeof(value));
+	if (retval != 0) {
+		fastboot_fail("Fail write_umip");
+		goto out;
+	}
+	fastboot_okay("");
+
+out:
+	return retval;
+}
+
+static int oem_erase_token(int argc, char **argv)
+{
+	int retval = -1;
+
+	if (argc > 1) {
+		fastboot_fail("oem_erase_token requires no argument");
+		goto out;
+	}
+
+	retval = erase_token_umip();
+	if (retval != 0) {
+		fastboot_fail("Fail erase_token_umip");
+		goto out;
+	}
+	fastboot_okay("");
+
+out:
+	return retval;
+}
 
 static int oem_dnx_timeout(int argc, char **argv)
 {
 	int retval = -1;
-	int count, offset, bytes, size;
-	int fd;
-	char option[OPTION_SIZE] = "";
-	char timeout[TIMEOUT_SIZE] = "";
-	char check[TIMEOUT_SIZE] = "";
+	int size;
+	unsigned int value;
+	char dnx_timeout_value[PARAMETER_VALUE_SIZE] = "";
 
-	if (argc < 1 || argc > 3) {
-		/* Should not pass here ! */
-		fastboot_fail("oem dnx_timeout requires one or two arguments");
-		goto end2;
+	if (argc != 2) {
+		fastboot_fail("oem_dnx_timeout requires one argument");
+		goto out;
 	}
 
-	size = snprintf(option, OPTION_SIZE, "%s", argv[1]);
-
-	if (size == -1 || size > OPTION_SIZE - 1) {
+	size = snprintf(dnx_timeout_value, PARAMETER_VALUE_SIZE, "%s", argv[1]);
+	if (size < 0 || size > PARAMETER_VALUE_SIZE - 1) {
 		fastboot_fail("Parameter size exceeds limit");
-		goto end2;
+		goto out;
 	}
 
-	fd = open(SYS_CURRENT_TIMEOUT, O_RDWR);
-
-	if (fd == -1) {
-		pr_error("Can't open %s\n", SYS_CURRENT_TIMEOUT);
-		goto end2;
+	value = strtoul(dnx_timeout_value, NULL, 0);
+	if (EINVAL == value || ERANGE == value) {
+		fastboot_fail("Unable to read parameter");
+		goto out;
 	}
 
-	if (!strcmp(option, DNX_TIMEOUT_GET)) {
-		/* Get current timeout */
-		count = read(fd, check, TIMEOUT_SIZE);
-
-		if (count <= 0) {
-			fastboot_fail("Failed to read");
-			goto end1;
-		}
-
-		fastboot_info(check);
-
-	} else {
-		if (!strcmp(option, DNX_TIMEOUT_SET)) {
-			/* Set new timeout */
-
-			if (argc != 3) {
-				/* Should not pass here ! */
-				fastboot_fail("oem dnx_timeout --set not enough arguments");
-				goto end1;
-			}
-			// Get timeout value to set
-			size = snprintf(timeout, TIMEOUT_SIZE, "%s", argv[2]);
-
-			if (size == -1 || size > TIMEOUT_SIZE - 1) {
-				fastboot_fail("Timeout value size exceeds limit");
-				goto end1;
-			}
-
-			bytes = write(fd, timeout, size);
-			if (bytes != size) {
-				fastboot_fail("oem dnx_timeout failed to write file");
-				goto end1;
-			}
-
-			offset = lseek(fd, 0, SEEK_SET);
-			if (offset == -1) {
-				fastboot_fail("oem dnx_timeout failed to set offset");
-				goto end1;
-			}
-
-			memset(check, 0, TIMEOUT_SIZE);
-
-			count = read(fd, check, TIMEOUT_SIZE);
-			if (count <= 0) {
-				fastboot_fail("Failed to check");
-				goto end1;
-			}
-			// terminate string unconditionally to avoid buffer overflow
-			check[TIMEOUT_SIZE - 1] = '\0';
-			if (check[strlen(check) - 1] == '\n')
-				check[strlen(check) - 1] = '\0';
-			if (strcmp(check, timeout)) {
-				fastboot_fail("oem dnx_timeout called with wrong parameter");
-				goto end1;
-			}
-		} else {
-			fastboot_fail
-			    ("Unknown command. Use fastboot oem dnx_timeout [--get/--set] command\n");
-			goto end1;
-		}
+	retval = flash_dnx_timeout((void *)&value, sizeof(value));
+	if (retval != 0) {
+		fastboot_fail("Fail write_umip");
+		goto out;
 	}
-
-	retval = 0;
 	fastboot_okay("");
 
-end1:
-	close(fd);
-end2:
+out:
 	return retval;
 }
 
@@ -594,7 +578,11 @@ void libintel_droidboot_init(void)
 		}
 	}
 
-	ret |= aboot_register_oem_cmd(DNX_TIMEOUT_CHANGE, oem_dnx_timeout);
+	if (strcmp(build_type_prop, "user")) {
+		ret |= aboot_register_oem_cmd("dnx_timeout", oem_dnx_timeout);
+		ret |= aboot_register_oem_cmd("custom_boot" , oem_custom_boot);
+		ret |= aboot_register_oem_cmd("erase_token", oem_erase_token);
+	}
 	ret |= aboot_register_oem_cmd("erase", oem_erase_partition);
 	ret |= aboot_register_oem_cmd("repart", oem_repart_partition);
 
