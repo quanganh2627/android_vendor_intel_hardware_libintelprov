@@ -477,14 +477,18 @@ def WriteFullOTAPackage(input_zip, output_zip):
   #  script.UndoRetouchBinaries(retouch_files)
 
   images = {}
-  name_list = ["boot", "recovery", "fastboot", "esp", "ifwi"]
+  name_list = ["boot", "recovery", "fastboot", "esp"]
 
+  # Ensure that capsule is amended after esp as for
+  # EDKII capsule is copied in esp.
   if intel_capsule == "true":
     name_list.append("capsule")
+  else:
+    name_list.append("ifwi")
   if intel_ulpmc == "true":
     name_list.append("ulpmc")
 
-  for name in name_list:
+  for i,name in enumerate(name_list):
     if name == "ifwi":
       filename = name + ".zip"
     elif name == "capsule" or name == "ulpmc":
@@ -494,13 +498,14 @@ def WriteFullOTAPackage(input_zip, output_zip):
     img = common.GetBootableImage(filename, filename,
                                   OPTIONS.input_tmp, name.upper())
     if img:
-      images[name] = img
+      images[i] = (name,img)
 
   progress_increment = 0.4 / len(images)
-  for name, img in images.iteritems():
+  for k,(name, img) in sorted(images.iteritems()):
     script.ShowProgress(progress_increment, 0)
     if name == "recovery":
-      MakeRecoveryPatch(output_zip, img, images["boot"])
+      _, boot_img = images[name_list.index("boot")]
+      MakeRecoveryPatch(output_zip, img, boot_img)
       continue
     common.CheckSize(img.data, img.name, OPTIONS.info_dict)
     common.ZipWriteStr(output_zip, img.name, img.data)
@@ -680,14 +685,16 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   images = {} # Set of images to update (source, target)
   full_images = {} # Set of images to create (target) (no source)
 
-  name_list = ["boot", "recovery", "fastboot", "esp", "ifwi"]
+  name_list = ["boot", "recovery", "fastboot", "esp"]
 
   if intel_capsule == "true":
     name_list.append("capsule")
+  else:
+   name_list.append("ifwi")
   if intel_ulpmc == "true":
     name_list.append("ulpmc")
 
-  for name in name_list:
+  for i,name in enumerate(name_list):
     if name == "ifwi":
       filename = name + ".zip"
     elif name == "capsule" or name == "ulpmc":
@@ -698,7 +705,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
                 name.upper())
     tgt_img = common.GetBootableImage(filename, filename, OPTIONS.target_tmp,
                 name.upper())
-    all_images[name] = (src_img, tgt_img)
+    all_images[i] = (name, (src_img, tgt_img))
     if not tgt_img:
       print "%s image not present, skipping" % name
       continue
@@ -715,13 +722,13 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
         continue
     if do_partitioning == "true" or name == "ifwi" or metadata["fromgb"] or name == "capsule" or name == "ulpmc" or name == "esp":
       # we dont make incremental images
-      full_images[name] = tgt_img
+      full_images[i] = (name, tgt_img)
       continue
     if src_img:
-      images[name] = (src_img, tgt_img)
+      images[i] = (name, (src_img, tgt_img))
       largest_source_size = max(largest_source_size, src_img.size)
     else:
-      full_images[name] = tgt_img
+      full_images[i] = (name, tgt_img)
 
   # Here's how we divide up the progress bar:
   #  0.1 for verifying the start state (PatchCheck calls)
@@ -737,8 +744,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   script.ShowProgress(0.1, 0)
   total_verify_size = float(sum([i[2].size for i in patch_list]) + 1)
   so_far = 0
-  for img in images.keys():
-    src_img, tgt_img = images[img]
+  for _,(src_img,_) in images.values():
     total_verify_size += src_img.size
 
   for fn, tf, sf, size, patch_sha in patch_list:
@@ -746,8 +752,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
     so_far += sf.size
     script.SetProgress(so_far / total_verify_size)
 
-  for img in images.keys():
-    src_img, tgt_img = images[img]
+  for k,(img,(src_img,tgt_img)) in sorted(images.iteritems()):
     script.Print("Verifying %s image...\n" % (img,))
     d = common.Difference(tgt_img, src_img)
     _, _, d = d.ComputePatch()
@@ -792,15 +797,14 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   script.ShowProgress(0.8, 0)
   total_patch_size = float(sum([i[1].size for i in patch_list]) + 1)
-  for osip_target in images.keys():
-    src_img, tgt_img = images[osip_target]
+  for _,(_,tgt_img) in images.values():
     total_patch_size += tgt_img.size
-  for tgt_img in full_images.values():
+  for _,tgt_img in full_images.values():
     total_patch_size += tgt_img.size
   so_far = 0
 
   script.Print("Creating new OS images...")
-  for name, img in full_images.iteritems():
+  for k,(name, img) in sorted(full_images.iteritems()):
     common.CheckSize(img.data, img.name, OPTIONS.info_dict)
     common.ZipWriteStr(output_zip, img.name, img.data)
     script.PackageExtract(img.name)
@@ -821,8 +825,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
     script.SetProgress(so_far / total_patch_size)
 
   script.Print("Patching OS images...")
-  for img in images.keys():
-    src_img, tgt_img = images[img]
+  for k,(img,(src_img, tgt_img)) in sorted(images.iteritems()):
     script.ApplyPatch("/tmp/%s.img" % img, "-", tgt_img.size, tgt_img.sha1,
                       src_img.sha1, "patch/%s.img.p" % img)
     FlashImage(script, img, "%s.img" % img, partition_file)
@@ -842,8 +845,8 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
     # partition, include the binaries and image files from recovery in
     # the boot image (though not in the ramdisk) so they can be used
     # as fodder for constructing the recovery image.
-    _, target_boot = all_images["boot"]
-    _, target_recovery = all_images["recovery"]
+    _, (_, target_boot) = all_images[name_list.index("boot")]
+    _, (_, target_recovery) = all_images[name_list.index("recovery")]
     MakeRecoveryPatch(output_zip, target_recovery, target_boot)
     script.DeleteFiles(["/system/recovery-from-boot.p",
                         "/system/etc/install-recovery.sh"])
