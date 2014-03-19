@@ -29,6 +29,7 @@
 #define K_MAX_LINE_LEN 8192
 #define K_MAX_ARGS 256
 #define K_MAX_ARG_LEN 256
+#define OEM_PARTITION_TIMEOUT 20
 
 static void fake_umount_all(void) {}
 static int fake_create_partition(void) { return -1; }
@@ -109,6 +110,17 @@ static int oem_partition_gpt_sub_command(int argc, char **argv)
 			return cmds[i].fp(argc, argv);
 
 	return -1;
+}
+
+int is_property_set(char *property, char *expected)
+{
+	char value[PROPERTY_VALUE_MAX];
+
+	if (property_get(property, value, NULL))
+		if (strcmp(value, expected) == 0)
+			return true;
+
+	return false;
 }
 
 static int oem_partition_gpt_handler(FILE *fp)
@@ -301,7 +313,19 @@ end3:
 
 int oem_partition_start_handler(int argc, char **argv)
 {
+	int timeout = OEM_PARTITION_TIMEOUT;
+
 	property_set("sys.partitioning", "1");
+
+	while (!is_property_set("sys.partitioning", "1") && --timeout) {
+		sleep(1);
+	}
+
+	if (!timeout) {
+		error("Partitioning is not started\n");
+		return -1;
+	}
+
 	print("Start partitioning\n");
 	ufdisk.umount_all();
 	return 0;
@@ -309,7 +333,20 @@ int oem_partition_start_handler(int argc, char **argv)
 
 int oem_partition_stop_handler(int argc, char **argv)
 {
+	int timeout = OEM_PARTITION_TIMEOUT;
+
+
 	property_set("sys.partitioning", "0");
+
+	while (!is_property_set("sys.partitioning", "0") && --timeout) {
+		sleep(1);
+	}
+
+	if (!timeout) {
+		error("Partitioning is not stopped\n");
+		return -1;
+	}
+
 	print("Stop partitioning\n");
 	return 0;
 }
