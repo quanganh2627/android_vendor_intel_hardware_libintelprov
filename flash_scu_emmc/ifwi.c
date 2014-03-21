@@ -230,6 +230,49 @@ err_boot1:
 	return -1;
 }
 
+static int readbyte_umip_emmc(uint32_t addr_offset)
+{
+	int boot_fd = 0;
+	char *ptr;
+	int value = 0;
+
+	if (force_rw("/sys/block/mmcblk0boot0/force_ro")) {
+		fprintf(stderr, "read_umip_emmc: unable to force_ro\n");
+		goto err_boot1;
+	}
+	boot_fd = open("/dev/block/mmcblk0boot0", O_RDWR);
+	if (boot_fd < 0) {
+		fprintf(stderr, "read_umip_emmc: failed to open /dev/block/mmcblk0boot0\n");
+		goto err_boot1;
+	}
+
+	ptr = (char *)mmap(NULL, BOOT_UMIP_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, boot_fd, 0);
+	if (ptr == MAP_FAILED) {
+		fprintf(stderr, "read_umip_emmc: mmap failed on boot0 with error : %s\n", strerror(errno));
+		goto err_boot1;
+	}
+
+	/* Read the data */
+	if (addr_offset < BOOT_UMIP_SIZE)
+		value = (int)*(ptr + addr_offset);
+	else {
+		fprintf(stderr, "read_umip_emmc: read failed\n");
+		goto err_boot2;
+	}
+
+	munmap(ptr, BOOT_UMIP_SIZE);
+	close(boot_fd);
+
+	return value;
+
+err_boot2:
+	munmap(ptr, BOOT_UMIP_SIZE);
+
+err_boot1:
+	close(boot_fd);
+	return -1;
+}
+
 int update_ifwi_file_scu_emmc(void *data, size_t size)
 {
 	return write_umip_emmc(IFWI_OFFSET, data, size);
@@ -253,6 +296,11 @@ int erase_token_umip_scu_emmc(void *data, size_t size)
 int flash_dnx_timeout_scu_emmc(void *data, size_t size)
 {
 	return write_umip_emmc(BOOT_DNX_TIMEOUT_OFFSET, data, 1);
+}
+
+int read_dnx_timeout_scu_emmc(void)
+{
+	return readbyte_umip_emmc(BOOT_DNX_TIMEOUT_OFFSET);
 }
 
 int flash_dnx_scu_emmc(void *data, unsigned sz)

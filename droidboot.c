@@ -52,7 +52,16 @@
 #include "telephony/droidboot.h"
 #endif
 
-#define PARAMETER_VALUE_SIZE		10
+#define PARAMETER_VALUE_SIZE			20
+#define OPTION_SIZE				4
+
+enum {
+	TIMEOUT_INFINITE = 0x3F,
+	TIMEOUT_TEN = 0X2D,
+	TIMEOUT_THREE = 0x1B,
+	TIMEOUT_ZERO = 0X00
+};
+
 static int oem_custom_boot(int argc, char **argv)
 {
 	int retval = -1;
@@ -114,27 +123,76 @@ static int oem_dnx_timeout(int argc, char **argv)
 	int size;
 	unsigned int value;
 	char dnx_timeout_value[PARAMETER_VALUE_SIZE] = "";
+	char option[OPTION_SIZE] = "";
 
-	if (argc != 2) {
-		fastboot_fail("oem_dnx_timeout requires one argument");
+	if (argc < 2 || argc > 3) {
+		fastboot_fail("oem_dnx_timeout requires one or two arguments");
 		goto out;
 	}
 
-	size = snprintf(dnx_timeout_value, PARAMETER_VALUE_SIZE, "%s", argv[1]);
-	if (size < 0 || size > PARAMETER_VALUE_SIZE - 1) {
-		fastboot_fail("Parameter size exceeds limit");
+	size = snprintf(option, OPTION_SIZE, "%s", argv[1]);
+	if (size < 0 || size > OPTION_SIZE - 1) {
+		fastboot_fail("Option size exceeds limit");
 		goto out;
 	}
 
-	value = strtoul(dnx_timeout_value, NULL, 0);
-	if (EINVAL == value || ERANGE == value) {
-		fastboot_fail("Unable to read parameter");
-		goto out;
-	}
+	if (!strcmp(option, "get")) {
+		/* Get current timeout */
+		value = read_dnx_timeout();
 
-	retval = flash_dnx_timeout((void *)&value, sizeof(value));
-	if (retval != 0) {
-		fastboot_fail("Fail write_umip");
+		switch (value)
+		{
+			case TIMEOUT_INFINITE:
+				ui_print("infinite\n");
+				break;
+			case TIMEOUT_TEN:
+				ui_print("tenseconds\n");
+				break;
+			case TIMEOUT_THREE:
+				ui_print("threeseconds\n");
+				break;
+			case TIMEOUT_ZERO:
+				ui_print("zeroseconds\n");
+				break;
+			default:
+				fastboot_fail("invalid timeout value");
+				goto out;
+		}
+		retval = 0;
+	} else if (!strcmp(option, "set")) {
+		/* Set new timeout */
+		if (argc != 3) {
+			fastboot_fail("oem_dnx_timeout set not enough arguments");
+			goto out;
+		}
+
+		size = snprintf(dnx_timeout_value, PARAMETER_VALUE_SIZE, "%s", argv[2]);
+		if (size < 0 || size > PARAMETER_VALUE_SIZE - 1) {
+			fastboot_fail("Parameter size exceeds limit");
+			goto out;
+		}
+
+		if (!strcmp("infinite", dnx_timeout_value))
+			value = TIMEOUT_INFINITE;
+		else if (!strcmp("tenseconds", dnx_timeout_value))
+			value = TIMEOUT_TEN;
+		else if (!strcmp("threeseconds", dnx_timeout_value))
+			value = TIMEOUT_THREE;
+		else if (!strcmp("zeroseconds", dnx_timeout_value))
+			value = TIMEOUT_ZERO;
+		else {
+			fastboot_fail("invalid value, shall be infinite,"
+				" tenseconds, threeseconds or zeroseconds");
+			goto out;
+		}
+
+		retval = flash_dnx_timeout((void *)&value, sizeof(value));
+		if (retval != 0) {
+			fastboot_fail("Fail write_umip");
+			goto out;
+		}
+	} else {
+		fastboot_fail("Option shall be get or set");
 		goto out;
 	}
 	fastboot_okay("");

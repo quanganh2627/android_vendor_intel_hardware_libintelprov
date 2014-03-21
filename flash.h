@@ -39,6 +39,7 @@ int flash_capsule(void *data, unsigned sz);
 int erase_token_umip(void);
 int flash_custom_boot(void *data, size_t size);
 int flash_dnx_timeout(void *data, size_t size);
+int read_dnx_timeout(void);
 
 int flash_image(void *data, unsigned sz, const char *name);
 int read_image(const char *name, void **data);

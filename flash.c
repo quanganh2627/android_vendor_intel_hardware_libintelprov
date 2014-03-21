@@ -28,6 +28,11 @@ int flash_dnx_timeout(void *data, size_t size)
 	return ops_call(ifwi, flash_dnx_timeout, data, size);
 }
 
+int read_dnx_timeout(void)
+{
+	return ops_call(ifwi, read_dnx_timeout);
+}
+
 int erase_token_umip(void)
 {
 	return ops_call(ifwi, erase_token_umip);

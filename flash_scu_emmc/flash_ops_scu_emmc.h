@@ -30,6 +30,7 @@ int flash_custom_boot_scu_emmc(void *data, size_t size);
 int update_ifwi_file_scu_emmc(void *data, size_t size);
 int check_ifwi_file_scu_emmc(void *data, size_t size);
 int flash_dnx_timeout_scu_emmc(void *data, size_t size);
+int read_dnx_timeout_scu_emmc(void);
 
 #else	/* CONFIG_INTELPROV_SCU_EMMC */
 
@@ -46,6 +47,7 @@ bool is_scu_emmc(void)
 #define update_ifwi_file_scu_emmc(void *data, size_t size) {return stub_operation(__func__);}
 #define check_ifwi_file_scu_emmc(void *data, size_t size) {return stub_operation(__func__);}
 #define flash_dnx_timeout_scu_emmc(void) {return stub_operation(__func__);}
+#define read_dnx_timeout_scu_emmc(void) {return stub_operation(__func__);}
 
 #endif	/* CONFIG_INTELPROV_SCU_EMMC */
 
@@ -58,6 +60,7 @@ struct ifwi_operations scu_emmc_ifwi_operations = {
 	.erase_token_umip = erase_token_umip_scu_emmc,
 	.flash_custom_boot = flash_custom_boot_scu_emmc,
 	.flash_dnx_timeout = flash_dnx_timeout_scu_emmc,
+	.read_dnx_timeout = read_dnx_timeout_scu_emmc,
 };
 
 #endif	/* _FLASH_OPS_SCU_EMMC_H_ */

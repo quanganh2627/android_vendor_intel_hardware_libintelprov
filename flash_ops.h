@@ -43,6 +43,7 @@ struct ifwi_operations {
 	int (*erase_token_umip)(void);
 	int (*flash_custom_boot)(void *buffer, size_t size);
 	int (*flash_dnx_timeout)(void *buffer, size_t size);
+	int (*read_dnx_timeout)(void);
 };
 
 struct capsule_operations {
