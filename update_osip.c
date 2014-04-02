@@ -615,9 +615,6 @@ int get_named_osii_index(const char *destination)
 		return -1;
 	}
 
-	if (!strcmp(destination, SPLASHSCREEN_NAME))
-		return ATTR_SIGNED_SPLASHSCREEN;
-
 	if (read_OSIP(&osip)) {
 		fprintf(stderr, "Can't read OSIP!\n");
 		return -1;
@@ -636,6 +633,9 @@ int get_named_osii_index(const char *destination)
 		index = FASTBOOT_OS_NUM;
 	} else if (!strcmp(destination, DROIDBOOT_OS_NAME)) {
 		index = FASTBOOT_OS_NUM;
+	} else if (!strcmp(destination, SPLASHSCREEN_NAME)) {
+		index = SPLASHSCREEN_NUM;
+
 	} else {
 		fprintf(stderr, "unknown destination %s\n", destination);
 		return -1;
