@@ -148,3 +148,8 @@ int flash_testos(void *data, unsigned sz)
 	return flash_image(data, sz, TEST_OS_NAME);
 }
 
+int flash_ramdump(void *data, unsigned sz)
+{
+	return flash_image(data, sz, RAMDUMP_OS_NAME);
+}
+

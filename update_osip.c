@@ -47,6 +47,13 @@ const uint32_t fw_lba_slots[] = {
 #define FW_SLOTS	ARRAY_SIZE(fw_lba_slots)
 
 #define OS_START_OFFSET	(FW_START_OFFSET + (FW_MAX_LBA * FW_SLOTS))
+
+/* This table must have one more entry than MAX_OSIP_DESC.
+ * During the update of an existing entry, that allows to keep the
+ * last valid entry unmodified. So, this requires an empty slot that is
+ * always available to store the updated entry, the slot being released
+ * once the update is successful.
+ */
 const uint32_t os_lba_slots[] = {
 	(OS_START_OFFSET + (OS_MAX_LBA * 0)),
 	(OS_START_OFFSET + (OS_MAX_LBA * 1)),
@@ -56,6 +63,7 @@ const uint32_t os_lba_slots[] = {
 	(OS_START_OFFSET + (OS_MAX_LBA * 5)),
 	(OS_START_OFFSET + (OS_MAX_LBA * 6)),
 	(OS_START_OFFSET + (OS_MAX_LBA * 7)),
+	(OS_START_OFFSET + (OS_MAX_LBA * 8)),
 };
 
 #define OS_SLOTS	ARRAY_SIZE(os_lba_slots)
@@ -105,6 +113,7 @@ int verify_osip_sizes(struct OSIP_header *osip)
 		case ATTR_SIGNED_POS:
 		case ATTR_SIGNED_ROS:
 		case ATTR_SIGNED_COMB:
+		case ATTR_SIGNED_RAMDUMPOS:
 			max_size_lba = OS_MAX_LBA;
 			break;
 		default:
@@ -141,6 +150,7 @@ int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba)
 		case ATTR_SIGNED_COS:
 		case ATTR_SIGNED_ROS:
 		case ATTR_SIGNED_COMB:
+		case ATTR_SIGNED_RAMDUMPOS:
 		case ATTR_UNSIGNED_KERNEL:
 			ret = fixup_osii(&osip->desc[i], &os_ctr, OS_SLOTS, os_lba_slots);
 			break;
@@ -517,6 +527,7 @@ int write_stitch_image_ex(void *data, size_t size, int osii_index, int large_ima
 	case ATTR_SIGNED_ROS:
 	case ATTR_SIGNED_COMB:
 	case ATTR_SIGNED_SPLASHSCREEN:
+	case ATTR_SIGNED_RAMDUMPOS:
 	case ATTR_UNSIGNED_KERNEL:
 		if (large_image) {
 			osii->logical_start_block = OS_START_OFFSET;
@@ -565,6 +576,7 @@ int write_stitch_image_ex(void *data, size_t size, int osii_index, int large_ima
 	case ATTR_SIGNED_COS:
 	case ATTR_SIGNED_ROS:
 	case ATTR_SIGNED_COMB:
+	case ATTR_SIGNED_RAMDUMPOS:
 	case ATTR_UNSIGNED_KERNEL:
 	case ATTR_NOTUSED & (~1):
 		memcpy(&(osip.desc[osii_index]), osii, sizeof(struct OSII));
@@ -645,6 +657,8 @@ int get_named_osii_index(const char *destination, enum osip_operation_type opera
 		instance = 4;
 	} else if (!strcmp(destination, SILENT_BINARY_NAME)) {
 		attr = ATTR_SIGNED_FW;
+	} else if (!strcmp(destination, RAMDUMP_OS_NAME)){
+		attr = ATTR_SIGNED_RAMDUMPOS;
 	} else {
 		fprintf(stderr, "unknown destination %s\n", destination);
 		return -1;

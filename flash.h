@@ -31,6 +31,7 @@
 #define SPLASHSCREEN_NAME4  "splashscreen4"
 #define ESP_PART_NAME       "ESP"
 #define SILENT_BINARY_NAME  "silentlake"
+#define RAMDUMP_OS_NAME     "ramdump"
 
 int flash_token_umip(void *data, size_t size);
 int update_ifwi_image(void *data, size_t size, unsigned reset_flag);
@@ -58,6 +59,7 @@ int flash_splashscreen_image1(void *data, unsigned sz);
 int flash_splashscreen_image2(void *data, unsigned sz);
 int flash_splashscreen_image3(void *data, unsigned sz);
 int flash_splashscreen_image4(void *data, unsigned sz);
+int flash_ramdump(void *data, unsigned sz);
 int flash_esp(void *data, unsigned sz);
 int flash_testos(void *data, unsigned sz);
 int flash_silent_binary();

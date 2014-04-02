@@ -29,7 +29,7 @@
 #define DDR_LOAD_ADDX       0x01100000
 #define ENTRY_POINT         0x01101000
 
-#define MAX_OSIP_DESC 	    7
+#define MAX_OSIP_DESC       8
 /* mfld-structures section 2.7.1 mfld-fas v0.8*/
 #define OSIP_SIG 0x24534f24	/* $OS$ */
 
@@ -96,6 +96,7 @@ int oem_write_osip_header(int argc, char **argv);
 #define ATTR_FILESYSTEM		3
 #define ATTR_NOTUSED		(0xff)
 #define ATTR_SIGNED_SPLASHSCREEN  0x04
+#define ATTR_SIGNED_RAMDUMPOS	0x16
 
 #define LBA_SIZE	512
 #define OS_MAX_LBA	32000

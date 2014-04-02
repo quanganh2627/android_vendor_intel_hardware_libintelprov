@@ -670,6 +670,8 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
 	ret |= libintel_droidboot_token_init();
 
+	ret |= aboot_register_flash_cmd(RAMDUMP_OS_NAME, flash_ramdump);
+
 	ret |= aboot_register_oem_cmd("backup_factory", oem_backup_factory);
 	ret |= aboot_register_oem_cmd("restore_factory", oem_restore_factory);
 	ret |= aboot_register_oem_cmd("fastboot2adb", oem_fastboot2adb);
