@@ -52,6 +52,10 @@ int cmd_reload(int argc, char *argv[]) {
     return CGPT_FAILED;
   }
 
+  if (optind < argc) {
+    drive = argv[optind];
+  }
+
   fprintf(stderr, "reload: drive is %s and errorcnt %d\n", drive, errorcnt);
 
 
