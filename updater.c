@@ -179,7 +179,7 @@ Value *FlashIfwiOrBomFn(enum flash_option_type flash_option, const char *name, S
 			strncpy(ifwi_name, ifwi_entry->fileName, ifwi_entry->fileNameLen);
 			ifwi_name[ifwi_entry->fileNameLen] = '\0';
 		} else {
-			ErrorAbort(state, "ifwi file name is too big. Size max is:%d.\n", sizeof(ifwi_name));
+			ErrorAbort(state, "ifwi file name is too big. Size max is:%zd.\n", sizeof(ifwi_name));
 			goto error;
 		}
 		if (strncmp(ifwi_name, IFWI_NAME, strlen(IFWI_NAME)))
@@ -404,7 +404,7 @@ Value *FlashCapsuleFn(const char *name, State * state, int argc, Expr * argv[])
 	Value *ret = NULL;
 	char *filename = NULL;
 	void *data = NULL;
-	unsigned size;
+	size_t size;
 
 	if (ReadArgs(state, argv, 1, &filename) < 0) {
 		ErrorAbort(state, "ReadArgs() failed");
@@ -442,7 +442,7 @@ Value *FlashEspUpdateFn(const char *name, State * state, int argc, Expr * argv[]
 	Value *ret = NULL;
 	char *filename = NULL;
 	void *data = NULL;
-	unsigned size;
+	size_t size;
 
 	if (ReadArgs(state, argv, 1, &filename) < 0) {
 		ErrorAbort(state, "ReadArgs() failed");
