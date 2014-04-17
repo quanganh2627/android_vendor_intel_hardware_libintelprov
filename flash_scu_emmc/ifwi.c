@@ -133,7 +133,7 @@ static void xor_update(char *ptr)
 	/* update UMIP xor of sector 2 to 127 */
 	for (i = 2; i < 128; i++) {
 		xor = xor_compute(ptr + i * BOOT_UMIP_SECTOR_SIZE, BOOT_UMIP_SECTOR_SIZE);
-		*(ptr + 4 * i) = xor_factorize(xor);
+		*(uint32_t *)(ptr + 4 * i) = xor;
 	}
 
 	/* update UMIP xor */
