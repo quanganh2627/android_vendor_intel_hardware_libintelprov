@@ -321,6 +321,7 @@ static int oem_fru_handler(int argc, char **argv)
 out:
 	return ret;
 }
+#endif	/* EXTERNAL */
 
 #define CONFIG_FILE "/mnt/config/local_config"
 
@@ -354,6 +355,7 @@ static int oem_config(int argc, char **argv)
 	return ret;
 }
 
+#ifndef EXTERNAL
 static int oem_fastboot2adb(int argc, char **argv)
 {
 	char value[PROPERTY_VALUE_MAX];
@@ -396,7 +398,6 @@ static int oem_reboot(int argc, char **argv)
 	return android_reboot(ANDROID_RB_RESTART2, 0, target_os);
 }
 
-#ifndef EXTERNAL
 static int oem_mount(int argc, char **argv)
 {
 	int ret = 0;
@@ -447,7 +448,6 @@ end:
 
 	return ret;
 }
-#endif
 
 #ifdef USE_GUI
 #define PROP_FILE					"/default.prop"
@@ -639,10 +639,10 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
 	ret |= aboot_register_oem_cmd("reboot", oem_reboot);
 	ret |= aboot_register_oem_cmd("wipe", oem_wipe_partition);
-#ifndef EXTERNAL
-	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
 	ret |= aboot_register_oem_cmd("config", oem_config);
 	ret |= aboot_register_oem_cmd("mount", oem_mount);
+#ifndef EXTERNAL
+	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
 	ret |= libintel_droidboot_token_init();
 
 	ret |= aboot_register_oem_cmd("backup_factory", oem_backup_factory);
