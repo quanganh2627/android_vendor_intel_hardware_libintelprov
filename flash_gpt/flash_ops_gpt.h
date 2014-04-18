@@ -23,6 +23,7 @@
 #ifdef CONFIG_INTELPROV_GPT
 
 bool is_gpt(void);
+int get_gpt_path(char **path, const char *name);
 int flash_image_gpt(void *data, unsigned sz, const char *name);
 int read_image_gpt(const char *name, void **data);
 int read_image_signature_gpt(void **buf, char *name);
@@ -62,6 +63,7 @@ struct bootimage_operations gpt_bootimage_operations = {
 	.read_image = read_image_gpt,
 	.read_image_signature = read_image_signature_gpt,
 	.is_image_signed = is_image_signed_gpt,
+	.get_device_path = get_gpt_path,
 };
 
 #endif	/* _FLASH_OPS_GPT_H_ */

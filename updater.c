@@ -705,7 +705,7 @@ Value *FlashPartition(const char *name, State * state, int argc, Expr * argv[])
 
 	/* Ensure that the partition links are there before smashing up
 	 * the partition scheme.  */
-	partlink_populate();
+	partlink_repopulate();
 
 	/* Do not reload partition table during OTA since some partition
 	 * are still mounted, reload would failed.  */

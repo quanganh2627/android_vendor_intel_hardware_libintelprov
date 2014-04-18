@@ -25,16 +25,21 @@
 
 #include "util.h"
 #include "../gpt/partlink/partlink.h"
+#include "flash.h"
 
-#define ESP_DEVICE		BASE_PLATFORM_INTEL_LABEL"/ESP"
-#define ESP_MOUNT_POINT		"/ESP"
+#define ESP_LABEL		"ESP"
+#define ESP_MOUNT_POINT		"/" ESP_LABEL
 #define CAPSULE_BIN_FILE	ESP_MOUNT_POINT"/BiosUpdate.fv"
 #define ESP_FS_TYPE		"vfat"
 
 bool is_edk2(void)
 {
-	struct stat buf;
-	return (stat(ESP_DEVICE, &buf) == 0 && S_ISBLK(buf.st_mode));
+	char *path = NULL;
+
+	if (!get_device_path(&path, ESP_LABEL))
+		free(path);
+
+	return !!path;
 }
 
 /* This function is workaround replacement of ensure_path_mounted we
@@ -43,21 +48,30 @@ bool is_edk2(void)
 static int ensure_esp_mounted()
 {
 	int ret;
+	char *path = NULL;
+
+	ret = get_device_path(&path, ESP_LABEL);
+	if (ret) {
+		error("%s: Unable to get the ESP block device path\n", __func__);
+		goto out;
+	}
 
 	ret = mkdir(ESP_MOUNT_POINT, S_IRWXU | S_IRWXG | S_IRWXO);
 	if (ret == -1 && errno != EEXIST) {
 		error("%s: mkdir %s failed\n", __func__, ESP_MOUNT_POINT);
-		return ret;
+		goto out;
 	}
 
-	ret = mount(ESP_DEVICE, ESP_MOUNT_POINT, ESP_FS_TYPE, MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
+	ret = mount(path, ESP_MOUNT_POINT, ESP_FS_TYPE, MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
 	/* EBUSY means that the filesystem is already mounted. */
 	if (ret == -1 && errno != EBUSY) {
 		error("%s: mount %s failed\n", __func__, ESP_MOUNT_POINT);
-		return ret;
+		goto out;
 	}
 
-	return 0;
+out:
+	free(path);
+	return ret;
 }
 
 int flash_capsule_edk2(void *data, unsigned sz)

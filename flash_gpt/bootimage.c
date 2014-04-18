@@ -22,47 +22,58 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "../gpt/partlink/partlink.h"
+#include "../gpt/diskd/diskd.h"
 #include "util.h"
 #include "flash.h"
 
-bool is_gpt(void)
+static char *try_prefix(const char *prefix, const char *name)
 {
+	char *path;
 	struct stat buf;
-	return (stat(BASE_PLATFORM_INTEL_LABEL "/fastboot", &buf) == 0 && S_ISBLK(buf.st_mode));
+
+	int ret = asprintf(&path, "%s/%s", prefix, name);
+	if (ret == -1) {
+		error("%s: Failed to build %s/%s path\n", prefix, name);
+		return NULL;
+	}
+
+	if (stat(path, &buf) == 0 && S_ISBLK(buf.st_mode))
+		return path;
+
+	free(path);
+	return NULL;
 }
 
-char *get_gpt_path(const char *name)
-{
-	char *block_dev = malloc(BUFSIZ);
-	char base[] = BASE_PLATFORM_INTEL_LABEL "/";
-	struct stat buf;
+static const char *PREFIXES[] = { DISK_BY_LABEL_DIR, BASE_PLATFORM_INTEL_LABEL };
 
+int get_gpt_path(char **path, const char *name)
+{
 	if (!name) {
 		error("%s: Passed name is empty.\n", __func__);
-		goto error;
+		return -1;
 	}
 
-	if (strlen(name) > BUFSIZ - sizeof(base)) {
-		error("%s: Buffer is not large enough to build block device path.\n", __func__);
-		goto error;
+	unsigned int i;
+	char *tmp;
+	for (i = 0 ; i < ARRAY_SIZE(PREFIXES) ; i++) {
+		tmp = try_prefix(PREFIXES[i], name);
+		if (tmp) {
+			*path = tmp;
+			return 0;
+		}
 	}
 
-	if (!block_dev) {
-		error("%s: Failed to allocate mem for block dev.\n", __func__);
-		goto error;
-	}
+	return -1;
+}
 
-	strncpy(block_dev, base, sizeof(base));
-	strncpy(block_dev + sizeof(base) - 1, name, strlen(name) + 1);
+bool is_gpt(void)
+{
+	char *path = NULL;
 
-	if (stat(block_dev, &buf) != 0 || !S_ISBLK(buf.st_mode))
-		goto error;
+	if (!get_gpt_path(&path, "fastboot"))
+		free(path);
 
-	return block_dev;
-error:
-	if (block_dev)
-		free(block_dev);
-	return NULL;
+	return !!path;
 }
 
 int flash_image_gpt(void *data, unsigned sz, const char *name)
@@ -73,8 +84,7 @@ int flash_image_gpt(void *data, unsigned sz, const char *name)
 	if (!strcmp(name, TEST_OS_NAME))
 		name = ANDROID_OS_NAME;
 
-	block_dev = get_gpt_path(name);
-	if (!block_dev)
+	if (get_gpt_path(&block_dev, name))
 		return -1;
 
 	ret = file_write(block_dev, data, sz);
@@ -92,8 +102,7 @@ int open_bootimage(const char *name)
 	char *block_dev;
 	int fd = -1;
 
-	block_dev = get_gpt_path(name);
-	if (!block_dev)
+	if (get_gpt_path(&block_dev, name))
 		goto out;
 
 	fd = open(block_dev, O_RDONLY);
@@ -223,8 +232,14 @@ int is_image_signed_gpt(const char *name)
 	struct boot_img_hdr hdr;
 	int ret = -1;
 	int fd;
+	char *path = NULL;
 
-	fd = open(BASE_PLATFORM_INTEL_LABEL "/recovery", O_RDONLY);
+	if (get_gpt_path(&path, "/recovery")) {
+		error("Unable to find the device path for the recovery boot image\n");
+		goto out;
+	}
+
+	fd = open(path, O_RDONLY);
 	if (fd < 0) {
 		error("open: %s", strerror(errno));
 		goto out;
@@ -239,5 +254,6 @@ int is_image_signed_gpt(const char *name)
 close:
 	close(fd);
 out:
+	free(path);
 	return ret;
 }

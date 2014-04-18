@@ -11,6 +11,10 @@
 #define BASE_PLATFORM_INTEL_UUID BASE_PLATFORM_INTEL "/by-guid"
 #define BASE_PLATFORM_INTEL_LABEL BASE_PLATFORM_INTEL "/by-label"
 
+/* Populate the partlink tree */
 int partlink_populate();
+
+/* Populate the partlink tree only if previously created.  */
+int partlink_repopulate();
 
 #endif	/* _PARTLINK_H_ */

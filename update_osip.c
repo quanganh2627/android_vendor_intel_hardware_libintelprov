@@ -37,8 +37,6 @@
 #define MAX(x, y)       ((x) > (y) ? (x) : (y))
 #define MIN(x, y)       ((x) < (y) ? (x) : (y))
 
-#define ARRAY_SIZE(a)	(sizeof(a) / sizeof(a[0]))
-
 #define FW_START_OFFSET	50	/* give space for GPT */
 #define FW_MAX_LBA	2000
 const uint32_t fw_lba_slots[] = {

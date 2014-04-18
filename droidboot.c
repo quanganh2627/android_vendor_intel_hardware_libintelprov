@@ -405,7 +405,7 @@ static int oem_reboot(int argc, char **argv)
 static int oem_mount(int argc, char **argv)
 {
 	int ret = 0;
-	char *partname = NULL;
+	char *dev_path = NULL;
 	char *mountpoint = NULL;
 
 	/* Check parameters */
@@ -415,10 +415,9 @@ static int oem_mount(int argc, char **argv)
 		return -EINVAL;
 	}
 
-	/* look for partition name in by-label tree */
-	ret = asprintf(&partname, BASE_PLATFORM_INTEL_LABEL "/%s", argv[1]);
-	if (ret < 0) {
-		fastboot_fail("asprintf partname failed");
+	ret = get_device_path(&dev_path, argv[1]);
+	if (!ret) {
+		fastboot_fail("Unable to find the appropriate device path\n");
 		goto end;
 	}
 
@@ -428,7 +427,7 @@ static int oem_mount(int argc, char **argv)
 		fastboot_fail("asprintf mountpoint failed");
 		goto end;
 	}
-	LOGI("Mounting partition %s in %s (type %s)\n", partname, mountpoint, argv[2]);
+	LOGI("Mounting partition %s in %s (type %s)\n", dev_path, mountpoint, argv[2]);
 
 	ret = mkdir(mountpoint, S_IRWXU | S_IRWXG | S_IRWXO);
 	if (ret == -1 && errno != EEXIST) {
@@ -438,7 +437,7 @@ static int oem_mount(int argc, char **argv)
 		goto end;
 	}
 
-	ret = mount(partname, mountpoint, argv[2], MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
+	ret = mount(dev_path, mountpoint, argv[2], MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
 	if (ret == -1) {
 		fastboot_fail("mount failed");
 		LOGE("mount failed : %s\n", strerror(errno));
@@ -447,7 +446,7 @@ static int oem_mount(int argc, char **argv)
 	}
 
 end:
-	free(partname);
+	free(dev_path);
 	free(mountpoint);
 
 	return ret;

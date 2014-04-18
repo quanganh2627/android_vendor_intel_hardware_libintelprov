@@ -22,6 +22,7 @@
 #ifdef CONFIG_INTELPROV_OSIP
 
 bool is_osip(void);
+int get_osip_path(char **path, const char *name);
 int flash_image_osip(void *data, unsigned sz, const char *name);
 int read_image_osip(const char *name, void **data);
 int read_image_signature_osip(void **buf, char *name);
@@ -61,6 +62,7 @@ struct bootimage_operations osip_bootimage_operations = {
 	.read_image = read_image_osip,
 	.read_image_signature = read_image_signature_osip,
 	.is_image_signed = is_image_signed_osip,
+	.get_device_path = get_osip_path,
 };
 
 #endif	/* _FLASH_OPS_OSIP_H_ */

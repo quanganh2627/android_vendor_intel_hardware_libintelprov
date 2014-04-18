@@ -23,9 +23,10 @@
 #include <unistd.h>
 #include "util.h"
 #include "capsule.h"
+#include "flash.h"
 #include "../gpt/partlink/partlink.h"
 
-#define CAPSULE_PARTITION_NAME BASE_PLATFORM_INTEL_LABEL"/FWUP"
+#define CAPSULE_PARTITION_LABEL "FWUP"
 #define CAPSULE_UPDATE_FLAG_PATH "/sys/firmware/osnib/fw_update"
 
 #define CAPSULE_HEADER "capsule header "
@@ -36,8 +37,12 @@
 
 bool is_fdk(void)
 {
-	struct stat buf;
-	return (stat(CAPSULE_PARTITION_NAME, &buf) == 0 && S_ISBLK(buf.st_mode));
+	char *path = NULL;
+
+	if (!get_device_path(&path, CAPSULE_PARTITION_LABEL))
+		free(path);
+
+	return !!path;
 }
 
 static bool get_fw_version_tag_offset(u8 ** data_ptr, u8 * end_ptr)
@@ -177,6 +182,8 @@ int flash_capsule_fdk(void *data, unsigned sz)
 	u32 pdr_version_msb = 0;
 	u32 pdr_version = 0;
 
+	char *dev_path = NULL;
+
 	/* Get current FW version */
 	property_get("sys.ia32.version", iafw_stage1_version_str, "00.00");
 	property_get("sys.chaabi.version", sec_version_str, "00.00");
@@ -213,7 +220,12 @@ int flash_capsule_fdk(void *data, unsigned sz)
 		goto exit;
 	}
 
-	if ((ret_status = file_write(CAPSULE_PARTITION_NAME, data, sz))) {
+	if (get_device_path(&dev_path, CAPSULE_PARTITION_LABEL)) {
+		error("Unable to get the capsule partition device path\n");
+		goto exit;
+	}
+
+	if ((ret_status = file_write(dev_path, data, sz))) {
 		error("Capsule flashing failed: %s\n", strerror(errno));
 		goto exit;
 	}
@@ -224,5 +236,6 @@ int flash_capsule_fdk(void *data, unsigned sz)
 	}
 
 exit:
+	free(dev_path);
 	return ret_status;
 }

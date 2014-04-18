@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
+
 int file_write(const char *filename, const void *what, size_t sz);
 int file_string_write(const char *filename, const char *what);
 void dump_trace_file(const char *filename);

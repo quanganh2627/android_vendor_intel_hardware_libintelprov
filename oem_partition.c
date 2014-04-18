@@ -164,7 +164,7 @@ static int oem_partition_gpt_handler(FILE *fp)
 	}
 
 	if (indirected_cmd_reload == cmd_reload)
-		partlink_populate();
+		partlink_repopulate();
 
 	return 0;
 }

@@ -49,6 +49,16 @@ static int clean_directory(const char *path)
     return EXIT_SUCCESS;
 }
 
+int partlink_repopulate()
+{
+	struct stat sbuf;
+
+	if (stat(BASE_PLATFORM_INTEL_LABEL, &sbuf) == -1 && errno == ENOENT)
+		return -1;
+
+	return partlink_populate();
+}
+
 int partlink_populate()
 {
     CgptShowParams params;

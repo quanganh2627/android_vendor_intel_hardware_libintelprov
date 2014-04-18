@@ -26,8 +26,23 @@
 
 bool is_osip(void)
 {
+	struct OSIP_header osip;
+
+	read_OSIP(&osip);
+
+	return osip.sig == OSIP_SIG;
+}
+
+int get_osip_path(char **path, const char *name)
+{
 	struct stat buf;
-	return !(stat(BASE_PLATFORM_INTEL_LABEL "/fastboot", &buf) == 0 && S_ISBLK(buf.st_mode));
+
+	if (name && stat(name, &buf) == 0 && S_ISBLK(buf.st_mode)) {
+		*path = strdup(name);
+		return 0;
+	}
+
+	return -1;
 }
 
 int read_image_osip(const char *name, void **data)

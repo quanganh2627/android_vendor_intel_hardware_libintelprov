@@ -44,6 +44,7 @@ int read_dnx_timeout(void);
 int flash_image(void *data, unsigned sz, const char *name);
 int read_image(const char *name, void **data);
 int read_image_signature(void **buf, char *name);
+int get_device_path(char **path, const char *name);
 int flash_android_kernel(void *data, unsigned sz);
 int flash_recovery_kernel(void *data, unsigned sz);
 int flash_fastboot_kernel(void *data, unsigned sz);
