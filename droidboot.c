@@ -43,6 +43,10 @@
 #include "flash.h"
 #include "ulpmc.h"
 
+#ifdef TEE_FRAMEWORK
+#include "tee_connector.h"
+#endif	/* TEE_FRAMEWORK */
+
 #ifndef EXTERNAL
 #include "pmdb.h"
 #include "token.h"
@@ -641,6 +645,22 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("wipe", oem_wipe_partition);
 	ret |= aboot_register_oem_cmd("config", oem_config);
 	ret |= aboot_register_oem_cmd("mount", oem_mount);
+
+#ifdef TEE_FRAMEWORK
+	print_fun = fastboot_info;
+	error_fun = fastboot_fail;
+
+	ret |= aboot_register_oem_cmd("get-spid", get_spid);
+	ret |= aboot_register_oem_cmd("get-fru", get_fru);
+	ret |= aboot_register_oem_cmd("get-part-id", get_part_id);
+	ret |= aboot_register_oem_cmd("get-lifetime", get_lifetime);
+	ret |= aboot_register_oem_cmd("start-update", start_update);
+	ret |= aboot_register_oem_cmd("cancel-update", cancel_update);
+	ret |= aboot_register_oem_cmd("finalize-update", finalize_update);
+	ret |= aboot_register_oem_cmd("remove-token", remove_token);
+	ret |= aboot_register_flash_cmd("token", write_token);
+#endif
+
 #ifndef EXTERNAL
 	ret |= aboot_register_oem_cmd("fru", oem_fru_handler);
 	ret |= libintel_droidboot_token_init();

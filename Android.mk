@@ -94,13 +94,11 @@ endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
 endif
-ifeq ($(external_release),no)
 ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
 LOCAL_SRC_FILES += tee_connector.c
 LOCAL_C_INCLUDES += $(cc54_lib_includes)
 LOCAL_WHOLE_STATIC_LIBRARIES += libdx_cc7_static
 LOCAL_CFLAGS += -DTEE_FRAMEWORK
-endif
 endif
 LOCAL_CFLAGS += $(INTELPROV_DEFINES)
 include $(BUILD_STATIC_LIBRARY)
@@ -156,13 +154,16 @@ ifeq ($(external_release),no)
 LOCAL_SRC_FILES += $(common_pmdb_files) $(token_implementation)
 LOCAL_C_INCLUDES += $(sep_lib_includes)
 LOCAL_WHOLE_STATIC_LIBRARIES += libsecurity_sectoken libcrypto_static CC6_UMIP_ACCESS CC6_ALL_BASIC_LIB
+else
+LOCAL_CFLAGS += -DEXTERNAL
+ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
+LOCAL_SRC_FILES += tee_connector.c
+endif
+endif
 ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
 LOCAL_CFLAGS += -DTEE_FRAMEWORK
 LOCAL_C_INCLUDES += $(cc54_lib_includes)
 LOCAL_WHOLE_STATIC_LIBRARIES += libdx_cc7_static
-endif
-else
-LOCAL_CFLAGS += -DEXTERNAL
 endif
 
 ifneq ($(DROIDBOOT_NO_GUI),true)
