@@ -118,6 +118,11 @@ int flash_splashscreen_image(void *data, unsigned sz)
 	return flash_image(data, sz, SPLASHSCREEN_NAME);
 }
 
+int flash_silent_binary(void *data, unsigned sz)
+{
+	return flash_image(data, sz, SILENT_BINARY_NAME);
+}
+
 int flash_esp(void *data, unsigned sz)
 {
 	return flash_image(data, sz, ESP_PART_NAME);

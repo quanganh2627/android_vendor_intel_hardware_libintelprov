@@ -626,6 +626,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("capsule", flash_capsule);
 	ret |= aboot_register_flash_cmd("ulpmc", flash_ulpmc);
 	ret |= aboot_register_flash_cmd("esp_update", flash_esp_update);
+	ret |= aboot_register_flash_cmd(SILENT_BINARY_NAME, flash_silent_binary);
 
 	if (strcmp(build_type_prop, "user")) {
 		ret |= aboot_register_oem_cmd("dnx_timeout", oem_dnx_timeout);

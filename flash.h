@@ -26,6 +26,7 @@
 #define TEST_OS_NAME        "testos"
 #define SPLASHSCREEN_NAME   "splashscreen"
 #define ESP_PART_NAME       "ESP"
+#define SILENT_BINARY_NAME  "silentlake"
 
 int flash_token_umip(void *data, size_t size);
 int update_ifwi_image(void *data, size_t size, unsigned reset_flag);
@@ -52,6 +53,7 @@ int flash_fastboot_kernel(void *data, unsigned sz);
 int flash_splashscreen_image(void *data, unsigned sz);
 int flash_esp(void *data, unsigned sz);
 int flash_testos(void *data, unsigned sz);
+int flash_silent_binary();
 
 /* Returns:
  * -1: error

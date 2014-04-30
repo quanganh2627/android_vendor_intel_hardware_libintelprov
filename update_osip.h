@@ -19,13 +19,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-enum osip_indexes {
-	ANDROID_OS_NUM,
-	RECOVERY_OS_NUM,
-	FASTBOOT_OS_NUM,
-	SPLASHSCREEN_NUM,
-};
-
 #ifndef STORAGE_BASE_PATH
 #define STORAGE_BASE_PATH "/dev/block/mmcblk0"
 #endif

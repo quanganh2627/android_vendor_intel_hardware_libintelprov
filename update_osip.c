@@ -211,10 +211,10 @@ static int get_free_os_lba(struct OSIP_header *osip)
 
 static void dump_osip_index(struct OSIP_header *osip, int i)
 {
-	printf("OSII[%d]:\n", i);
-	printf("   os_rev: %02x.%02x\n   LBA: %d\n",
+	fprintf(stderr, "OSII[%d]:\n", i);
+	fprintf(stderr, "   os_rev: %02x.%02x\n   LBA: %d\n",
 	       osip->desc[i].os_rev_major, osip->desc[i].os_rev_minor, osip->desc[i].logical_start_block);
-	printf("   ddr_load_address: 0x%08x\n   entry_point: 0x%08x\n"
+	fprintf(stderr, "   ddr_load_address: 0x%08x\n   entry_point: 0x%08x\n"
 	       "   size_of_os_image (sectors): %d\n   attribute: 0x%02x\n",
 	       osip->desc[i].ddr_load_address, osip->desc[i].entry_point,
 	       osip->desc[i].size_of_os_image, osip->desc[i].attribute);
@@ -224,10 +224,10 @@ void dump_osip_header(struct OSIP_header *osip)
 {
 	int i;
 
-	printf("OSIP:\n");
-	printf("sig 0x%x, header_size %d, revision %02X.%02X\n",
+	fprintf(stderr, "OSIP:\n");
+	fprintf(stderr, "sig 0x%x, header_size %d, revision %02X.%02X\n",
 	       osip->sig, osip->header_size, osip->header_rev_major, osip->header_rev_minor);
-	printf("header_checksum 0x%hhx, num_pointers %d, num_images %d\n",
+	fprintf(stderr, "header_checksum 0x%hhx, num_pointers %d, num_images %d\n",
 	       osip->header_checksum, osip->num_pointers, osip->num_images);
 
 	for (i = 0; i < osip->num_pointers; i++)
@@ -305,14 +305,14 @@ int write_OSIP(struct OSIP_header *osip)
 
 	fd = open(MMC_DEV_POS, O_RDWR);
 	if (fd < 0) {
-		printf("write_OSIP: Can't open device %s: %s\n", MMC_DEV_POS, strerror(errno));
+		fprintf(stderr, "write_OSIP: Can't open device %s: %s\n", MMC_DEV_POS, strerror(errno));
 		return -1;
 	}
 
 	while (sz) {
 		ret = write(fd, what, sz);
 		if (ret <= 0 && errno != EINTR) {
-			printf("write_OSIP: Failed to write to %s: %s\n", MMC_DEV_POS, strerror(errno));
+			fprintf(stderr, "write_OSIP: Failed to write to %s: %s\n", MMC_DEV_POS, strerror(errno));
 			close(fd);
 			return -1;
 		}
@@ -329,6 +329,11 @@ static int crack_stitched_image(void *data, struct OSII **rec, uint8_t ** blob)
 	struct OSIP_header *osip = (struct OSIP_header *)data;
 	if (!data)
 		return -1;
+
+	fprintf(stderr, "\n");
+	dump_osip_header(osip);
+	fprintf(stderr, "\n");
+
 	if (((struct OSIP_header *)data)->num_pointers != 1) {
 		fprintf(stderr, "too many osii records in stiched data, " "is this an osupdate.bin file?\n");
 		return -1;
@@ -442,7 +447,7 @@ int destroy_the_osip_backup(void)
 	uint32_t sig;
 	fd = open(MMC_DEV_POS, O_RDWR);
 	if (fd < 0) {
-		printf("destroy_the_osip_backup: can't open file %s: %s\n", MMC_DEV_POS, strerror(errno));
+		fprintf(stderr, "destroy_the_osip_backup: can't open file %s: %s\n", MMC_DEV_POS, strerror(errno));
 		return -1;
 	}
 	lseek(fd, OSIP_BACKUP_OFFSET, SEEK_SET);
@@ -603,42 +608,31 @@ int write_stitch_image_ex(void *data, size_t size, int osii_index, int large_ima
 
 int get_named_osii_index(const char *destination)
 {
-	int index;
-	int offset;
 	int attr;
-	struct OSIP_header osip;
 
 	if (destination == NULL) {
 		fprintf(stderr, "destination is a NULL pointer\n");
 		return -1;
 	}
 
-	if (read_OSIP(&osip)) {
-		fprintf(stderr, "Can't read OSIP!\n");
-		return -1;
-	}
-	attr = osip.desc[0].attribute;
-	if (attr == ATTR_SIGNED_FW || attr == ATTR_UNSIGNED_FW)
-		offset = 1;
-	else
-		offset = 0;
-
 	if (!strcmp(destination, ANDROID_OS_NAME)) {
-		index = ANDROID_OS_NUM;
+		attr = ATTR_SIGNED_KERNEL;
 	} else if (!strcmp(destination, RECOVERY_OS_NAME)) {
-		index = RECOVERY_OS_NUM;
+		attr = ATTR_SIGNED_ROS;
 	} else if (!strcmp(destination, FASTBOOT_OS_NAME)) {
-		index = FASTBOOT_OS_NUM;
+		attr = ATTR_SIGNED_POS;
 	} else if (!strcmp(destination, DROIDBOOT_OS_NAME)) {
-		index = FASTBOOT_OS_NUM;
+		attr = ATTR_SIGNED_POS;
 	} else if (!strcmp(destination, SPLASHSCREEN_NAME)) {
-		index = SPLASHSCREEN_NUM;
-
+		attr = ATTR_SIGNED_SPLASHSCREEN;
+	} else if (!strcmp(destination, SILENT_BINARY_NAME)) {
+		attr = ATTR_SIGNED_FW;
 	} else {
 		fprintf(stderr, "unknown destination %s\n", destination);
 		return -1;
 	}
-	return index + offset;
+
+	return get_attribute_osii_index(attr);
 }
 
 int get_attribute_osii_index(int attr)
@@ -706,7 +700,7 @@ int oem_write_osip_header(int argc, char **argv)
 		.header_size = 0
 	};
 
-	printf("Write OSIP header\n");
+	fprintf(stderr, "Write OSIP header\n");
 	default_osip.header_checksum = get_osip_crc(&default_osip);
 	write_OSIP(&default_osip);
 	restore_osii("boot");

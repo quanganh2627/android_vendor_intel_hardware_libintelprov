@@ -57,7 +57,7 @@ int flash_image_osip(void *data, unsigned sz, const char *name)
 
 	if (!strcmp(name, TEST_OS_NAME)) {
 		oem_write_osip_header(0, 0);
-		return write_stitch_image_ex(data, sz, ANDROID_OS_NUM, 1);
+		return write_stitch_image_ex(data, sz, 0, 1);
 
 	}
 
