@@ -477,7 +477,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
   #  script.UndoRetouchBinaries(retouch_files)
 
   images = {}
-  name_list = ["boot", "recovery", "fastboot", "esp"]
+  name_list = ["boot", "recovery", "fastboot"]
 
   # Ensure that capsule is amended after esp as for
   # EDKII capsule is copied in esp.
@@ -685,7 +685,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   images = {} # Set of images to update (source, target)
   full_images = {} # Set of images to create (target) (no source)
 
-  name_list = ["boot", "recovery", "fastboot", "esp"]
+  name_list = ["boot", "recovery", "fastboot"]
 
   if intel_capsule == "true":
     name_list.append("capsule")
