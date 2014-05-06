@@ -33,7 +33,7 @@ CONFIG_INTELPROV_ULPMC := y
 MODULES-SOURCES :=
 INTELPROV_CONFIGS := $(filter CONFIG_INTELPROV_%,$(.VARIABLES))
 INTELPROV_DEFINES := $(foreach v,$(INTELPROV_CONFIGS),$(filter %y,-D$(v)=$($(v))))
-libintelprov-modules := $(shell find . -name "intelprov.mk")
+libintelprov-modules := $(shell find $(LOCAL_PATH) -name "intelprov.mk")
 LOCAL_CFLAGS += $(INTELPROV_DEFINES)
 include $(libintelprov-modules)
 
