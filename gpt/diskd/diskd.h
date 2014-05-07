@@ -21,4 +21,7 @@
 #define DISK_BY_LABEL_DIR	DISK_BASE_DIR"/by-label"
 #define DISK_BY_UUID_DIR	DISK_BASE_DIR"/by-uuid"
 
+void diskd_populate_tree(void);
+int diskd_run(int argc, char **argv);
+
 #endif	/* _DISKD_H_ */

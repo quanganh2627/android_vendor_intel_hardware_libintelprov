@@ -421,7 +421,18 @@ static void destroy_tree(int sig)
 	exit(EXIT_SUCCESS);
 }
 
-int main(int argc, char **argv)
+void diskd_populate_tree(void)
+{
+	struct stat sbuf;
+
+	if (stat(DISK_BY_LABEL_DIR, &sbuf) == 0)
+		return;
+
+	init_tree();
+	populate_from_sysfs();
+}
+
+int diskd_run(int argc, char **argv)
 {
 	int fd;
 	struct pollfd ufd;

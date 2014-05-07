@@ -81,10 +81,10 @@ include $(BUILD_STATIC_LIBRARY)
 # Plug-in library for AOSP updater
 include $(CLEAR_VARS)
 LOCAL_MODULE := libintel_updater
-LOCAL_SRC_FILES := updater.c $(common_libintelprov_files)
+LOCAL_SRC_FILES := updater.c $(common_libintelprov_files) gpt/diskd/diskd.c
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-LOCAL_C_INCLUDES := $(call include-path-for, recovery) $(common_libintelprov_includes)
+LOCAL_C_INCLUDES := $(call include-path-for, recovery) $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
 ifeq ($(BOARD_HAVE_MODEM),true)

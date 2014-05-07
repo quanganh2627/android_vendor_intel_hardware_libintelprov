@@ -36,6 +36,7 @@
 #endif
 #include "oem_partition.h"
 #include "gpt/partlink/partlink.h"
+#include "gpt/diskd/diskd.h"
 
 #ifdef BOARD_HAVE_MODEM
 #include "telephony/updater.h"
@@ -752,4 +753,5 @@ void Register_libintel_updater(void)
 	RegisterFunction("flash_os_image", FlashOSImage);
 
 	util_init(recovery_error, NULL);
+	diskd_populate_tree();
 }
