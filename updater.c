@@ -421,6 +421,44 @@ done:
 	return ret;
 }
 
+Value *FlashEspUpdateFn(const char *name, State * state, int argc, Expr * argv[])
+{
+	Value *ret = NULL;
+	char *filename = NULL;
+	void *data = NULL;
+	unsigned size;
+
+	if (ReadArgs(state, argv, 1, &filename) < 0) {
+		ErrorAbort(state, "ReadArgs() failed");
+		goto done;
+	}
+
+	if (filename == NULL || strlen(filename) == 0) {
+		ErrorAbort(state, "filename argument to %s can't be empty", name);
+		goto done;
+	}
+
+	if (file_read(filename, &data, &size)) {
+		ErrorAbort(state, "file_read %s failed", filename);
+		goto done;
+	}
+
+	if (flash_esp_update(data, size) != 0) {
+		ErrorAbort(state, "flash_esp_update failed");
+		goto done;
+	}
+
+	/* no error */
+	ret = StringValue(strdup(""));
+done:
+	if (filename)
+		free(filename);
+	if (data)
+		free(data);
+
+	return ret;
+}
+
 Value *FlashUlpmcFn(const char *name, State * state, int argc, Expr * argv[])
 {
 	Value *ret = NULL;
@@ -734,6 +772,7 @@ void Register_libintel_updater(void)
 	RegisterFunction("restore_os", RestoreOsFn);
 
 	RegisterFunction("flash_capsule", FlashCapsuleFn);
+	RegisterFunction("flash_esp_update", FlashEspUpdateFn);
 	RegisterFunction("flash_ulpmc", FlashUlpmcFn);
 
 	RegisterFunction("flash_fpt_ifwi", FlashFptIfwi);

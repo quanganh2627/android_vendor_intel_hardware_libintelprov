@@ -316,6 +316,10 @@ class EdifyGenerator(object):
     self.Print("Updating IFWI with capsule...\n");
     self.script.append('flash_capsule("/tmp/%s");' % (name,))
 
+  def FlashEspUpdate(self, name):
+    self.Print("Updating ESP...\n");
+    self.script.append('flash_esp_update("/tmp/%s");' % (name,))
+
   def FlashUlpmc(self, name):
     self.Print("Updating ulpmc...\n");
     self.script.append('flash_ulpmc("/tmp/%s");' % (name,))

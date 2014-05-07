@@ -21,7 +21,7 @@
 #ifdef CONFIG_INTELPROV_EDK2
 
 bool is_edk2(void);
-int flash_capsule_edk2(void *data, unsigned sz);
+int flash_capsule_esp(void *data, unsigned sz);
 
 #else	/* CONFIG_INTELPROV_EDK2 */
 
@@ -30,7 +30,7 @@ bool is_edk2(void)
 	return false;
 }
 
-int flash_capsule_edk2(void *data, unsigned sz)
+int flash_capsule_esp(void *data, unsigned sz)
 {
 	return stub_operation(__func__);
 }
@@ -38,7 +38,7 @@ int flash_capsule_edk2(void *data, unsigned sz)
 #endif	/* CONFIG_INTELPROV_EDK2 */
 
 struct capsule_operations edk2_capsule_operations = {
-	.flash_capsule = flash_capsule_edk2,
+	.flash_capsule = flash_capsule_esp,
 };
 
 #endif	/* _FLASH_OPS_EDK2_H_ */

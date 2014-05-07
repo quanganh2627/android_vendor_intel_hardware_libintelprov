@@ -625,6 +625,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd("token_umip", flash_token_umip);
 	ret |= aboot_register_flash_cmd("capsule", flash_capsule);
 	ret |= aboot_register_flash_cmd("ulpmc", flash_ulpmc);
+	ret |= aboot_register_flash_cmd("esp_update", flash_esp_update);
 
 	if (strcmp(build_type_prop, "user")) {
 		ret |= aboot_register_oem_cmd("dnx_timeout", oem_dnx_timeout);
