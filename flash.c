@@ -98,11 +98,6 @@ int is_image_signed(const char *name)
 	return ops_call(bootimage, is_image_signed, name);
 }
 
-int get_device_path(char **path, const char *name)
-{
-	return ops_call(bootimage, get_device_path, path, name);
-}
-
 int flash_android_kernel(void *data, unsigned sz)
 {
 	return flash_image(data, sz, ANDROID_OS_NAME);

@@ -31,7 +31,6 @@ struct bootimage_operations {
 	int (*read_image) (const char *name, void **data);
 	int (*read_image_signature) (void **buf, char *name);
 	int (*is_image_signed) (const char *name);
-	int (*get_device_path) (char **path, const char *name);
 };
 
 struct ifwi_operations {

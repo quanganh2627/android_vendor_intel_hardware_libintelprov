@@ -416,7 +416,7 @@ static int oem_mount(int argc, char **argv)
 	}
 
 	ret = get_device_path(&dev_path, argv[1]);
-	if (!ret) {
+	if (ret) {
 		fastboot_fail("Unable to find the appropriate device path\n");
 		goto end;
 	}
