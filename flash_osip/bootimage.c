@@ -33,18 +33,6 @@ bool is_osip(void)
 	return osip.sig == OSIP_SIG;
 }
 
-int get_osip_path(char **path, const char *name)
-{
-	struct stat buf;
-
-	if (name && stat(name, &buf) == 0 && S_ISBLK(buf.st_mode)) {
-		*path = strdup(name);
-		return 0;
-	}
-
-	return -1;
-}
-
 int read_image_osip(const char *name, void **data)
 {
 	int index;

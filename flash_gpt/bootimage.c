@@ -46,7 +46,7 @@ static char *try_prefix(const char *prefix, const char *name)
 
 static const char *PREFIXES[] = { DISK_BY_LABEL_DIR, BASE_PLATFORM_INTEL_LABEL };
 
-int get_gpt_path(char **path, const char *name)
+int get_device_path(char **path, const char *name)
 {
 	if (!name) {
 		error("%s: Passed name is empty.\n", __func__);
@@ -70,7 +70,7 @@ bool is_gpt(void)
 {
 	char *path = NULL;
 
-	if (!get_gpt_path(&path, "fastboot"))
+	if (!get_device_path(&path, "fastboot"))
 		free(path);
 
 	return !!path;
@@ -84,7 +84,7 @@ int flash_image_gpt(void *data, unsigned sz, const char *name)
 	if (!strcmp(name, TEST_OS_NAME))
 		name = ANDROID_OS_NAME;
 
-	if (get_gpt_path(&block_dev, name))
+	if (get_device_path(&block_dev, name))
 		return -1;
 
 	ret = file_write(block_dev, data, sz);
@@ -102,7 +102,7 @@ int open_bootimage(const char *name)
 	char *block_dev;
 	int fd = -1;
 
-	if (get_gpt_path(&block_dev, name))
+	if (get_device_path(&block_dev, name))
 		goto out;
 
 	fd = open(block_dev, O_RDONLY);
@@ -234,7 +234,7 @@ int is_image_signed_gpt(const char *name)
 	int fd;
 	char *path = NULL;
 
-	if (get_gpt_path(&path, "/recovery")) {
+	if (get_device_path(&path, "/recovery")) {
 		error("Unable to find the device path for the recovery boot image\n");
 		goto out;
 	}
