@@ -69,7 +69,8 @@ static int ensure_esp_mounted()
 	if (ret == -1 && errno != EBUSY) {
 		error("%s: mount %s failed\n", __func__, ESP_MOUNT_POINT);
 		goto out;
-	}
+	} else if (errno == EBUSY)
+		ret = 0;
 
 out:
 	free(path);
