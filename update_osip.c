@@ -464,6 +464,16 @@ int destroy_the_osip_backup(void)
 	return 0;
 }
 
+inline int check_index_outofbound(int osii_index)
+{
+	if (osii_index < 0 || osii_index >= MAX_OSIP_DESC) {
+		fprintf(stderr, "Bad OSII index %d\n", osii_index);
+		return -1;
+	}
+
+	return 0;
+}
+
 int write_stitch_image(void *data, size_t size, int osii_index)
 {
 	return write_stitch_image_ex(data, size, osii_index, 0);
@@ -477,10 +487,8 @@ int write_stitch_image_ex(void *data, size_t size, int osii_index, int large_ima
 	unsigned max_size_lba;
 	int fd;
 
-	if (osii_index < 0 || (unsigned int)osii_index > ARRAY_SIZE(osip.reserved)) {
-		fprintf(stderr, "Bad OSII index %d\n", osii_index);
+	if (check_index_outofbound(osii_index))
 		return -1;
-	}
 
 	printf("Writing %zu byte image to osip[%d]\n", size, osii_index);
 	if (crack_stitched_image(data, &osii, &blob)) {
@@ -606,9 +614,10 @@ int write_stitch_image_ex(void *data, size_t size, int osii_index, int large_ima
 	return write_OSIP(&osip);
 }
 
-int get_named_osii_index(const char *destination)
+int get_named_osii_index(const char *destination, enum osip_operation_type operation)
 {
 	int attr;
+	int instance = 1;
 
 	if (destination == NULL) {
 		fprintf(stderr, "destination is a NULL pointer\n");
@@ -623,8 +632,17 @@ int get_named_osii_index(const char *destination)
 		attr = ATTR_SIGNED_POS;
 	} else if (!strcmp(destination, DROIDBOOT_OS_NAME)) {
 		attr = ATTR_SIGNED_POS;
-	} else if (!strcmp(destination, SPLASHSCREEN_NAME)) {
+	} else if (!strcmp(destination, SPLASHSCREEN_NAME1)) {
 		attr = ATTR_SIGNED_SPLASHSCREEN;
+	} else if (!strcmp(destination, SPLASHSCREEN_NAME2)) {
+		attr = ATTR_SIGNED_SPLASHSCREEN;
+		instance = 2;
+	} else if (!strcmp(destination, SPLASHSCREEN_NAME3)) {
+		attr = ATTR_SIGNED_SPLASHSCREEN;
+		instance = 3;
+	} else if (!strcmp(destination, SPLASHSCREEN_NAME4)) {
+		attr = ATTR_SIGNED_SPLASHSCREEN;
+		instance = 4;
 	} else if (!strcmp(destination, SILENT_BINARY_NAME)) {
 		attr = ATTR_SIGNED_FW;
 	} else {
@@ -632,22 +650,31 @@ int get_named_osii_index(const char *destination)
 		return -1;
 	}
 
-	return get_attribute_osii_index(attr);
+	return get_attribute_osii_index(attr, instance, operation);
 }
 
-int get_attribute_osii_index(int attr)
+int get_attribute_osii_index(int attr, int instance, enum osip_operation_type operation)
 {
 	int i;
+	int current_instance = 1;
 	struct OSIP_header osip;
 
 	if (read_OSIP(&osip)) {
 		fprintf(stderr, "Can't read OSIP!\n");
 		return -1;
 	}
-	for (i = 0; i < osip.num_pointers; i++)
-		if ((osip.desc[i].attribute & (~1)) == attr)
-			return i;
-	return osip.num_pointers;
+
+	for (i = 0; i < osip.num_pointers; i++) {
+		if ((osip.desc[i].attribute & (~1)) == attr) {
+			if (current_instance == instance)
+				return i;
+			current_instance++;
+		}
+	}
+
+	if (current_instance == instance && operation == WRITE_OSIP_HEADER)
+		return osip.num_pointers;
+	return -1;
 }
 
 int update_osii(char *destination, int ddr_load_address, int entry_point)
@@ -656,11 +683,9 @@ int update_osii(char *destination, int ddr_load_address, int entry_point)
 	struct OSIP_header osip;
 
 	// destination parameter validity is tested in function get_named_osii_index
-	osii_index = get_named_osii_index(destination);
-	if (osii_index < 0 || (unsigned int)osii_index > ARRAY_SIZE(osip.reserved)) {
-		fprintf(stderr, "Bad OSII index %d\n", osii_index);
+	osii_index = get_named_osii_index(destination, READ_OSIP_HEADER);
+	if (check_index_outofbound(osii_index))
 		return -1;
-	}
 
 	if (read_OSIP(&osip)) {
 		fprintf(stderr, "Can't read OSIP!\n");

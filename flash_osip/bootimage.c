@@ -38,11 +38,10 @@ int read_image_osip(const char *name, void **data)
 	int index;
 	size_t size;
 
-	index = get_named_osii_index(name);
-	if (index < 0) {
-		error("Can't find image %s in the OSIP\n", name);
+	index = get_named_osii_index(name, READ_OSIP_HEADER);
+
+	if (check_index_outofbound(index))
 		return -1;
-	}
 
 	if (read_osimage_data(data, &size, index)) {
 		error("Failed to read OSIP entry\n");
@@ -61,12 +60,10 @@ int flash_image_osip(void *data, unsigned sz, const char *name)
 
 	}
 
-	index = get_named_osii_index(name);
+	index = get_named_osii_index(name, WRITE_OSIP_HEADER);
 
-	if (index < 0) {
-		error("Can't find OSII index!!\n");
+	if (check_index_outofbound(index))
 		return -1;
-	}
 
 	return write_stitch_image(data, sz, index);
 }
@@ -79,11 +76,10 @@ int read_image_signature_osip(void **buf, char *name)
 	int image_index;
 	struct OSIP_header osip;
 
-	image_index = get_named_osii_index(name);
-	if (image_index < 0) {
-		error("Can't find %s index in the OSIP", name);
+	image_index = get_named_osii_index(name, READ_OSIP_HEADER);
+
+	if (check_index_outofbound(image_index))
 		goto err;
-	}
 
 	fd = open(MMC_DEV_POS, O_RDONLY);
 	if (fd < 0) {
@@ -131,12 +127,11 @@ int is_image_signed_osip(const char *name)
 		goto out;
 	}
 
-	recovery_index = get_named_osii_index(RECOVERY_OS_NAME);
+	recovery_index = get_named_osii_index(RECOVERY_OS_NAME, READ_OSIP_HEADER);
 
-	if (recovery_index < 0) {
-		error("Can't find recovery console in the OSIP");
+	if (check_index_outofbound(recovery_index))
 		goto out;
-	}
+
 	ret = osip.desc[recovery_index].attribute & ATTR_UNSIGNED_KERNEL ? 0 : 1;
 out:
 	return ret;

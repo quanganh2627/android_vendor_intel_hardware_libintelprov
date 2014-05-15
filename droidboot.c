@@ -619,7 +619,11 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd(RECOVERY_OS_NAME, flash_recovery_kernel);
 	ret |= aboot_register_flash_cmd(FASTBOOT_OS_NAME, flash_fastboot_kernel);
 	ret |= aboot_register_flash_cmd(ESP_PART_NAME, flash_esp);
-	ret |= aboot_register_flash_cmd("splashscreen", flash_splashscreen_image);
+	ret |= aboot_register_flash_cmd(SPLASHSCREEN_NAME, flash_splashscreen_image1);
+	ret |= aboot_register_flash_cmd(SPLASHSCREEN_NAME1, flash_splashscreen_image1);
+	ret |= aboot_register_flash_cmd(SPLASHSCREEN_NAME2, flash_splashscreen_image2);
+	ret |= aboot_register_flash_cmd(SPLASHSCREEN_NAME3, flash_splashscreen_image3);
+	ret |= aboot_register_flash_cmd(SPLASHSCREEN_NAME4, flash_splashscreen_image4);
 	ret |= aboot_register_flash_cmd("dnx", flash_dnx);
 	ret |= aboot_register_flash_cmd("ifwi", flash_ifwi);
 	ret |= aboot_register_flash_cmd("token_umip", flash_token_umip);

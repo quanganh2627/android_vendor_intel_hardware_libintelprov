@@ -33,6 +33,11 @@
 /* mfld-structures section 2.7.1 mfld-fas v0.8*/
 #define OSIP_SIG 0x24534f24	/* $OS$ */
 
+enum osip_operation_type {
+	READ_OSIP_HEADER,
+	WRITE_OSIP_HEADER,
+};
+
 struct OSII {			//os image identifier
 	uint16_t os_rev_minor;
 	uint16_t os_rev_major;
@@ -69,12 +74,13 @@ void dump_osip_header(struct OSIP_header *osip);
 void dump_OS_page(struct OSIP_header *osip, int os_index, int numpages);
 
 int read_osimage_data(void **data, size_t * size, int osii_index);
+inline int check_index_outofbound(int osii_index);
 int write_stitch_image(void *data, size_t size, int osii_index);
 int write_stitch_image_ex(void *data, size_t size, int osii_index, int large_image);
-int get_named_osii_index(const char *destination);
+int get_named_osii_index(const char *destination, enum osip_operation_type operation);
 int invalidate_osii(char *destination);
 int restore_osii(char *destination);
-int get_attribute_osii_index(int attr);
+int get_attribute_osii_index(int attr, int instance, enum osip_operation_type operation);
 int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba);
 int verify_osip_sizes(struct OSIP_header *osip);
 int oem_write_osip_header(int argc, char **argv);

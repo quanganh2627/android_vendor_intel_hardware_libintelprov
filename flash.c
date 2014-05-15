@@ -113,9 +113,24 @@ int flash_fastboot_kernel(void *data, unsigned sz)
 	return flash_image(data, sz, FASTBOOT_OS_NAME);
 }
 
-int flash_splashscreen_image(void *data, unsigned sz)
+int flash_splashscreen_image1(void *data, unsigned sz)
 {
-	return flash_image(data, sz, SPLASHSCREEN_NAME);
+	return flash_image(data, sz, SPLASHSCREEN_NAME1);
+}
+
+int flash_splashscreen_image2(void *data, unsigned sz)
+{
+	return flash_image(data, sz, SPLASHSCREEN_NAME2);
+}
+
+int flash_splashscreen_image3(void *data, unsigned sz)
+{
+	return flash_image(data, sz, SPLASHSCREEN_NAME3);
+}
+
+int flash_splashscreen_image4(void *data, unsigned sz)
+{
+	return flash_image(data, sz, SPLASHSCREEN_NAME4);
 }
 
 int flash_silent_binary(void *data, unsigned sz)

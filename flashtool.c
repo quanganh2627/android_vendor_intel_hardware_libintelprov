@@ -122,11 +122,9 @@ static void cmd_read_osip(char *entry, char *filename)
 		fprintf(stderr, "Must specifiy image index and filename!\n");
 		exit(1);
 	}
-	index = get_named_osii_index(entry);
-	if (index < 0) {
-		fprintf(stderr, "%s is an invalid entry name\n", entry);
+	index = get_named_osii_index(entry, READ_OSIP_HEADER);
+	if (check_index_outofbound(index))
 		exit(1);
-	}
 	if (read_osimage_data(&data, &size, index)) {
 		fprintf(stderr, "Failed to read OSIP entry\n");
 		exit(1);
@@ -147,11 +145,9 @@ static void cmd_write_osip(char *entry, char *filename)
 		fprintf(stderr, "Must specifiy image entry and filename!\n");
 		exit(1);
 	}
-	index = get_named_osii_index(entry);
-	if (index < 0) {
-		fprintf(stderr, "%s is an invalid entry name\n", entry);
+	index = get_named_osii_index(entry, WRITE_OSIP_HEADER);
+	if (check_index_outofbound(index))
 		exit(1);
-	}
 
 	printf("flashing '%s' to '%s' osip[%d]\n", filename, entry, index);
 	if (file_read(filename, &data, &size)) {

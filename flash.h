@@ -25,6 +25,10 @@
 #define DROIDBOOT_OS_NAME   "droidboot"
 #define TEST_OS_NAME        "testos"
 #define SPLASHSCREEN_NAME   "splashscreen"
+#define SPLASHSCREEN_NAME1  "splashscreen1"
+#define SPLASHSCREEN_NAME2  "splashscreen2"
+#define SPLASHSCREEN_NAME3  "splashscreen3"
+#define SPLASHSCREEN_NAME4  "splashscreen4"
 #define ESP_PART_NAME       "ESP"
 #define SILENT_BINARY_NAME  "silentlake"
 
@@ -50,7 +54,10 @@ int get_device_path(char **path, const char *name);
 int flash_android_kernel(void *data, unsigned sz);
 int flash_recovery_kernel(void *data, unsigned sz);
 int flash_fastboot_kernel(void *data, unsigned sz);
-int flash_splashscreen_image(void *data, unsigned sz);
+int flash_splashscreen_image1(void *data, unsigned sz);
+int flash_splashscreen_image2(void *data, unsigned sz);
+int flash_splashscreen_image3(void *data, unsigned sz);
+int flash_splashscreen_image4(void *data, unsigned sz);
 int flash_esp(void *data, unsigned sz);
 int flash_testos(void *data, unsigned sz);
 int flash_silent_binary();
