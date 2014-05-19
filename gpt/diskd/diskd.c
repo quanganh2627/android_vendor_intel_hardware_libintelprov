@@ -382,6 +382,8 @@ static void populate_from_sysfs(void)
 		}
 
 		char *buf = read_uevent_file(fd);
+		if (!buf)
+			goto next;
 
 		memset(&uevent, 0, sizeof(uevent));
 		uevent.action = ACTIONS[ADD];
