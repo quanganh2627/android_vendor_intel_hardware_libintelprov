@@ -93,19 +93,6 @@ int libintel_droidboot_token_init(void)
 #ifndef TEE_FRAMEWORK
 	ret |= aboot_register_flash_cmd("token", flash_token);
 	ret |= aboot_register_oem_cmd("uniqueid", oem_uniqueid_handler);
-#else
-	print_fun = fastboot_info;
-	error_fun = fastboot_fail;
-
-	ret |= aboot_register_oem_cmd("get-spid", get_spid);
-	ret |= aboot_register_oem_cmd("get-fru", get_fru);
-	ret |= aboot_register_oem_cmd("get-part-id", get_part_id);
-	ret |= aboot_register_oem_cmd("get-lifetime", get_lifetime);
-	ret |= aboot_register_oem_cmd("start-update", start_update);
-	ret |= aboot_register_oem_cmd("cancel-update", cancel_update);
-	ret |= aboot_register_oem_cmd("finalize-update", finalize_update);
-	ret |= aboot_register_oem_cmd("remove-token", remove_token);
-	ret |= aboot_register_flash_cmd("token", write_token);
 #endif	/* TEE_FRAMEWORK */
 
 	return ret;
