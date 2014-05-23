@@ -429,3 +429,60 @@ int remove_token(int argc, char **argv)
 
 	return ret;
 }
+
+int send_cryptid_request(void *data, size_t size)
+{
+	int ret;
+	size_t response_size;
+	uint8_t *response;
+
+	ret = tee_token_cryptid_request(size, data, &response_size, &response);
+
+	if (ret != 0)
+		raise_error("tee_token_cryptid_request() call failed, return=0x%x", ret);
+	else {
+		output_data(response, response_size);
+		free(response);
+	}
+
+	return ret;
+}
+
+int generate_shared_rsa(int argc, char **argv)
+{
+	int ret;
+	size_t pub_key_size, prv_key_size;
+	uint8_t *pub_key = NULL;
+	uint8_t *prv_key = NULL;
+
+	if (argc != 3) {
+		raise_error("file name argument is missing");
+		return EXIT_FAILURE;
+	}
+
+	ret = tee_token_gen_shared_rsa(&pub_key_size, &pub_key, &prv_key_size, &prv_key);
+
+	if (ret != 0) {
+		raise_error("tee_token_gen_shared_rsa() call failed, return=0x%x", ret);
+		goto fail_gen;
+	}
+	else {
+		if (file_write(argv[1], pub_key, pub_key_size) < 0) {
+			raise_error("Failed to write pub key output file %s, error: %s", argv[1],  strerror(errno));
+			ret = EXIT_FAILURE;
+			goto fail_file;
+		}
+		if (file_write(argv[2], prv_key, prv_key_size) < 0) {
+			raise_error("Failed to write prv key output file %s, error: %s", argv[2],  strerror(errno));
+			ret = EXIT_FAILURE;
+			goto fail_file;
+		}
+	}
+
+fail_file:
+	free(pub_key);
+	free(prv_key);
+fail_gen:
+
+	return ret;
+}
