@@ -62,50 +62,48 @@ When used, -o option must the first.\n\
   -r, --read-token=DATAGROUP_ID            read token\n\
   -R, --read-token-payload=DATAGROUP_ID    read token payload\n\
   -m, --remove-token=DATAGROUP_ID          remove token\n\
+  -y, --secure=FILE                        send cryptid request\n\
+  -g, --generate=FILE1 FILE2               generate RSA public and private key\n\
   -h, --help                               display this help\n\
 ");
 	exit(status);
 }
 
-/* Send a token read from FILE_PATH to Chaabi. Returns 0 on
+/* Send a file read from FILE_PATH to Chaabi and execute operation. Returns 0 on
    success.  */
-static int write_token_file (const char *file_path)
+static int write_chaabi_file(const char *file_path, int (*chaabi_operation) (void *data, size_t size))
 {
 	struct stat fd_stat;
 	int fd, ret, result;
 	void *data;
 
 	fd = open(file_path, O_RDONLY);
-	if (fd == -1)
-	{
-		raise_error("Failed to open token \"%s\" file, error: %s", file_path, strerror(errno));
+	if (fd == -1) {
+		raise_error("Failed to open \"%s\" file, error: %s", file_path, strerror(errno));
 		return EXIT_FAILURE;
 	}
 
 	ret = fstat(fd, &fd_stat);
-	if (ret == -1)
-	{
-		raise_error("Failed to retrieve the token file stat, error: %s", strerror(errno));
+	if (ret == -1) {
+		raise_error("Failed to retrieve the file stat, error: %s", strerror(errno));
 		result = EXIT_FAILURE;
 		goto close;
 	}
 
 	data = mmap(NULL, fd_stat.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	if (data == MAP_FAILED)
-	{
+	if (data == MAP_FAILED) {
 		raise_error("Failed to map file into memory, error: %s", strerror(errno));
 		result = EXIT_FAILURE;
 		goto close;
 	}
 
-	result = write_token(data, fd_stat.st_size);
+	result = chaabi_operation(data, fd_stat.st_size);
 
 	ret = munmap(data, fd_stat.st_size);
-	if (ret != 0)
-	{
+	if (ret != 0) {
 		raise_error("Failed to unmap file, error: %s", strerror(errno));
 		if (result == 0)
-			raise_error("Exit without complaining because write_token has been successfully executed");
+			raise_error ("Exit without complaining because operation has been successfully executed");
 		else
 			result = ret;
 		goto exit;
@@ -113,8 +111,7 @@ static int write_token_file (const char *file_path)
 
 close:
 	ret = close(fd);
-	if (ret != 0)
-	{
+	if (ret != 0) {
 		raise_error("Failed to close file, error: %s", strerror(errno));
 		result = ret;
 	}
@@ -137,6 +134,8 @@ static struct option const long_options[] =
 	{"read-token", required_argument, NULL, 'r'},
 	{"read-token-payload", required_argument, NULL, 'R'},
 	{"remove-token", required_argument, NULL, 'm'},
+	{"secure", required_argument, NULL, 'y'},
+	{"generate", required_argument, NULL, 'g'},
 	{"output-file", required_argument, NULL, 'o'},
 	{"help", no_argument, NULL, 'h'},
 	{NULL, 0, NULL, 0}
@@ -150,10 +149,8 @@ int main(int argc, char **argv)
 	error_fun = teeprov_error;
 	atexit(close_output_file_when_open);
 
-	while ((c = getopt_long (argc, argv, "sfplnuczw:r:R:o:hm:", long_options, NULL)) != -1)
-	{
-		switch (c)
-		{
+	while ((c = getopt_long(argc, argv, "sfplnuczw:y:g:r:R:o:hm:", long_options, NULL)) != -1) {
+		switch (c) {
 		case 's':
 			return get_spid(0, NULL);
 
@@ -179,7 +176,7 @@ int main(int argc, char **argv)
 			return finalize_update(0, NULL);
 
 		case 'w':
-			return write_token_file(optarg);
+			return write_chaabi_file(optarg, write_token);
 
 		case 'r':
 			return read_token(2, &argv[optind - 2]);
@@ -190,9 +187,18 @@ int main(int argc, char **argv)
 		case 'm':
 			return remove_token(2, &argv[optind - 2]);
 
+		case 'y':
+			return write_chaabi_file(optarg, send_cryptid_request);
+
+		case 'g':
+			if (optind != 3 || argc != 4) {
+				raise_error("-g, --generate=FILE1 FILE2 MUST have 2 file arguments");
+				return EXIT_FAILURE;
+			}
+			return generate_shared_rsa(3, &argv[optind - 2]);
+
 		case 'o':
-			if (optind != 3)
-			{
+			if (optind != 3) {
 				raise_error("-o, --output-file=FILE MUST be the first option");
 				return EXIT_FAILURE;
 			}
