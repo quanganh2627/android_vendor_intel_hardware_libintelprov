@@ -34,8 +34,6 @@
 #include "update_osip.h"
 #include "util.h"
 #include "fw_version_check.h"
-#include "fpt.h"
-#include "txemanuf.h"
 #include "fastboot.h"
 #include "droidboot_ui.h"
 #include "gpt/partlink/partlink.h"
@@ -675,21 +673,6 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("backup_factory", oem_backup_factory);
 	ret |= aboot_register_oem_cmd("restore_factory", oem_restore_factory);
 	ret |= aboot_register_oem_cmd("fastboot2adb", oem_fastboot2adb);
-
-	if ((strcmp(platform_prop, "baytrail") == 0) && (strcmp(build_type_prop, "eng") == 0)) {
-		aboot_register_flash_cmd("fpt_ifwi", flash_fpt_data_ifwi);
-		aboot_register_flash_cmd("fpt_txe", flash_fpt_data_txe);
-		aboot_register_flash_cmd("fpt_pdr", flash_fpt_data_pdr);
-		aboot_register_flash_cmd("fpt_bios", flash_fpt_data_bios);
-		aboot_register_flash_cmd("fpt_fpfs", flash_fpt_data_fpfs);
-		aboot_register_flash_cmd("txemanuf", flash_txemanuf_data);
-
-		aboot_register_oem_cmd("fpt_writeitem", fpt_writeitem);
-		aboot_register_oem_cmd("fpt_writevalidbit", fpt_writevalidbit);
-		aboot_register_oem_cmd("fpt_closemnf", fpt_closemnf);
-		aboot_register_oem_cmd("txemanuf_eof_test", txemanuf_eof_test);
-		aboot_register_oem_cmd("txemanuf_bist_test", txemanuf_bist_test);
-	}
 #endif
 
 #ifdef BOARD_HAVE_MODEM

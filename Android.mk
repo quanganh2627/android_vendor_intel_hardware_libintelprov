@@ -41,8 +41,6 @@ common_libintelprov_files := \
 	update_osip.c \
 	fw_version_check.c \
 	util.c \
-	fpt.c \
-	txemanuf.c \
 	flash_ops.c \
 	flash.c \
 	$(MODULES-SOURCES)

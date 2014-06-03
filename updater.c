@@ -29,8 +29,6 @@
 #include "update_osip.h"
 #include "util.h"
 #include "fw_version_check.h"
-#include "fpt.h"
-#include "txemanuf.h"
 #ifdef TEE_FRAMEWORK
 #include "tee_connector.h"
 #endif
@@ -523,36 +521,6 @@ done:
 	return ret;
 }
 
-Value *FlashFptIfwi(const char *name, State * state, int argc, Expr * argv[])
-{
-	return FlashCallFunction(flash_fpt_file_ifwi, name, state, argc, argv);
-}
-
-Value *FlashFptTxe(const char *name, State * state, int argc, Expr * argv[])
-{
-	return FlashCallFunction(flash_fpt_file_txe, name, state, argc, argv);
-}
-
-Value *FlashFptPdr(const char *name, State * state, int argc, Expr * argv[])
-{
-	return FlashCallFunction(flash_fpt_file_pdr, name, state, argc, argv);
-}
-
-Value *FlashFptBios(const char *name, State * state, int argc, Expr * argv[])
-{
-	return FlashCallFunction(flash_fpt_file_bios, name, state, argc, argv);
-}
-
-Value *FlashFptFpfs(const char *name, State * state, int argc, Expr * argv[])
-{
-	return FlashCallFunction(flash_fpt_file_fpfs, name, state, argc, argv);
-}
-
-Value *FlashTxemanuf(const char *name, State * state, int argc, Expr * argv[])
-{
-	return FlashCallFunction(flash_txemanuf_file, name, state, argc, argv);
-}
-
 Value *CommandFunction(int (*fun) (int, char **), const char *name, State * state, int argc, Expr * argv[])
 {
 	Value *ret = NULL;
@@ -582,31 +550,6 @@ Value *CommandFunction(int (*fun) (int, char **), const char *name, State * stat
 
 done:
 	return ret;
-}
-
-Value *FptWriteItem(const char *name, State * state, int argc, Expr * argv[])
-{
-	return CommandFunction(fpt_writeitem, name, state, argc, argv);
-}
-
-Value *FptWriteValidBit(const char *name, State * state, int argc, Expr * argv[])
-{
-	return CommandFunction(fpt_writevalidbit, name, state, argc, argv);
-}
-
-Value *FptCloseMnf(const char *name, State * state, int argc, Expr * argv[])
-{
-	return CommandFunction(fpt_closemnf, name, state, argc, argv);
-}
-
-Value *TxemanufEofTest(const char *name, State * state, int argc, Expr * argv[])
-{
-	return CommandFunction(txemanuf_eof_test, name, state, argc, argv);
-}
-
-Value *TxemanufBistTest(const char *name, State * state, int argc, Expr * argv[])
-{
-	return CommandFunction(txemanuf_bist_test, name, state, argc, argv);
 }
 
 Value *FlashOSImage(const char *name, State * state, int argc, Expr * argv[])
@@ -774,19 +717,6 @@ void Register_libintel_updater(void)
 	RegisterFunction("flash_capsule", FlashCapsuleFn);
 	RegisterFunction("flash_esp_update", FlashEspUpdateFn);
 	RegisterFunction("flash_ulpmc", FlashUlpmcFn);
-
-	RegisterFunction("flash_fpt_ifwi", FlashFptIfwi);
-	RegisterFunction("flash_fpt_txe", FlashFptTxe);
-	RegisterFunction("flash_fpt_pdr", FlashFptPdr);
-	RegisterFunction("flash_fpt_bios", FlashFptBios);
-	RegisterFunction("flash_fpt_fpfs", FlashFptFpfs);
-	RegisterFunction("flash_txemanuf", FlashTxemanuf);
-
-	RegisterFunction("fpt_writeite", FptWriteItem);
-	RegisterFunction("fpt_writevalidbit", FptWriteValidBit);
-	RegisterFunction("fpt_closemnf", FptCloseMnf);
-	RegisterFunction("txemanuf_eof_test", TxemanufEofTest);
-	RegisterFunction("txemanuf_bist_test", TxemanufBistTest);
 	RegisterFunction("flash_partition", FlashPartition);
 	RegisterFunction("flash_image_at_offset", FlashImageAtOffset);
 	RegisterFunction("flash_os_image", FlashOSImage);

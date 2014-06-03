@@ -10,8 +10,6 @@
 #include "update_osip.h"
 #include "util.h"
 #include "fw_version_check.h"
-#include "fpt.h"
-#include "txemanuf.h"
 #include "flash.h"
 
 #ifdef BOARD_HAVE_MODEM
@@ -27,8 +25,7 @@ enum {
 	CMD_READ_OSIP,
 	CMD_DUMP,
 	CMD_WRITE_FW,
-	CMD_WRITE_3G_FW,
-	CMD_WRITE_FPT_IFWI
+	CMD_WRITE_3G_FW
 };
 
 static void usage(void)
@@ -43,7 +40,6 @@ static void usage(void)
 	       "-v <firmware file>    Dump the FW versions in an IFWI release\n"
 	       "-f <firmware file>    Flash an IFWI image\n"
 	       "-g <firmware file>    Flash 3G firmware\n"
-	       "-p <firmware file>    Flash IFWI using FPT\n"
 	       "Run with no arguments to print out some system version information\n"
 	       "and a dump of the OSIP\n");
 }
@@ -167,7 +163,7 @@ int main(int argc, char **argv)
 	char *filename = NULL;
 	int cmd = CMD_NONE;
 
-	while ((c = getopt(argc, argv, "i:w:r:dv:hf:g:p:")) != -1) {
+	while ((c = getopt(argc, argv, "i:w:r:dv:hf:g:")) != -1) {
 		switch (c) {
 		case 'i':
 			entry = strdup(optarg);
@@ -190,10 +186,6 @@ int main(int argc, char **argv)
 			break;
 		case 'g':
 			cmd = CMD_WRITE_3G_FW;
-			filename = strdup(optarg);
-			break;
-		case 'p':
-			cmd = CMD_WRITE_FPT_IFWI;
 			filename = strdup(optarg);
 			break;
 		case 'h':
@@ -226,9 +218,6 @@ int main(int argc, char **argv)
 		cmd_push_mdm_fw(filename);
 		break;
 #endif
-	case CMD_WRITE_FPT_IFWI:
-		flash_fpt_file_ifwi(filename);
-		break;
 	}
 	return 0;
 }
