@@ -33,14 +33,13 @@
 #define SILENT_BINARY_NAME  "silentlake"
 #define RAMDUMP_OS_NAME     "ramdump"
 
-int flash_token_umip(void *data, size_t size);
 int update_ifwi_image(void *data, size_t size, unsigned reset_flag);
 int update_ifwi_file(void *data, size_t size);
 int check_ifwi_file(void *data, size_t size);
 int flash_ulpmc(void *data, unsigned sz);
-int flash_dnx(void *data, size_t size);
+int flash_dnx(void *data, unsigned size);
 int flash_ifwi(void *data, unsigned sz);
-int flash_token_umip(void *data, size_t size);
+int flash_token_umip(void *data, unsigned size);
 int flash_capsule(void *data, unsigned sz);
 int flash_esp_update(void *data, unsigned sz);
 int erase_token_umip(void);
@@ -70,6 +69,5 @@ int flash_silent_binary();
  * 1: signed image
  */
 int is_image_signed(const char *name);
-int flash_token_umip(void *data, size_t size);
 
 #endif	/* _FLASH_H_ */

@@ -164,7 +164,7 @@ static int write_umip_emmc(uint32_t addr_offset, void *data, size_t size)
 		}
 
 		if (size > BOOT_IFWI_SIZE) {
-			fprintf(stderr, "write_umip_emmc: Truncating last %d bytes from the IFWI\n",
+			fprintf(stderr, "write_umip_emmc: Truncating last %zd bytes from the IFWI\n",
 			(size - BOOT_IFWI_SIZE));
 			/* Since the last 144 bytes are the FUP header which are not required,*/
 			/* we truncate it to fit into the boot partition. */

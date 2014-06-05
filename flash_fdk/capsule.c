@@ -75,14 +75,14 @@ static void print_capsule_header(struct capsule *c)
 
 	printf(CAPSULE_HEADER "(0x%02x)\n", sig->signature);
 	printf(CAPSULE_HEADER "version (0x%02x) length 0x%02x\n", ver->signature, ver->length);
-	printf(CAPSULE_HEADER "iafw_stage_1: version=0x%x size=0x%02x offset=0x%02x\n",
+	printf(CAPSULE_HEADER "iafw_stage_1: version=0x%x size=0x%02x offset=0x%02zx\n",
 	       ver->iafw_stage1_version, refs->iafw_stage1_size, refs->iafw_stage1_offset + sizeof(*sig));
-	printf(CAPSULE_HEADER "iafw_stage_2: version=0x%x size=0x%02x offset=0x%02x\n",
+	printf(CAPSULE_HEADER "iafw_stage_2: version=0x%x size=0x%02x offset=0x%02zx\n",
 	       ver->iafw_stage2_version, refs->iafw_stage2_size, refs->iafw_stage2_offset + sizeof(*sig));
 	printf(CAPSULE_HEADER "mcu: version=0x%x\n", ver->mcu_version);
-	printf(CAPSULE_HEADER "pdr:  size=0x%02x offset=0x%02x\n",
+	printf(CAPSULE_HEADER "pdr:  size=0x%02x offset=0x%02zx\n",
 	       refs->pdr_size, refs->pdr_offset + sizeof(*sig));
-	printf(CAPSULE_HEADER "sec: version=0x%02x (%d) size=0x%02x offset=0x%02x\n",
+	printf(CAPSULE_HEADER "sec: version=0x%02x (%d) size=0x%02x offset=0x%02zx\n",
 	       ver->sec_version,
 	       (ver->sec_version & 0xFFFF), refs->sec_size, refs->sec_offset + sizeof(*sig));
 }
@@ -100,7 +100,7 @@ static bool check_capsule(struct capsule *c, u32 iafw_version, sec_version_t sec
 
 		if (get_fw_version_tag_offset(&pdr_data, pdr_data + refs->pdr_size)) {
 			u32 pdr_mn2_version = MN2_VER_BYTESREORDER(pdr_data);
-			printf("PDR $MN2 at offset 0x%02x version 0x%02x \n", pdr_data - cdata,
+			printf("PDR $MN2 at offset 0x%02zx version 0x%02x \n", pdr_data - cdata,
 			       pdr_mn2_version);
 
 			if (pdr_mn2_version != pdr_version) {
@@ -119,7 +119,7 @@ static bool check_capsule(struct capsule *c, u32 iafw_version, sec_version_t sec
 
 		if (get_fw_version_tag_offset(&iafw_data, iafw_data + refs->iafw_stage2_size)) {
 			u32 iafw_mn2_version = MN2_VER_BYTESREORDER(iafw_data);
-			printf("IAFW $MN2 at offset 0x%02x version 0x%02x \n", iafw_data - cdata,
+			printf("IAFW $MN2 at offset 0x%02zx version 0x%02x \n", iafw_data - cdata,
 			       iafw_mn2_version);
 
 			if (iafw_mn2_version != iafw_version) {
@@ -143,7 +143,7 @@ static bool check_capsule(struct capsule *c, u32 iafw_version, sec_version_t sec
 			sec_mn2_version.val_2 = MN2_VER_BYTESREORDER(sec_data);
 			sec_mn2_version.val_1 = sec_data[5] << 8 | sec_data[4];
 			sec_mn2_version.val_0 = sec_data[7] << 8 | sec_data[6];
-			printf("SEC $MN2 at offset 0x%02x version %d.%d.%d\n", sec_data - cdata,
+			printf("SEC $MN2 at offset 0x%02zx version %d.%d.%d\n", sec_data - cdata,
 			       sec_mn2_version.val_2, sec_mn2_version.val_1, sec_mn2_version.val_0);
 
 			if ((sec_mn2_version.val_0 != sec_version.val_0) ||

@@ -43,7 +43,7 @@ int flash_custom_boot(void *data, size_t size)
 	return ops_call(ifwi, flash_custom_boot, data, size);
 }
 
-int flash_token_umip(void *data, size_t size)
+int flash_token_umip(void *data, unsigned size)
 {
 	return ops_call(ifwi, flash_token_umip, data, size);
 }

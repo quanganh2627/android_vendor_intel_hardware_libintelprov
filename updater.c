@@ -480,7 +480,7 @@ Value *FlashUlpmcFn(const char *name, State * state, int argc, Expr * argv[])
 	Value *ret = NULL;
 	char *filename = NULL;
 	void *data = NULL;
-	unsigned size;
+	size_t size;
 
 	if (ReadArgs(state, argv, 1, &filename) < 0) {
 		ErrorAbort(state, "ReadArgs() failed");
