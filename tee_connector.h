@@ -43,6 +43,7 @@ extern int remove_token(int argc, char **argv);
 extern int read_token(int argc, char **argv);
 extern int read_token_payload(int argc, char **argv);
 extern int send_cryptid_request(void *data, size_t size);
+extern int generate_shared_ecc(int argc, char **argv);
 extern int generate_shared_rsa(int argc, char **argv);
 
 extern int set_output_file(const char *path);

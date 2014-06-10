@@ -455,6 +455,24 @@ int send_cryptid_request(void *data, size_t size)
 	return ret;
 }
 
+int generate_shared_ecc(int argc, char **argv)
+{
+	int ret;
+	size_t pub_key_size;
+	uint8_t *pub_key = NULL;
+
+	ret = tee_token_gen_shared_ecc(&pub_key_size, &pub_key);
+
+	if (ret != 0)
+		raise_error("tee_token_gen_shared_ecc() call failed, return=0x%x", ret);
+	else {
+		output_data(pub_key, pub_key_size);
+		free(pub_key);
+	}
+
+	return ret;
+}
+
 int generate_shared_rsa(int argc, char **argv)
 {
 	int ret;

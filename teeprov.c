@@ -63,6 +63,7 @@ When used, -o option must the first.\n\
   -R, --read-token-payload=DATAGROUP_ID    read token payload\n\
   -m, --remove-token=DATAGROUP_ID          remove token\n\
   -y, --secure=FILE                        send cryptid request\n\
+  -e, --generate-ecc                       generate ECC public key\n\
   -g, --generate=FILE1 FILE2               generate RSA public and private key\n\
   -h, --help                               display this help\n\
 ");
@@ -135,6 +136,7 @@ static struct option const long_options[] =
 	{"read-token-payload", required_argument, NULL, 'R'},
 	{"remove-token", required_argument, NULL, 'm'},
 	{"secure", required_argument, NULL, 'y'},
+	{"generate-ecc", no_argument, NULL, 'e'},
 	{"generate", required_argument, NULL, 'g'},
 	{"output-file", required_argument, NULL, 'o'},
 	{"help", no_argument, NULL, 'h'},
@@ -149,7 +151,7 @@ int main(int argc, char **argv)
 	error_fun = teeprov_error;
 	atexit(close_output_file_when_open);
 
-	while ((c = getopt_long(argc, argv, "sfplnuczw:y:g:r:R:o:hm:", long_options, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "sfplnuczw:y:eg:r:R:o:hm:", long_options, NULL)) != -1) {
 		switch (c) {
 		case 's':
 			return get_spid(0, NULL);
@@ -189,6 +191,9 @@ int main(int argc, char **argv)
 
 		case 'y':
 			return write_chaabi_file(optarg, send_cryptid_request);
+
+		case 'e':
+			return generate_shared_ecc(0, NULL);
 
 		case 'g':
 			if (optind != 3 || argc != 4) {
