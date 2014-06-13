@@ -19,6 +19,8 @@
 
 #include <unistd.h>
 #include "tee_token_if.h"
+#include "ifp.h"
+#include "sep_keymaster.h"
 
 /* In order to correctly redirect the error and information output,
    you MUST provide the following two functions before using the
@@ -40,6 +42,8 @@ extern int write_token(void *data, size_t size);
 extern int remove_token(int argc, char **argv);
 extern int read_token(int argc, char **argv);
 extern int read_token_payload(int argc, char **argv);
+extern int send_cryptid_request(void *data, size_t size);
+extern int generate_shared_rsa(int argc, char **argv);
 
 extern int set_output_file(const char *path);
 extern void close_output_file_when_open();

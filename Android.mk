@@ -43,7 +43,6 @@ common_libintelprov_includes := \
 
 chaabi_dir := $(TOP)/vendor/intel/hardware/PRIVATE/chaabi
 sep_lib_includes := $(chaabi_dir)/SepMW/VOS6/External/Linux/inc/
-cc54_lib_includes := $(TOP)/vendor/intel/hardware/cc54/libcc54/include/export/
 
 # Provisionning CC54 tool
 ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
@@ -54,7 +53,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_C_INCLUDES := $(common_libintelprov_includes) bootable/recovery
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 LOCAL_STATIC_LIBRARIES := libdx_cc7_static
-LOCAL_SHARED_LIBRARIES := libc liblog
+LOCAL_SHARED_LIBRARIES := libc liblog libifp libkeymaster
 include $(BUILD_EXECUTABLE)
 endif
 
@@ -89,8 +88,8 @@ ifneq ($(filter $(TARGET_BOARD_PLATFORM),merrifield moorefield),)
 endif
 ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
 LOCAL_SRC_FILES += tee_connector.c
-LOCAL_C_INCLUDES += $(cc54_lib_includes)
 LOCAL_WHOLE_STATIC_LIBRARIES += libdx_cc7_static
+LOCAL_SHARED_LIBRARIES += libifp libkeymaster
 LOCAL_CFLAGS += -DTEE_FRAMEWORK
 endif
 include $(BUILD_STATIC_LIBRARY)
@@ -155,8 +154,8 @@ endif
 endif
 ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
 LOCAL_CFLAGS += -DTEE_FRAMEWORK
-LOCAL_C_INCLUDES += $(cc54_lib_includes)
 LOCAL_WHOLE_STATIC_LIBRARIES += libdx_cc7_static
+LOCAL_SHARED_LIBRARIES += libifp libkeymaster
 endif
 
 ifneq ($(DROIDBOOT_NO_GUI),true)
