@@ -414,6 +414,7 @@ def WriteFullOTAPackage(input_zip, output_zip):
   intel_ulpmc=OPTIONS.info_dict["intel_ulpmc"]
   intel_chaabi_token=OPTIONS.info_dict["intel_chaabi_token"]
   do_partitioning=OPTIONS.info_dict["do_partitioning"]
+  bios_type= OPTIONS.info_dict["bios_type"]
 
   metadata = {"post-build": GetBuildProp("ro.build.fingerprint", input_zip),
               "pre-device": GetBuildProp("ro.product.device", input_zip),
@@ -455,7 +456,8 @@ def WriteFullOTAPackage(input_zip, output_zip):
   else:
     partition_file = None
 
-  script.InvalidateOs("boot")
+  if bios_type == "iafw":
+    script.InvalidateOs("boot")
 
   if intel_chaabi_token == "true":
     script.PackageExtract("ifwi.zip")
@@ -523,7 +525,9 @@ def WriteFullOTAPackage(input_zip, output_zip):
     script.AppendExtra(OPTIONS.extra_script)
 
   script.UnmountAll()
-  script.RestoreOs("boot")
+
+  if bios_type == "iafw":
+    script.RestoreOs("boot")
 
   if intel_chaabi_token == "true":
     script.FinalizeUpdate()
@@ -598,7 +602,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   intel_ulpmc = OPTIONS.target_info_dict["intel_ulpmc"]
   intel_chaabi_token = OPTIONS.target_info_dict["intel_chaabi_token"]
   do_partitioning = OPTIONS.target_info_dict["do_partitioning"]
-
+  bios_type= OPTIONS.info_dict["bios_type"]
 
   if source_version == 0:
     print ("WARNING: generating edify script for a source that "
@@ -781,7 +785,8 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   else:
     partition_file = None
 
-  script.InvalidateOs("boot")
+  if bios_type == "iafw":
+    script.InvalidateOs("boot")
 
   if OPTIONS.wipe_user_data:
     script.Print("Erasing user data...")
@@ -924,7 +929,8 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
     script.ApplyPatch("/"+fn, "-", tf.size, tf.sha1, sf.sha1, "patch/"+fn+".p")
   script.SetPermissions("/system/build.prop", 0, 0, 0644)
 
-  script.RestoreOs("boot")
+  if bios_type == "iafw":
+    script.RestoreOs("boot")
 
   script.AddToZip(target_zip, output_zip)
   WriteMetadata(metadata, output_zip)
