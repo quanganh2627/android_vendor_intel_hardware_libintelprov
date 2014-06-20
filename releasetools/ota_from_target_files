@@ -602,7 +602,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   intel_ulpmc = OPTIONS.target_info_dict["intel_ulpmc"]
   intel_chaabi_token = OPTIONS.target_info_dict["intel_chaabi_token"]
   do_partitioning = OPTIONS.target_info_dict["do_partitioning"]
-  bios_type= OPTIONS.info_dict["bios_type"]
+  bios_type = OPTIONS.target_info_dict["bios_type"]
 
   if source_version == 0:
     print ("WARNING: generating edify script for a source that "
