@@ -322,6 +322,7 @@ def TryHardToFindImage(name, unpack_dir, prebuilt_name):
     "ulpmc.bin": ["FIRMWARE/ulpmc.bin"],
     "partition.tbl": ["RECOVERY/partition.tbl"],
     "esp.zip": ["FIRMWARE/esp.zip"],
+    "silentlake.img": ["FIRMWARE/silentlake.img"],
     "ifwi.zip":     ["FIRMWARE/ifwi.zip"]
     }[prebuilt_name]
   for p in known_paths:
