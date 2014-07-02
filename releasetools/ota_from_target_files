@@ -722,6 +722,8 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
       # skip the ifwi flashing if it is the same as src targetfiles
       if not common.IfwiDiffers(src_img, tgt_img):
         continue
+      if intel_chaabi_token == "true":
+        update_bom = True
     if do_partitioning == "true" or name == "ifwi" or metadata["fromgb"] or name == "capsule" or name == "ulpmc" or name == "esp":
       # we dont make incremental images
       full_images[i] = (name, tgt_img)
@@ -776,6 +778,9 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   script.Comment("---- start making changes here ----")
 
+  if update_bom:
+    script.StartUpdate()
+
   if do_partitioning == "true":
     partition_file = common.GetBootableImage("partition.tbl", "partition.tbl",
                                              OPTIONS.input_tmp, "BOOT")
@@ -787,6 +792,10 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   if bios_type == "iafw":
     script.InvalidateOs("boot")
+
+  if update_bom:
+    script.PackageExtract("ifwi.zip")
+    script.FlashBomToken("ifwi.zip")
 
   if OPTIONS.wipe_user_data:
     script.Print("Erasing user data...")
@@ -931,6 +940,9 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
 
   if bios_type == "iafw":
     script.RestoreOs("boot")
+
+  if update_bom:
+    script.FinalizeUpdate()
 
   script.AddToZip(target_zip, output_zip)
   WriteMetadata(metadata, output_zip)
