@@ -445,7 +445,9 @@ def WriteFullOTAPackage(input_zip, output_zip):
   script.ShowProgress(0.5, 0)
 
   if intel_chaabi_token == "true":
+    script.Mount("/system")
     script.StartUpdate()
+    script.Unmount("/system");
 
   if do_partitioning == "true":
     partition_file = common.GetBootableImage("partition.tbl", "partition.tbl",
@@ -524,13 +526,13 @@ def WriteFullOTAPackage(input_zip, output_zip):
   if OPTIONS.extra_script is not None:
     script.AppendExtra(OPTIONS.extra_script)
 
+  if intel_chaabi_token == "true":
+    script.FinalizeUpdate()
+
   script.UnmountAll()
 
   if bios_type == "iafw":
     script.RestoreOs("boot")
-
-  if intel_chaabi_token == "true":
-    script.FinalizeUpdate()
 
   script.AddToZip(input_zip, output_zip)
   WriteMetadata(metadata, output_zip)
