@@ -683,6 +683,7 @@ def WriteIncrementalOTAPackage(target_zip, source_zip, output_zip):
   script.AssertSomeFingerprint(source_fp, target_fp)
 
   updating_recovery = False
+  update_bom = False
 
   # Get the set of images we need to patch in the OSIP
   all_images = {} # Set of all images (source, target)
