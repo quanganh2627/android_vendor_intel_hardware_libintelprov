@@ -65,6 +65,7 @@ When used, -o option must the first.\n\
   -y, --secure=FILE                        send cryptid request\n\
   -e, --generate-ecc                       generate ECC public key\n\
   -g, --generate=FILE1 FILE2               generate RSA public and private key\n\
+  -i, --get-oem-id                         retrieve the Public OEM ID of the device\n\
   -h, --help                               display this help\n\
 ");
 	exit(status);
@@ -137,6 +138,7 @@ static struct option const long_options[] = {
 	{"secure", required_argument, NULL, 'y'},
 	{"generate-ecc", no_argument, NULL, 'e'},
 	{"generate", required_argument, NULL, 'g'},
+	{"get-oem-id", no_argument, NULL, 'i'},
 	{"output-file", required_argument, NULL, 'o'},
 	{"help", no_argument, NULL, 'h'},
 	{NULL, 0, NULL, 0}
@@ -150,7 +152,7 @@ int main(int argc, char **argv)
 	error_fun = teeprov_error;
 	atexit(close_output_file_when_open);
 
-	while ((c = getopt_long(argc, argv, "sfplnuczw:y:eg:r:R:o:hm:", long_options, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "sfplnuczw:y:eg:r:R:o:hm:i", long_options, NULL)) != -1) {
 		switch (c) {
 		case 's':
 			return get_spid(0, NULL);
@@ -200,6 +202,9 @@ int main(int argc, char **argv)
 				return EXIT_FAILURE;
 			}
 			return generate_shared_rsa(3, &argv[optind - 2]);
+
+		case 'i':
+			return get_oem_id(0, NULL);
 
 		case 'o':
 			if (optind != 3) {

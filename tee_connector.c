@@ -504,3 +504,17 @@ fail_gen:
 
 	return ret;
 }
+
+int get_oem_id(int argc, char **argv)
+{
+	int ret;
+	uint8_t oemid_buf[PUBLIC_OEMID_SIZE];
+
+	ret = tee_get_oem_id_public(oemid_buf, sizeof(oemid_buf));
+	if (ret != 0)
+		raise_error("tee_get_oem_id_public() call failed, return=0x%x", ret);
+	else
+		output_data(oemid_buf, sizeof(oemid_buf));
+
+	return ret;
+}
