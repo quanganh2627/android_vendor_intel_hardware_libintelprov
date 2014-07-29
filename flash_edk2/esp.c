@@ -28,7 +28,6 @@
 #include "../gpt/partlink/partlink.h"
 #include "flash.h"
 
-#define TEMP_ESP_FILE	"/tmp/esp.zip"
 #define ESP_LABEL		"ESP"
 #define ESP_MOUNT_POINT		"/" ESP_LABEL
 #define CAPSULE_BIN_FILE	ESP_MOUNT_POINT"/BiosUpdate.fv"
@@ -108,21 +107,15 @@ int flash_esp_update(void *data, unsigned sz)
 		return ret;
 	}
 
-	ret = file_write(TEMP_ESP_FILE, data, sz);
+	ret = mzOpenZipArchive(data, sz, &za);
 	if (ret != 0) {
-		error("%s : write data to file %s failed\n", __func__, TEMP_ESP_FILE);
-		return ret;
-	}
-
-	ret = mzOpenZipArchive(TEMP_ESP_FILE, &za);
-	if (ret != 0) {
-		error("%s: failed to Open zip archive %s\n", __func__, TEMP_ESP_FILE);
+		error("%s: failed to Open zip archive\n", __func__);
 		return ret;
 	}
 
 	success = mzExtractRecursive(&za, "", ESP_MOUNT_POINT, 0, NULL, NULL, NULL, NULL);
 	if (success != true)  {
-		error("%s: failed to Extract zip archive %s to %s\n", __func__, TEMP_ESP_FILE, ESP_MOUNT_POINT);
+		error("%s: failed to Extract zip archive to %s\n", __func__, ESP_MOUNT_POINT);
 		return EXIT_FAILURE;
 	}
 

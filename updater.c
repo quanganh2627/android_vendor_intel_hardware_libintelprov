@@ -147,6 +147,8 @@ Value *FlashIfwiOrBomFn(enum flash_option_type flash_option, const char *name, S
 	ZipArchive ifwi_za;
 	const ZipEntry *ifwi_entry;
 	unsigned char *buffer;
+	unsigned char *file_buf = NULL;
+	size_t file_size;
 #ifdef TEE_FRAMEWORK
 	char bom_token_name[128];
 	const ZipEntry *bom_token_entry;
@@ -163,9 +165,15 @@ Value *FlashIfwiOrBomFn(enum flash_option_type flash_option, const char *name, S
 		goto done;
 	}
 
-	err = mzOpenZipArchive(filename, &ifwi_za);
+	err = file_read(filename, (void **)&file_buf, &file_size);
 	if (err) {
-		ErrorAbort(state, "Failed to open zip archive %s\n", filename);
+		ErrorAbort(state, "Failed to open zip archive file %s\n", filename);
+		goto done;
+	}
+
+	err = mzOpenZipArchive(file_buf, file_size, &ifwi_za);
+	if (err) {
+		ErrorAbort(state, "Failed to open zip archive\n");
 		goto done;
 	}
 
@@ -265,6 +273,7 @@ error:
 	mzCloseZipArchive(&ifwi_za);
 
 done:
+	free(file_buf);
 	if (filename)
 		free(filename);
 
@@ -301,6 +310,8 @@ Value *FlashIfwiFn(const char *name, State * state, int argc, Expr * argv[])
 	char ifwi_name[128], dnx_name[128];
 	ZipArchive ifwi_za;
 	const ZipEntry *dnx_entry, *ifwi_entry;
+	unsigned char *file_buf = NULL;
+	size_t file_size;
 
 	if (ReadArgs(state, argv, 1, &filename) < 0) {
 		return NULL;
@@ -311,9 +322,15 @@ Value *FlashIfwiFn(const char *name, State * state, int argc, Expr * argv[])
 		goto done;
 	}
 
-	err = mzOpenZipArchive(filename, &ifwi_za);
+	err = file_read(filename, (void **)&file_buf, &file_size);
 	if (err) {
-		ErrorAbort(state, "Failed to open zip archive %s\n", filename);
+		ErrorAbort(state, "Failed to open zip archive file %s\n", filename);
+		goto done;
+	}
+
+	err = mzOpenZipArchive(file_buf, file_size, &ifwi_za);
+	if (err) {
+		ErrorAbort(state, "Failed to open zip archive\n");
 		goto done;
 	}
 
@@ -374,6 +391,7 @@ error:
 	mzCloseZipArchive(&ifwi_za);
 
 done:
+	free(file_buf);
 	if (filename)
 		free(filename);
 
