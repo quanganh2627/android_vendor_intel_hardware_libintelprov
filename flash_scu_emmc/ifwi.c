@@ -321,6 +321,5 @@ int flash_ifwi_scu_emmc(void *data, unsigned size)
 
 bool is_scu_emmc(void)
 {
-	char value[PROPERTY_VALUE_MAX];
-	return property_get("sys.scu.version", value, "") > 0;
+	return true;
 }
