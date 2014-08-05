@@ -25,7 +25,6 @@
 #include <minzip/Zip.h>
 
 #include "util.h"
-#include "../gpt/partlink/partlink.h"
 #include "flash.h"
 
 #define ESP_LABEL		"ESP"

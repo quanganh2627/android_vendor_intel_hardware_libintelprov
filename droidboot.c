@@ -36,7 +36,6 @@
 #include "fw_version_check.h"
 #include "fastboot.h"
 #include "droidboot_ui.h"
-#include "gpt/partlink/partlink.h"
 #include "oem_partition.h"
 #include "flash.h"
 #include "ulpmc.h"

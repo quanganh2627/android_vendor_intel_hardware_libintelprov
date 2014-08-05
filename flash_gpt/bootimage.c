@@ -21,10 +21,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "../gpt/partlink/partlink.h"
-#include "../gpt/diskd/diskd.h"
 #include "util.h"
 #include "flash.h"
+
+#define DISK_BY_LABEL_DIR		"/dev/disk/by-label"
+#define BASE_PLATFORM_INTEL_LABEL	"/dev/block/platform/intel/by-label"
 
 static char *try_prefix(const char *prefix, const char *name)
 {
@@ -44,7 +45,7 @@ static char *try_prefix(const char *prefix, const char *name)
 	return NULL;
 }
 
-static const char *PREFIXES[] = { DISK_BY_LABEL_DIR, BASE_PLATFORM_INTEL_LABEL };
+static const char *PREFIXES[] = { BY_NAME_DIR, DISK_BY_LABEL_DIR, BASE_PLATFORM_INTEL_LABEL };
 
 int get_device_path(char **path, const char *name)
 {

@@ -20,7 +20,6 @@
 #include "util.h"
 #include "update_osip.h"
 #include "flash.h"
-#include "../gpt/partlink/partlink.h"
 
 #define OSIP_SIG_SIZE		480
 

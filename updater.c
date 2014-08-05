@@ -33,8 +33,6 @@
 #include "tee_connector.h"
 #endif
 #include "oem_partition.h"
-#include "gpt/partlink/partlink.h"
-#include "gpt/diskd/diskd.h"
 
 #ifdef BOARD_HAVE_MODEM
 #include "telephony/updater.h"
@@ -708,10 +706,6 @@ Value *FlashPartition(const char *name, State * state, int argc, Expr * argv[])
 {
 	Value *ret = NULL;
 
-	/* Ensure that the partition links are there before smashing up
-	 * the partition scheme.  */
-	partlink_repopulate();
-
 	/* Do not reload partition table during OTA since some partition
 	 * are still mounted, reload would failed.  */
 	oem_partition_disable_cmd_reload();
@@ -745,5 +739,4 @@ void Register_libintel_updater(void)
 	RegisterFunction("flash_os_image", FlashOSImage);
 
 	util_init(recovery_error, NULL);
-	diskd_populate_tree();
 }

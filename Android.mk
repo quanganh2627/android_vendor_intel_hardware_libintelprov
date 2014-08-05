@@ -72,13 +72,13 @@ LOCAL_MODULE := liboempartitioning_static
 LOCAL_SRC_FILES := oem_partition.c
 LOCAL_MODULE_TAGS := optional
 LOCAL_C_INCLUDES := bootable/droidboot/volumeutils $(LOCAL_PATH)/gpt/lib/include
-LOCAL_WHOLE_STATIC_LIBRARIES := libpartlink_static libcgpt_static
+LOCAL_WHOLE_STATIC_LIBRARIES := libcgpt_static
 include $(BUILD_STATIC_LIBRARY)
 
 # Plug-in library for AOSP updater
 include $(CLEAR_VARS)
 LOCAL_MODULE := libintel_updater
-LOCAL_SRC_FILES := updater.c $(common_libintelprov_files) gpt/diskd/diskd.c
+LOCAL_SRC_FILES := updater.c $(common_libintelprov_files)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_C_INCLUDES := $(call include-path-for, recovery) $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include

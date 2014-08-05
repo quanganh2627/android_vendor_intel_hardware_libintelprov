@@ -32,7 +32,6 @@
 #include "flash.h"
 #include "update_osip.h"
 #include "util.h"
-#include "gpt/partlink/partlink.h"
 
 /* Needs to agree with ota_from_target_files.MakeRecoveryPatch() */
 #define LOGPERROR(x)	ALOGE("%s failed: %s", x, strerror(errno))

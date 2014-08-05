@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#define BY_NAME_DIR "/dev/block/by-name"
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
 
 int file_write(const char *filename, const void *what, size_t sz);

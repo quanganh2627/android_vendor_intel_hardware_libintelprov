@@ -24,7 +24,6 @@
 #include <roots.h>
 
 #include "util.h"
-#include "gpt/partlink/partlink.h"
 
 #define K_MAX_LINE_LEN 8192
 #define K_MAX_ARGS 256
@@ -162,9 +161,6 @@ static int oem_partition_gpt_handler(FILE *fp)
 			return -1;
 		}
 	}
-
-	if (indirected_cmd_reload == cmd_reload)
-		partlink_repopulate();
 
 	return 0;
 }
