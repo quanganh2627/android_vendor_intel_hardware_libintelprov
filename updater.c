@@ -280,10 +280,14 @@ done:
 	return ret;
 }
 
+#ifndef CLVT
+
 Value *FlashIfwiFn(const char *name, State * state, int argc, Expr * argv[])
 {
 	return FlashIfwiOrBomFn(FLASH_IFWI_BINARY, name, state, argc, argv);
 }
+
+#endif
 
 #ifdef TEE_FRAMEWORK
 Value *FlashBomFn(const char *name, State * state, int argc, Expr * argv[])
@@ -382,7 +386,8 @@ Value *FlashIfwiFn(const char *name, State * state, int argc, Expr * argv[])
 			goto error;
 		}
 		close(ifwi_bin_fd);
-		update_ifwi_file(DNX_BIN_PATH, IFWI_BIN_PATH);
+		int update_ifwi_file_scu_ipc(const char *dnx, const char *ifwi);
+		update_ifwi_file_scu_ipc(DNX_BIN_PATH, IFWI_BIN_PATH);
 	}
 
 	ret = StringValue(strdup(""));
