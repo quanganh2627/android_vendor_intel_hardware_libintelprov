@@ -45,6 +45,7 @@ extern int read_token_payload(int argc, char **argv);
 extern int send_cryptid_request(void *data, size_t size);
 extern int generate_shared_ecc(int argc, char **argv);
 extern int generate_shared_rsa(int argc, char **argv);
+extern int get_oem_id(int argc, char **argv);
 
 extern int set_output_file(const char *path);
 extern void close_output_file_when_open();

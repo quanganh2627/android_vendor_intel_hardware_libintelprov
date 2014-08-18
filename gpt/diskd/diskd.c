@@ -32,6 +32,9 @@
 #include <cutils/uevent.h>
 #include <cutils/list.h>
 #include <cutils/klog.h>
+#include <sys/capability.h>
+#include <private/android_filesystem_config.h>
+#include <sys/prctl.h>
 
 #include "diskd.h"
 
@@ -52,7 +55,7 @@ static const char *DIR_TREE[] = {
 #define BLOCK_DEV_PREFIX	"../../block"
 #define BLOCK_DEV_DIR		"/sys/block"
 
-static const mode_t DEFAULT_MODE = S_IRUSR | S_IWUSR;
+static const mode_t DEFAULT_MODE = S_IRWXU;
 
 static const char *BLOCK_SUBSYSTEM = "block";
 
@@ -402,7 +405,7 @@ static void populate_from_sysfs(void)
 static void init_tree(void)
 {
 	unsigned int i;
-	for (i = 0 ; i < ARRAY_SIZE(DIR_TREE) ; i++) {
+	for (i = 1 ; i < ARRAY_SIZE(DIR_TREE) ; i++) {
 		int ret = mkdir(DIR_TREE[i], DEFAULT_MODE);
 		if (ret == -1 && errno != EEXIST) {
 			ERROR("%s directory creation failed : %s\n",
@@ -434,11 +437,48 @@ void diskd_populate_tree(void)
 	populate_from_sysfs();
 }
 
+void drop_root_privileges(void)
+{
+	struct __user_cap_header_struct header;
+	struct __user_cap_data_struct cap;
+
+	gid_t groups[] = { AID_SYSTEM };
+
+	memset(&header, 0, sizeof(header));
+	memset(&cap, 0, sizeof(cap));
+
+	if (setgroups(sizeof(groups)/sizeof(groups[0]), groups) < 0)
+		WARNING("setgroups failed: %s", strerror(errno));
+
+	prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0);
+
+	if (chdir("/") < 0)
+		WARNING("chdir failed: %s", strerror(errno));
+	if (setgid(AID_SYSTEM) < 0)
+		WARNING("setgid failed: %s", strerror(errno));
+	if (setuid(AID_SYSTEM) < 0)
+		WARNING("setuid failed: %s", strerror(errno));
+
+	header.version = _LINUX_CAPABILITY_VERSION;
+	header.pid = 0;
+	cap.effective = cap.permitted = (1 << CAP_MKNOD);
+
+	if (capset(&header, &cap) < 0)
+		WARNING("capset failed: %s", strerror(errno));
+}
+
 int diskd_run(int argc, char **argv)
 {
 	int fd;
 	struct pollfd ufd;
 	struct sigaction sighandler;
+
+	/* create base dir as root, change owner, and then drop root
+	 * privileges.  */
+	mkdir(DIR_TREE[0], DEFAULT_MODE);
+	chown(DIR_TREE[0], AID_SYSTEM, AID_SYSTEM);
+
+	drop_root_privileges();
 
 	/* First, open the NETLINK socket to ensure we won't miss any
 	 * events.  */
