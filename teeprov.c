@@ -30,13 +30,13 @@
 static void teeprov_output(const char *msg)
 {
 	fprintf(stdout, "%s", msg);
-	LOGI("%s", msg);
+	ALOGI("%s", msg);
 }
 
 static void teeprov_error(const char *msg)
 {
 	fprintf(stderr, "%s\n", msg);
-	LOGE("%s", msg);
+	ALOGE("%s", msg);
 }
 
 static void usage(int status, const char *program_name)

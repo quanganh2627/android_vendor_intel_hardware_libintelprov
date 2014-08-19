@@ -35,7 +35,7 @@
 #include "gpt/partlink/partlink.h"
 
 /* Needs to agree with ota_from_target_files.MakeRecoveryPatch() */
-#define LOGPERROR(x)	LOGE("%s failed: %s", x, strerror(errno))
+#define LOGPERROR(x)	ALOGE("%s failed: %s", x, strerror(errno))
 
 #define TGT_SIZE_MAX    (LBA_SIZE * OS_MAX_LBA)
 
@@ -51,13 +51,13 @@ static int check_recovery_header(const char *tgt_sha1, int *needs_patching)
 	uint8_t tgt_digest[SHA_DIGEST_SIZE];
 
 	if (ParseSha1(tgt_sha1, tgt_digest)) {
-		LOGE("Bad SHA1 digest passed in");
+		ALOGE("Bad SHA1 digest passed in");
 		return -1;
 	}
 
 	sig_size = read_image_signature(&buf, RECOVERY_OS_NAME);
 	if (sig_size == -1) {
-		LOGE("Failed to read boot signature\n");
+		ALOGE("Failed to read boot signature\n");
 		return -1;
 	}
 	SHA_hash(buf, sig_size, src_digest);
@@ -75,12 +75,12 @@ static int check_recovery_image(const char *tgt_sha1, int *needs_patching)
 	uint8_t expected_tgt_digest[SHA_DIGEST_SIZE];
 
 	if (ParseSha1(tgt_sha1, expected_tgt_digest)) {
-		LOGE("Bad SHA1 digest passed in");
+		ALOGE("Bad SHA1 digest passed in");
 		return -1;
 	}
 
 	if ((sz = read_image(RECOVERY_OS_NAME, &data)) == -1) {
-		LOGE("failed to read recovery image");
+		ALOGE("failed to read recovery image");
 		*needs_patching = 1;
 		return 0;
 	}
@@ -128,29 +128,29 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 	SHA_init(&ctx);
 
 	if (ParseSha1(src_sha1, expected_src_digest)) {
-		LOGE("Bad SHA1 src SHA1 digest %s passed in", src_sha1);
+		ALOGE("Bad SHA1 src SHA1 digest %s passed in", src_sha1);
 		return -1;
 	}
 	if (ParseSha1(tgt_sha1, expected_tgt_digest)) {
-		LOGE("Bad SHA1 tgt SHA1 digest %s passed in", tgt_sha1);
+		ALOGE("Bad SHA1 tgt SHA1 digest %s passed in", tgt_sha1);
 		return -1;
 	}
 
 	src_size = read_image(ANDROID_OS_NAME, &src_data);
 	if (src_size == -1) {
-		LOGE("Failed to read image %s\n", ANDROID_OS_NAME);
+		ALOGE("Failed to read image %s\n", ANDROID_OS_NAME);
 		return -1;
 	}
 
 	SHA_hash(src_data, src_size, src_digest);
 	if (memcmp(src_digest, expected_src_digest, SHA_DIGEST_SIZE)) {
-		LOGE("boot image digests don't match!");
+		ALOGE("boot image digests don't match!");
 		goto out;
 	}
 
 	msi.pos = 0;
 	if (tgt_size > TGT_SIZE_MAX) {
-		LOGE("tgt_size is too big!");
+		ALOGE("tgt_size is too big!");
 		goto out;
 	}
 	msi.size = tgt_size;
@@ -161,25 +161,25 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 	}
 
 	if (file_read(patchfile, (void **)&patchval.data, (size_t *) & patchval.size)) {
-		LOGE("Coudln't read patch data");
+		ALOGE("Coudln't read patch data");
 		goto out;
 	}
 	patchval.type = VAL_BLOB;
 
 	if (ApplyImagePatch(src_data, src_size, &patchval, MemorySink, &msi, &ctx, NULL)) {
-		LOGE("Patching process failed");
+		ALOGE("Patching process failed");
 		goto out;
 	}
 	SHA_hash(msi.buffer, msi.size, tgt_digest);
 	if (memcmp(tgt_digest, expected_tgt_digest, SHA_DIGEST_SIZE)) {
-		LOGE("output recovery image digest mismatch");
+		ALOGE("output recovery image digest mismatch");
 		goto out;
 	}
 	if (flash_recovery_kernel(msi.buffer, msi.size)) {
-		LOGE("error writing patched recovery image");
+		ALOGE("error writing patched recovery image");
 		goto out;
 	}
-	LOGI("Recovery sucessfully patched from boot");
+	ALOGI("Recovery sucessfully patched from boot");
 
 out:
 	free(src_data);
@@ -253,43 +253,43 @@ int main(int argc, char **argv)
 
 	signed_image = is_image_signed(RECOVERY_OS_NAME);
 	if (signed_image == -1) {
-		LOGE("Failed to know if recovery is signed\n");
+		ALOGE("Failed to know if recovery is signed\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if (!signed_image || !check_sha1) {
 		/* We can't do any quick checks if unsigned images
 		 * are used. Examine the whole image */
-		LOGI("Checking full recovery image");
+		ALOGI("Checking full recovery image");
 		if (tgt_sha1 != NULL) {
 			if (check_recovery_image(tgt_sha1, &needs_patching)) {
-				LOGE("Can't examine current recovery console SHA1");
+				ALOGE("Can't examine current recovery console SHA1");
 				exit(EXIT_FAILURE);
 			}
 		} else {
-			LOGE("SHA1 option was not detected correctly");
+			ALOGE("SHA1 option was not detected correctly");
 			exit(EXIT_FAILURE);
 		}
 	} else {
-		LOGI("Checking recovery image's signature");
+		ALOGI("Checking recovery image's signature");
 		if (check_recovery_header(check_sha1, &needs_patching)) {
-			LOGE("Can't compare recovery console SHA1 sums");
+			ALOGE("Can't compare recovery console SHA1 sums");
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	if ((src_sha1 != NULL) && (tgt_sha1 != NULL) && (patch_file != NULL) && (tgt_size != 0)) {
 		if (needs_patching) {
-			LOGI("Installing new recovery image");
+			ALOGI("Installing new recovery image");
 			if (patch_recovery(src_sha1, tgt_sha1, tgt_size, patch_file)) {
-				LOGE("Couldn't patch recovery image");
+				ALOGE("Couldn't patch recovery image");
 				exit(EXIT_FAILURE);
 			}
 		} else {
-			LOGI("Recovery image already installed");
+			ALOGI("Recovery image already installed");
 		}
 	} else {
-		LOGI("Update options were not successfully detected");
+		ALOGI("Update options were not successfully detected");
 	}
 	return 0;
 }
