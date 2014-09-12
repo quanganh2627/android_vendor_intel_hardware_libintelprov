@@ -77,12 +77,14 @@ static int check_recovery_image(const char *tgt_sha1, int *needs_patching)
 		ALOGE("Bad SHA1 digest passed in");
 		return -1;
 	}
+	printf("Good SHA1 digest passed in\n");
 
 	if ((sz = read_image(RECOVERY_OS_NAME, &data)) == -1) {
 		ALOGE("failed to read recovery image");
 		*needs_patching = 1;
 		return 0;
 	}
+	printf("read recovery image success\n");
 	SHA_hash(data, sz, tgt_digest);
 
 	*needs_patching = memcmp(tgt_digest, expected_tgt_digest, SHA_DIGEST_SIZE);
@@ -112,7 +114,9 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 {
 	MemorySinkInfo msi;
 	void *src_data;
+	void *recovery_data;
 	int src_size;
+	int recovery_size;
 	uint8_t expected_src_digest[SHA_DIGEST_SIZE];
 	uint8_t src_digest[SHA_DIGEST_SIZE];
 	uint8_t expected_tgt_digest[SHA_DIGEST_SIZE];
@@ -130,18 +134,33 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 		ALOGE("Bad SHA1 src SHA1 digest %s passed in", src_sha1);
 		return -1;
 	}
+        printf("src_sha1 : %s\n",src_sha1);
+        printf("expected_digest_src_sha1 : %x\n",expected_src_digest);
+
 	if (ParseSha1(tgt_sha1, expected_tgt_digest)) {
 		ALOGE("Bad SHA1 tgt SHA1 digest %s passed in", tgt_sha1);
 		return -1;
 	}
 
 	src_size = read_image(ANDROID_OS_NAME, &src_data);
+	recovery_size = read_image(RECOVERY_OS_NAME, &recovery_data);
+        printf("read size : %d\n",src_size);
 	if (src_size == -1) {
 		ALOGE("Failed to read image %s\n", ANDROID_OS_NAME);
 		return -1;
 	}
 
+   FILE * fp;
+
+   fp = fopen ("/data/boot.img", "w");
+   fwrite(src_data, 1, src_size, fp);
+   fclose(fp);
+   fp = fopen ("/data/recovery.img", "w");
+   fwrite(recovery_data, 1, recovery_size, fp);
+   fclose(fp);
+   
 	SHA_hash(src_data, src_size, src_digest);
+        printf("digests : %x vs %x\n",src_digest,expected_src_digest);
 	if (memcmp(src_digest, expected_src_digest, SHA_DIGEST_SIZE)) {
 		ALOGE("boot image digests don't match!");
 		goto out;
@@ -165,13 +184,15 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 	}
 	patchval.type = VAL_BLOB;
 
+        printf("before applyimagepatch\n");
 	if (ApplyImagePatch(src_data, src_size, &patchval, MemorySink, &msi, &ctx, NULL)) {
 		ALOGE("Patching process failed");
 		goto out;
 	}
+        printf("after applyimagepatch\n");
 	SHA_hash(msi.buffer, msi.size, tgt_digest);
 	if (memcmp(tgt_digest, expected_tgt_digest, SHA_DIGEST_SIZE)) {
-		ALOGE("output recovery image digest mismatch");
+		ALOGE("output recovery image digest mismatch %s vs %s",tgt_digest,expected_tgt_digest);
 		goto out;
 	}
 	if (flash_recovery_kernel(msi.buffer, msi.size)) {

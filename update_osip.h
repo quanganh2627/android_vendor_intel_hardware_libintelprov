@@ -78,6 +78,7 @@ inline int check_index_outofbound(int osii_index);
 int write_stitch_image(void *data, size_t size, int osii_index);
 int write_stitch_image_ex(void *data, size_t size, int osii_index, int large_image);
 int get_named_osii_index(const char *destination, enum osip_operation_type operation);
+int get_named_osii_attr(const char *destination, int *instance);
 int invalidate_osii(char *destination);
 int restore_osii(char *destination);
 int get_attribute_osii_index(int attr, int instance, enum osip_operation_type operation);

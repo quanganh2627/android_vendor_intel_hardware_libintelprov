@@ -133,9 +133,6 @@ ssize_t bootimage_size(int fd, struct boot_img_hdr * hdr, bool include_sig)
 	size = (1 + pages(hdr, hdr->kernel_size) +
 		pages(hdr, hdr->ramdisk_size) + pages(hdr, hdr->second_size)) * hdr->page_size;
 
-	if (include_sig)
-		size += pages(hdr, hdr->sig_size) * hdr->page_size;
-
 out:
 	return size;
 }
@@ -183,78 +180,10 @@ out:
 
 int read_image_signature_gpt(void **buf, char *name)
 {
-	int fd = -1;
-	int sig_size;
-	struct boot_img_hdr hdr;
-	ssize_t img_size;
-
-	fd = open_bootimage(name);
-	if (fd < 0) {
-		error("open: %s", strerror(errno));
-		goto err;
-	}
-
-	img_size = bootimage_size(fd, &hdr, false);
-	if (img_size <= 0) {
-		error("Invalid image\n");
-		goto close;
-	}
-
-	if (lseek(fd, img_size, SEEK_SET) < 0) {
-		error("lseek: %s", strerror(errno));
-		goto close;
-	}
-
-	sig_size = hdr.sig_size;
-	*buf = malloc(sig_size);
-	if (!*buf) {
-		error("Failed to allocate signature buffer\n");
-		goto close;
-	}
-
-	if (safe_read(fd, *buf, sig_size)) {
-		error("read: %s", strerror(errno));
-		goto free;
-	}
-
-	close(fd);
-	return sig_size;
-
-free:
-	free(*buf);
-close:
-	close(fd);
-err:
 	return -1;
 }
 
 int is_image_signed_gpt(const char *name)
 {
-	struct boot_img_hdr hdr;
-	int ret = -1;
-	int fd;
-	char *path = NULL;
-
-	if (get_device_path(&path, "/recovery")) {
-		error("Unable to find the device path for the recovery boot image\n");
-		goto out;
-	}
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		error("open: %s", strerror(errno));
-		goto out;
-	}
-
-	if (safe_read(fd, &hdr, sizeof(hdr))) {
-		error("read: %s", strerror(errno));
-		goto close;
-	}
-
-	ret = hdr.sig_size == 0 ? 0 : 1;
-close:
-	close(fd);
-out:
-	free(path);
-	return ret;
+	return 0;
 }

@@ -321,5 +321,7 @@ int flash_ifwi_scu_emmc(void *data, unsigned size)
 
 bool is_scu_emmc(void)
 {
-	return true;
+	/* MIA component exists only on merr/moor based boards */
+	char value[PROPERTY_VALUE_MAX];
+	return property_get("sys.mia.version", value, "") > 0;
 }

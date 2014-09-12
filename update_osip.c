@@ -626,15 +626,9 @@ int write_stitch_image_ex(void *data, size_t size, int osii_index, int large_ima
 	return write_OSIP(&osip);
 }
 
-int get_named_osii_index(const char *destination, enum osip_operation_type operation)
+int get_named_osii_attr(const char *destination, int *instance)
 {
 	int attr;
-	int instance = 1;
-
-	if (destination == NULL) {
-		fprintf(stderr, "destination is a NULL pointer\n");
-		return -1;
-	}
 
 	if (!strcmp(destination, ANDROID_OS_NAME)) {
 		attr = ATTR_SIGNED_KERNEL;
@@ -648,13 +642,16 @@ int get_named_osii_index(const char *destination, enum osip_operation_type opera
 		attr = ATTR_SIGNED_SPLASHSCREEN;
 	} else if (!strcmp(destination, SPLASHSCREEN_NAME2)) {
 		attr = ATTR_SIGNED_SPLASHSCREEN;
-		instance = 2;
+		if (instance != NULL)
+			*instance = 2;
 	} else if (!strcmp(destination, SPLASHSCREEN_NAME3)) {
 		attr = ATTR_SIGNED_SPLASHSCREEN;
-		instance = 3;
+		if (instance != NULL)
+			*instance = 3;
 	} else if (!strcmp(destination, SPLASHSCREEN_NAME4)) {
 		attr = ATTR_SIGNED_SPLASHSCREEN;
-		instance = 4;
+		if (instance != NULL)
+			*instance = 4;
 	} else if (!strcmp(destination, SILENT_BINARY_NAME)) {
 		attr = ATTR_SIGNED_FW;
 	} else if (!strcmp(destination, RAMDUMP_OS_NAME)){
@@ -664,7 +661,24 @@ int get_named_osii_index(const char *destination, enum osip_operation_type opera
 		return -1;
 	}
 
-	return get_attribute_osii_index(attr, instance, operation);
+	return attr;
+}
+
+int get_named_osii_index(const char *destination, enum osip_operation_type operation) {
+	int tmp;
+	int attr;
+	int instance = 1;
+
+	attr=get_named_osii_attr(destination,&instance);
+
+	if (destination == NULL) {
+		fprintf(stderr, "destination is a NULL pointer\n");
+		return -1;
+	}
+
+	tmp = get_attribute_osii_index(attr, instance, operation);
+	fprintf(stderr,"ATTR : %d -> index %d\n",attr,tmp);
+	return tmp;
 }
 
 int get_attribute_osii_index(int attr, int instance, enum osip_operation_type operation)

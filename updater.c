@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <stdarg.h>
+#include <libgen.h>
 #include <edify/expr.h>
 #include <updater/updater.h>
 #include <common.h>
@@ -571,43 +572,48 @@ done:
 
 Value *FlashOSImage(const char *name, State * state, int argc, Expr * argv[])
 {
+	char* result = NULL;
+
 	Value *funret = NULL;
-	char *filename, *image_name;
-	void *data;
+	char *image_type;
 	int ret;
 
-	if (argc != 2) {
-		ErrorAbort(state, "%s: Invalid parameters.", name);
+	Value* partition_value;
+	Value* contents;
+	if (ReadValueArgs(state, argv, 2, &contents, &partition_value) < 0) {
+		return NULL;
+	}
+
+	char* partition = NULL;
+	if (partition_value->type != VAL_STRING) {
+		ErrorAbort(state, "partition argument to %s must be string", name);
 		goto exit;
 	}
 
-	if (ReadArgs(state, argv, 2, &filename, &image_name) < 0) {
-		ErrorAbort(state, "%s: ReadArgs failed.", name);
+	partition = partition_value->data;
+	if (strlen(partition) == 0) {
+		ErrorAbort(state, "partition argument to %s can't be empty", name);
 		goto exit;
 	}
 
-	int length = file_size(filename);
-	if (length == -1)
-		goto free;
+	if (contents->type == VAL_STRING && strlen((char*) contents->data) == 0) {
+		ErrorAbort(state, "file argument to %s can't be empty", name);
+		goto exit;
+	}
 
-	data = file_mmap(filename, length, true);
-	if (data == MAP_FAILED)
-		goto free;
+	image_type = basename(partition);
 
-	ret = flash_image(data, length, image_name);
+	ret = flash_image(contents->data, contents->size, image_type);
 	if (ret != 0) {
-		ErrorAbort(state, "%s: Failed to flash %s image %s, %s.",
-			   name, filename, image_name, strerror(errno));
-		goto unmap;
+		ErrorAbort(state, "%s: Failed to flash image %s, %s.",
+			   name, image_type, strerror(errno));
+		goto free;
 	}
 
 	funret = StringValue(strdup(""));
 
-unmap:
-	munmap(data, length);
 free:
-	free(filename);
-	free(image_name);
+	free(image_type);
 exit:
 	return funret;
 }
@@ -730,6 +736,8 @@ void Register_libintel_updater(void)
 	RegisterFunction("flash_partition", FlashPartition);
 	RegisterFunction("flash_image_at_offset", FlashImageAtOffset);
 	RegisterFunction("flash_os_image", FlashOSImage);
+	RegisterFunction("write_osip_image", FlashOSImage);
+	RegisterFunction("restore_os", RestoreOsFn);
 
 	util_init(recovery_error, NULL);
 }

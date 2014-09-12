@@ -302,10 +302,9 @@ int flash_ifwi_scu_ipc(void *data, unsigned sz)
 	return 0;
 }
 
-/* This module should not be activated since clovertrail is not in
- * mainline anymore
- */
 bool is_scu_ipc(void)
 {
-	return false;
+        /* MIA component does not exist on cvt based boards */
+        char value[PROPERTY_VALUE_MAX];
+        return property_get("sys.mia.version", value, "") == 0;
 }

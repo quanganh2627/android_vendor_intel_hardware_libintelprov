@@ -27,7 +27,7 @@ CONFIG_INTELPROV_FDK := y
 CONFIG_INTELPROV_GPT := y
 CONFIG_INTELPROV_OSIP := y
 CONFIG_INTELPROV_SCU_EMMC := y
-# CONFIG_INTELPROV_SCU_IPC
+CONFIG_INTELPROV_SCU_IPC := y
 CONFIG_INTELPROV_ULPMC := y
 
 MODULES-SOURCES :=
@@ -109,11 +109,7 @@ include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_PREBUILT_EXECUTABLES := \
-    releasetools.py \
-    releasetools/ota_from_target_files \
     releasetools/check_target_files_signatures \
-    releasetools/common.py \
-    releasetools/edify_generator.py \
     releasetools/lfstk_wrapper.py \
     releasetools/mfld_osimage.py \
     releasetools/sign_target_files_apks \

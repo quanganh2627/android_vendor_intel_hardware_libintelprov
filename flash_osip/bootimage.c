@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -52,6 +53,9 @@ int read_image_osip(const char *name, void **data)
 int flash_image_osip(void *data, unsigned sz, const char *name)
 {
 	int index;
+	int attr, signed_image;
+	struct OSIP_header *osip = (struct OSIP_header *)data;
+	struct OSII *header = &(osip->desc[0]);
 
 	if (!strcmp(name, TEST_OS_NAME)) {
 		oem_write_osip_header(0, 0);
@@ -61,6 +65,14 @@ int flash_image_osip(void *data, unsigned sz, const char *name)
 
 	index = get_named_osii_index(name, WRITE_OSIP_HEADER);
 
+	/* In some case, attribute is wrong (OTA generation)
+	   Let's set it now we know the real usage of the image,
+	   keeping signed attribute */
+	attr=get_named_osii_attr(name,NULL);
+	signed_image = header->attribute & ATTR_UNSIGNED_KERNEL;
+	printf("Image attribute is %d\n", header->attribute);
+	printf("Set it to : %d + %d\n",attr,signed_image);
+	header->attribute = attr + signed_image;
 	if (check_index_outofbound(index))
 		return -1;
 
