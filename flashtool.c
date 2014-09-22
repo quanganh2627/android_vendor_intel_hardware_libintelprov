@@ -12,10 +12,6 @@
 #include "fw_version_check.h"
 #include "flash.h"
 
-#ifdef BOARD_HAVE_MODEM
-#include "telephony/flashtool.h"
-#endif
-
 #define PROP_BUILD_ID	"ro.build.display.id"
 
 enum {
@@ -213,11 +209,6 @@ int main(int argc, char **argv)
 	case CMD_WRITE_FW:
 		cmd_write_fw(filename);
 		break;
-#ifdef BOARD_HAVE_MODEM
-	case CMD_WRITE_3G_FW:
-		cmd_push_mdm_fw(filename);
-		break;
-#endif
 	}
 	return 0;
 }

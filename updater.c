@@ -34,10 +34,6 @@
 #endif
 #include "oem_partition.h"
 
-#ifdef BOARD_HAVE_MODEM
-#include "telephony/updater.h"
-#endif
-
 #include "flash.h"
 
 Value *ExtractImageFn(const char *name, State * state, int argc, Expr * argv[])
@@ -724,9 +720,6 @@ void Register_libintel_updater(void)
 	RegisterFunction("flash_bom_token", FlashBomFn);
 #endif	/* TEE_FRAMEWORK */
 
-#ifdef BOARD_HAVE_MODEM
-	RegisterTelephonyFunctions();
-#endif
 	RegisterFunction("extract_image", ExtractImageFn);
 	RegisterFunction("invalidate_os", InvalidateOsFn);
 	RegisterFunction("restore_os", RestoreOsFn);

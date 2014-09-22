@@ -48,7 +48,6 @@ common_libintelprov_files := \
 common_libintelprov_includes := \
 	$(call include-path-for, libc-private) \
 	$(call include-path-for, mkbootimg) \
-	$(TARGET_OUT_HEADERS)/IFX-modem
 
 chaabi_dir := $(TOP)/vendor/intel/hardware/PRIVATE/chaabi
 sep_lib_includes := $(chaabi_dir)/SepMW/VOS6/External/Linux/inc/
@@ -84,10 +83,6 @@ LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 LOCAL_C_INCLUDES := $(call include-path-for, recovery) $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
 LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
-ifeq ($(BOARD_HAVE_MODEM),true)
-LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
-LOCAL_SRC_FILES += telephony/updater.c telephony/common.c
-endif
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
 endif
@@ -142,10 +137,6 @@ LOCAL_C_INCLUDES := bootable/droidboot $(call include-path-for, recovery) $(comm
 LOCAL_SRC_FILES := droidboot.c $(common_libintelprov_files)
 
 LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
-ifeq ($(BOARD_HAVE_MODEM),true)
-LOCAL_SRC_FILES += telephony/droidboot.c telephony/common.c
-LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
-endif
 
 ifeq ($(external_release),no)
 LOCAL_SRC_FILES += $(common_pmdb_files) $(token_implementation)
@@ -184,11 +175,6 @@ LOCAL_SHARED_LIBRARIES := liblog libcutils
 LOCAL_C_INCLUDES := $(common_libintelprov_includes) $(call include-path-for, recovery)
 LOCAL_SRC_FILES := flashtool.c $(common_libintelprov_files)
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-
-ifeq ($(BOARD_HAVE_MODEM),true)
-LOCAL_CFLAGS += -DBOARD_HAVE_MODEM
-LOCAL_SRC_FILES += telephony/flashtool.c telephony/common.c
-endif
 
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
 LOCAL_CFLAGS += -DCLVT

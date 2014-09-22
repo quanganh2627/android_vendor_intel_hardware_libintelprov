@@ -49,10 +49,6 @@
 #include "token.h"
 #endif
 
-#ifdef BOARD_HAVE_MODEM
-#include "telephony/droidboot.h"
-#endif
-
 #define PARAMETER_VALUE_SIZE			20
 #define OPTION_SIZE				4
 
@@ -672,10 +668,6 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("backup_factory", oem_backup_factory);
 	ret |= aboot_register_oem_cmd("restore_factory", oem_restore_factory);
 	ret |= aboot_register_oem_cmd("fastboot2adb", oem_fastboot2adb);
-#endif
-
-#ifdef BOARD_HAVE_MODEM
-	ret |= aboot_register_telephony_functions();
 #endif
 
 	fastboot_register("continue", cmd_intel_reboot);
