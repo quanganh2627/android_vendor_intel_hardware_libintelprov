@@ -452,6 +452,7 @@ end:
 #ifdef USE_GUI
 #define PROP_FILE					"/default.prop"
 #define SERIAL_NUM_FILE			"/sys/class/android_usb/android0/iSerial"
+#define PRODUCT_NAME_ATTR		"ro.product.name"
 #define MAX_NAME_SIZE			128
 #define BUF_SIZE					256
 
@@ -492,6 +493,7 @@ static int read_from_file(char *file, char *attr, char *value)
 static int get_system_info(int type, char *info, unsigned sz)
 {
 	int ret = -1;
+	char pro_name[MAX_NAME_SIZE];
 	FILE *f;
 	char value[PROPERTY_VALUE_MAX];
 
@@ -502,8 +504,9 @@ static int get_system_info(int type, char *info, unsigned sz)
 		ret = 0;
 		break;
 	case PRODUCT_NAME:
-		property_get("ro.product.device", value, "");
-		snprintf(info, sz, "%s", value);
+		if ((ret = read_from_file(PROP_FILE, PRODUCT_NAME_ATTR, pro_name)) < 0)
+			break;
+		snprintf(info, sz, "%s", pro_name);
 		ret = 0;
 		break;
 	case SERIAL_NUM:
@@ -514,21 +517,6 @@ static int get_system_info(int type, char *info, unsigned sz)
 			break;
 		}
 		fclose(f);
-		ret = 0;
-		break;
-	case VARIANT:
-		property_get("ro.product.model", value, "");
-		snprintf(info, sz, "%s", value);
-		ret = 0;
-		break;
-	case HW_VERSION:
-		property_get("sys.hw.version", value, "");
-		snprintf(info, sz, "%s", value);
-		ret = 0;
-		break;
-	case BOOTLOADER_VERSION:
-		property_get("ro.bootloader", value, "");
-		snprintf(info, sz, "%s", value);
 		ret = 0;
 		break;
 	default:
