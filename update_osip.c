@@ -747,3 +747,12 @@ int oem_write_osip_header(int argc, char **argv)
 	restore_osii("fastboot");
 	return 0;
 }
+
+int oem_erase_osip_header(int argc, char **argv)
+{
+	struct OSIP_header blank_osip;
+	memset(&blank_osip, 0, sizeof(blank_osip));
+	fprintf(stderr, "Erase OSIP header\n");
+	write_OSIP(&blank_osip);
+	return 0;
+}

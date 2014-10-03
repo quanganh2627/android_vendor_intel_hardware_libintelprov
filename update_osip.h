@@ -84,6 +84,7 @@ int get_attribute_osii_index(int attr, int instance, enum osip_operation_type op
 int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba);
 int verify_osip_sizes(struct OSIP_header *osip);
 int oem_write_osip_header(int argc, char **argv);
+int oem_erase_osip_header(int argc, char **argv);
 
 #define ATTR_SIGNED_KERNEL      0
 #define ATTR_UNSIGNED_KERNEL    1

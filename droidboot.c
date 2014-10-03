@@ -634,6 +634,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("repart", oem_repart_partition);
 
 	ret |= aboot_register_oem_cmd("write_osip_header", oem_write_osip_header);
+	ret |= aboot_register_oem_cmd("erase_osip_header", oem_erase_osip_header);
 	ret |= aboot_register_oem_cmd("start_partitioning", oem_partition_start_handler);
 	ret |= aboot_register_oem_cmd("partition", oem_partition_cmd_handler);
 	ret |= aboot_register_oem_cmd("retrieve_partitions", oem_retrieve_partitions);
