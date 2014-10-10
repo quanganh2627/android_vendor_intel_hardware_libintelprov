@@ -18,6 +18,7 @@
 #define UPDATE_OSIP_H
 #include <stdlib.h>
 #include <stdint.h>
+#include "util.h"
 
 #ifndef STORAGE_BASE_PATH
 #define STORAGE_BASE_PATH "/dev/block/mmcblk0"
@@ -81,6 +82,7 @@ int get_named_osii_index(const char *destination, enum osip_operation_type opera
 int get_named_osii_attr(const char *destination, int *instance);
 int invalidate_osii(char *destination);
 int restore_osii(char *destination);
+int64_t get_named_osii_logical_start_block(const char *destination);
 int get_attribute_osii_index(int attr, int instance, enum osip_operation_type operation);
 int fixup_osip(struct OSIP_header *osip, uint32_t ptn_lba);
 int verify_osip_sizes(struct OSIP_header *osip);
@@ -100,8 +102,10 @@ int oem_erase_osip_header(int argc, char **argv);
 #define ATTR_SIGNED_SPLASHSCREEN  0x04
 #define ATTR_SIGNED_RAMDUMPOS	0x16
 
-#define LBA_SIZE	512
 #define OS_MAX_LBA	32000
+
+#define LBA_SIZE	512
+
 #define MMC_DEV_POS STORAGE_BASE_PATH
 
 #endif

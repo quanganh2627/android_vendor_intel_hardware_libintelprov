@@ -775,3 +775,22 @@ int oem_erase_osip_header(int argc, char **argv)
 	write_OSIP(&blank_osip);
 	return 0;
 }
+
+int64_t get_named_osii_logical_start_block(const char *destination)
+{
+	int osii_index;
+	struct OSII *osii;
+	struct OSIP_header osip;
+
+	osii_index = get_named_osii_index(destination, READ_OSIP_HEADER);
+	if (check_index_outofbound(osii_index))
+		return -1;
+
+	fprintf(stderr, "%s osii index is %d\n", destination, osii_index);
+	if (read_OSIP(&osip)) {
+		fprintf(stderr, "read_OSIP fails\n");
+		return -1;
+	}
+	osii = &osip.desc[osii_index];
+	return  osii->logical_start_block;
+}

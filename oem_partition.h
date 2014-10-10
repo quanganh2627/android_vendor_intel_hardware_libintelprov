@@ -17,6 +17,10 @@
 #ifndef _OEM_PARTITION_H_
 #define _OEM_PARTITION_H_
 
+#define K_MAX_LINE_LEN 8192
+#define K_MAX_ARGS 256
+#define K_MAX_ARG_LEN 256
+
 int oem_partition_start_handler(int argc, char **argv);
 int oem_partition_stop_handler(int argc, char **argv);
 int oem_partition_cmd_handler(int argc, char **argv);
@@ -25,6 +29,7 @@ int oem_repart_partition(int argc, char **argv);
 int oem_retrieve_partitions(int argc, char **argv);
 int oem_wipe_partition(int argc, char **argv);
 void oem_partition_disable_cmd_reload();
+char **str_to_array(char *str, int *argc);
 
 struct ufdisk {
 	void (*umount_all) (void);

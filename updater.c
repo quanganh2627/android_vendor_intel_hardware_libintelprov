@@ -719,6 +719,350 @@ Value *FlashPartition(const char *name, State * state, int argc, Expr * argv[])
 	return ret;
 }
 
+#define PARTITION_UPDATE "/tmp/partition_update.tbl"
+
+Value *FlashOsipToGPTPartition(const char *name, State * state, int argc, Expr * argv[])
+{
+	FILE *fp, *fp_update;
+	char *filename;
+	char buffer[K_MAX_ARG_LEN];
+	char partition_type[K_MAX_ARG_LEN];
+	char **gpt_argv = NULL;
+	unsigned int j;
+	int i, gpt_argc = 0;
+	Value *ret = NULL;
+	struct OSIP_header osip;
+
+
+	/* Do not reload partition table during OTA since some partition
+	 * are still mounted, reload would failed.  */
+	oem_partition_disable_cmd_reload();
+
+	if (argc != 1) {
+		ErrorAbort(state, "%s: Invalid parameters.", name);
+		return StringValue(strdup(""));
+	}
+	if (ReadArgs(state, argv, argc, &filename) < 0) {
+		ErrorAbort(state, "%s: ReadArgs failed.", name);
+		return StringValue(strdup(""));
+	}
+
+	/* Dump OSIP to ease debug and get LBA of OSIP entries */
+	if (read_OSIP(&osip)) {
+		fprintf(stderr, "read_OSIP fails\n");
+	}
+	dump_osip_header(&osip);
+
+	/* Open partition and partition update files */
+	fp = fopen(filename, "r");
+	if (!fp) {
+		ErrorAbort(state, "%s: Can't open %s partition file.", name, filename);
+		free(filename);
+		ret = StringValue(strdup(""));
+		goto exit;
+	}
+	fp_update = fopen(PARTITION_UPDATE, "w+");
+	if (!fp_update) {
+		ErrorAbort(state, "%s: Can't create %s partition file\n", name, PARTITION_UPDATE);
+		fclose(fp);
+		free(filename);
+		ret = StringValue(strdup(""));
+		goto exit;
+	}
+
+	/* Check first line of partition file */
+	memset(buffer, 0, sizeof(buffer));
+	if (!fgets(buffer, sizeof(buffer), fp)) {
+		ErrorAbort(state, "partition file is empty");
+		ret = StringValue(strdup(""));
+		goto error;
+	}
+	buffer[strlen(buffer) - 1] = '\0';
+	if (sscanf(buffer, "%*[^=]=%255s", partition_type) != 1) {
+		ErrorAbort(state, "partition file is invalid");
+		ret = StringValue(strdup(""));
+		goto error;
+	}
+
+	/* Write first line in update file */
+	fprintf(fp_update, "%s\n", buffer);
+
+	/* parse partitition files line to catch update_partitions */
+	while (fgets(buffer, sizeof(buffer), fp)) {
+		if (buffer[strlen(buffer) - 1] == '\n')
+			buffer[strlen(buffer) - 1] = '\0';
+		gpt_argv = str_to_array(buffer, &gpt_argc);
+		if (gpt_argv == NULL)
+			continue;
+		char *command = gpt_argv[0];
+		uint64_t  size, lba_start;
+		int64_t osii_lba;
+		bool update_need =  false;
+		bool update_write = true;
+		char *e;
+		const char* update_partitions[] = {ANDROID_OS_NAME, RECOVERY_OS_NAME, FASTBOOT_OS_NAME};
+
+		/* catch add commands */
+		if (0 == strncmp("add", command, strlen(command))) {
+			/* catch partitions to update */
+			for (i = 0; i < gpt_argc; i++) {
+				/* Do not write back "reserved" */
+				if (0 == strncmp("reserved", gpt_argv[i], strlen(gpt_argv[i])))
+					update_write = false;
+				for (j = 0; j < ARRAY_SIZE(update_partitions); j++) {
+					if (0 == strncmp(update_partitions[j], gpt_argv[i], strlen(gpt_argv[i]))) {
+						if ((osii_lba = get_named_osii_logical_start_block(gpt_argv[i])) == -1) {
+							ErrorAbort(state, "Unable to get LBA of %s partition", gpt_argv[i]);
+							ret = StringValue(strdup(""));
+							goto error;
+						}
+						printf("Found %s partition at osii_lba %llu\n", gpt_argv[i], osii_lba);
+						update_need = true;
+						break;
+					}
+				}
+				if (update_need || !update_write)
+					break;
+			}
+
+			/* update size and LBA */
+			if (update_need) {
+				for (i = 0; i < gpt_argc; i++) {
+					if (0 == strncmp("-s", gpt_argv[i], strlen(gpt_argv[i]))) {
+						size = strtoull(gpt_argv[i+1], &e, 0);
+						if (e && *e) {
+							ErrorAbort(state, "Unable to get size of partition %s", buffer);
+							ret = StringValue(strdup(""));
+							goto error;
+						}
+						printf("Size was %llu new is %u \n", size, OS_MAX_LBA);
+						sprintf(gpt_argv[i+1],"%d", OS_MAX_LBA);
+					}
+					if (0 == strncmp("-b", gpt_argv[i], strlen(gpt_argv[i]))) {
+						lba_start = strtoull(gpt_argv[i+1], &e, 0);
+						if (e && *e) {
+							ErrorAbort(state, "Unable to get LBA of partition %s", buffer);
+							ret = StringValue(strdup(""));
+							goto error;
+						}
+						printf("LBA was %llu new is %llu \n", lba_start, osii_lba);
+						sprintf(gpt_argv[i+1],"%llu", osii_lba);
+					}
+				}
+			}
+		}
+
+		/* write lines in partition update */
+		for (i = 0; i < gpt_argc; i++) {
+			if (update_write)
+				fprintf(fp_update,"%s ",gpt_argv[i]);
+			free(gpt_argv[i]);
+			gpt_argv[i] = NULL;
+		}
+		if (update_write)
+			fprintf(fp_update,"\n");
+		free(gpt_argv);
+		gpt_argv = NULL;
+	}
+
+	/* Ensure to close fp_update as it will be re-open by oem_partition_cmd_handler */
+	free(filename);
+	fclose(fp);
+	fclose(fp_update);
+
+	/* partition with new partition file */
+	property_set("sys.partitioning", "1");
+
+	char *path[] = {0,PARTITION_UPDATE};
+	int partret = -1;
+
+	if ((partret = oem_partition_cmd_handler(2,(char **)path)) == -1) {
+		ErrorAbort(state, "%s: re-partitionning fails with error %d", name, partret);
+		ret = StringValue(strdup(""));
+	}
+	else
+		ret = StringValue(strdup("t"));
+	property_set("sys.partitioning", "0");
+
+	goto exit;
+
+error:
+	free(filename);
+	fclose(fp);
+	fclose(fp_update);
+exit:
+	return ret;
+}
+
+
+Value *FlashImageAtPartition(const char *name, State * state, int argc, Expr * argv[])
+{
+	Value *funret = NULL;
+	char *osname, *filename, *parttable;
+	void *data;
+	off_t offset = 0;
+	int fd;
+	FILE *fp;
+	char buffer[K_MAX_ARG_LEN];
+	char partition_type[K_MAX_ARG_LEN];
+	char **gpt_argv = NULL;
+	int i, gpt_argc = 0;
+	Value *ret = NULL;
+	int fret;
+
+	if (argc != 3) {
+		ErrorAbort(state, "%s: Invalid parameters.", name);
+		goto exit;
+	}
+
+	if (ReadArgs(state, argv, 3, &osname, &filename, &parttable) < 0) {
+		ErrorAbort(state, "%s: ReadArgs failed.", name);
+		goto exit;
+	}
+
+	/* Open partition file */
+	fp = fopen(parttable, "r");
+	if (!fp) {
+		ErrorAbort(state, "%s: Can't open %s partition file.", name, parttable);
+		ret = StringValue(strdup(""));
+		goto free;
+	}
+
+	/* Check first line of partition file */
+	memset(buffer, 0, sizeof(buffer));
+	if (!fgets(buffer, sizeof(buffer), fp)) {
+		ErrorAbort(state, "partition file is empty");
+		ret = StringValue(strdup(""));
+		goto free;
+	}
+	buffer[strlen(buffer) - 1] = '\0';
+	if (sscanf(buffer, "%*[^=]=%255s", partition_type) != 1) {
+		ErrorAbort(state, "partition file is invalid");
+		ret = StringValue(strdup(""));
+		goto free;
+	}
+
+	bool found = false;
+	/* parse partitition files line to catch osname */
+	while (fgets(buffer, sizeof(buffer), fp)) {
+		if (buffer[strlen(buffer) - 1] == '\n')
+			buffer[strlen(buffer) - 1] = '\0';
+		gpt_argv = str_to_array(buffer, &gpt_argc);
+		if (gpt_argv == NULL)
+			continue;
+		char *command = gpt_argv[0];
+		char* e;
+		/* catch add commands */
+		if (0 == strncmp("add", command, strlen(command))) {
+			/* catch partitions to update */
+			for (i=0; i < gpt_argc; i++) {
+				if (0 == strncmp(osname, gpt_argv[i], strlen(gpt_argv[i]))) {
+					found = true;
+					printf("found %s ", osname);
+				}
+			}
+			/* get offset of osname */
+			if (found) {
+				for (i=0; i < gpt_argc; i++) {
+					if (0 == strncmp("-b", gpt_argv[i], strlen(gpt_argv[i]))) {
+						offset = strtoull(gpt_argv[i+1], &e, 0) * 512;
+						if (e && *e) {
+							ErrorAbort(state, "Unable to get LBA of partition %s", buffer);
+							ret = StringValue(strdup(""));
+							goto free;
+						}
+						printf("at LBA %s offset % ld \n", gpt_argv[i+1], offset);
+					}
+				}
+			}
+		}
+		/* free gpt_argv */
+		for (i = 0; i < gpt_argc; i++) {
+			free(gpt_argv[i]);
+			gpt_argv[i] = NULL;
+		}
+		free(gpt_argv);
+		gpt_argv = NULL;
+		if (found)
+			break;
+	}
+	fclose(fp);
+
+	if (!found) {
+		ErrorAbort(state, "partition %s not found in %s", name, parttable);
+		ret = StringValue(strdup(""));
+		goto free;
+	} else {
+		printf("%s: found partition %s at offset %ld\n", name, osname, offset);
+	}
+
+	/* Flash image at offset */
+	int length = file_size(filename);
+	if (length == -1)
+		goto free;
+
+	data = file_mmap(filename, length, false);
+	if (data == MAP_FAILED) {
+		goto free;
+	}
+
+	fd = open(MMC_DEV_POS, O_WRONLY);
+	if (fd == -1) {
+		ErrorAbort(state, "%s: Failed to open %s device block, %s.",
+			   name, MMC_DEV_POS, strerror(errno));
+		goto unmmap_file;
+	}
+
+	fret = lseek(fd, offset, SEEK_SET);
+	if (fret == -1) {
+		ErrorAbort(state, "%s: Failed to seek into %s device block, %s.",
+			   name, MMC_DEV_POS, strerror(errno));
+		ret = StringValue(strdup(""));
+		goto close;
+	}
+
+	char *ptr = (char *)data;
+	fret = 0;
+	for (; length; length -= fret, ptr += fret) {
+		fret = write(fd, ptr, length);
+		if (fret == -1) {
+			ErrorAbort(state, "%s: Failed to write into %s device block, %s.",
+				   name, MMC_DEV_POS, strerror(errno));
+			ret = StringValue(strdup(""));
+			goto close;
+		}
+	}
+
+	fret = fsync(fd);
+	if (fret == -1) {
+		ErrorAbort(state, "%s: Failed to sync %s, %s.", name, MMC_DEV_POS, strerror(errno));
+		ret = StringValue(strdup(""));
+		goto close;
+	}
+
+	ret = StringValue(strdup("t"));
+
+close:
+	close(fd);
+unmmap_file:
+	munmap(data, length);
+free:
+	free(osname);
+	free(filename);
+	free(parttable);
+exit:
+	return ret;
+}
+
+
+Value *EraseOsipHeader(const char *name, State * state, int argc, Expr * argv[])
+{
+	Value *ret = NULL;
+	printf("Erase OSIP header \n");
+	ret = CommandFunction(oem_erase_osip_header, name, state, argc, argv);
+	return ret;
+}
+
 void Register_libintel_updater(void)
 {
 	RegisterFunction("flash_ifwi", FlashIfwiFn);
@@ -734,9 +1078,12 @@ void Register_libintel_updater(void)
 	RegisterFunction("flash_esp_update", FlashEspUpdateFn);
 	RegisterFunction("flash_ulpmc", FlashUlpmcFn);
 	RegisterFunction("flash_partition", FlashPartition);
+	RegisterFunction("flash_osiptogpt_partition", FlashOsipToGPTPartition);
+	RegisterFunction("flash_image_at_partition", FlashImageAtPartition);
 	RegisterFunction("flash_image_at_offset", FlashImageAtOffset);
 	RegisterFunction("flash_os_image", FlashOSImage);
 	RegisterFunction("write_osip_image", FlashOSImage);
+	RegisterFunction("erase_osip", EraseOsipHeader);
 	RegisterFunction("restore_os", RestoreOsFn);
 
 	util_init(recovery_error, NULL);

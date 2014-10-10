@@ -25,9 +25,7 @@
 
 #include "util.h"
 
-#define K_MAX_LINE_LEN 8192
-#define K_MAX_ARGS 256
-#define K_MAX_ARG_LEN 256
+
 
 static void fake_umount_all(void)
 {
@@ -43,7 +41,7 @@ static struct ufdisk ufdisk = {
 	.create_partition = fake_create_partition
 };
 
-static char **str_to_array(char *str, int *argc)
+char **str_to_array(char *str, int *argc)
 {
 	char *str1, *token;
 	char *saveptr1;
