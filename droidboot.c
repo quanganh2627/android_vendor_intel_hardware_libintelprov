@@ -630,6 +630,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_flash_cmd(ANDROID_OS_NAME, flash_android_kernel);
 	ret |= aboot_register_flash_cmd(RECOVERY_OS_NAME, flash_recovery_kernel);
 	ret |= aboot_register_flash_cmd(FASTBOOT_OS_NAME, flash_fastboot_kernel);
+	ret |= aboot_register_flash_cmd(BOOTLOADER_NAME, flash_bootloader);
 	ret |= aboot_register_flash_cmd(ESP_PART_NAME, flash_esp);
 	ret |= aboot_register_flash_cmd(SPLASHSCREEN_NAME, flash_splashscreen_image1);
 	ret |= aboot_register_flash_cmd(SPLASHSCREEN_NAME1, flash_splashscreen_image1);

@@ -121,7 +121,7 @@ LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_C_INCLUDES := bootable/droidboot $(call include-path-for, recovery) $(common_libintelprov_includes)
 
-LOCAL_SRC_FILES := droidboot.c $(common_libintelprov_files)
+LOCAL_SRC_FILES := droidboot.c bootloader.c $(common_libintelprov_files)
 
 LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
 

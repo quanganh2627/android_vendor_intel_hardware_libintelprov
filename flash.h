@@ -24,6 +24,8 @@
 #define FASTBOOT_OS_NAME    "fastboot"
 #define DROIDBOOT_OS_NAME   "droidboot"
 #define TEST_OS_NAME        "testos"
+#define BOOTLOADER_NAME     "bootloader"
+#define IFWI_NAME           "ifwi"
 #define SPLASHSCREEN_NAME   "splashscreen"
 #define SPLASHSCREEN_NAME1  "splashscreen1"
 #define SPLASHSCREEN_NAME2  "splashscreen2"
@@ -32,6 +34,8 @@
 #define ESP_PART_NAME       "ESP"
 #define SILENT_BINARY_NAME  "silentlake"
 #define RAMDUMP_OS_NAME     "ramdump"
+#define ESP_UPDATE_NAME     "esp_update"
+#define CAPSULE_NAME        "capsule"
 
 int update_ifwi_image(void *data, size_t size, unsigned reset_flag);
 int update_ifwi_file(void *data, size_t size);
@@ -62,6 +66,7 @@ int flash_ramdump(void *data, unsigned sz);
 int flash_esp(void *data, unsigned sz);
 int flash_testos(void *data, unsigned sz);
 int flash_silent_binary();
+int flash_bootloader(void *data, unsigned sz);
 
 /* Returns:
  * -1: error
