@@ -7,7 +7,7 @@ LOCAL_C_INCLUDES:=  $(LOCAL_PATH)/../lib/include
 LOCAL_SRC_FILES:= \
 	cgpt.c
 
-LOCAL_STATIC_LIBRARIES := libcgpt
+LOCAL_STATIC_LIBRARIES := libcgpt_static
 
 LOCAL_MODULE:=gfdisk
 
