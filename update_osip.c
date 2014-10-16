@@ -638,7 +638,7 @@ int get_named_osii_attr(const char *destination, int *instance)
 		attr = ATTR_SIGNED_POS;
 	} else if (!strcmp(destination, DROIDBOOT_OS_NAME)) {
 		attr = ATTR_SIGNED_POS;
-	} else if (!strcmp(destination, SPLASHSCREEN_NAME1)) {
+	} else if (!strcmp(destination, SPLASHSCREEN_NAME)) {
 		attr = ATTR_SIGNED_SPLASHSCREEN;
 	} else if (!strcmp(destination, SPLASHSCREEN_NAME2)) {
 		attr = ATTR_SIGNED_SPLASHSCREEN;

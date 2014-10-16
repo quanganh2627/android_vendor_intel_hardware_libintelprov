@@ -115,7 +115,7 @@ int flash_fastboot_kernel(void *data, unsigned sz)
 
 int flash_splashscreen_image1(void *data, unsigned sz)
 {
-	return flash_image(data, sz, SPLASHSCREEN_NAME1);
+	return flash_image(data, sz, SPLASHSCREEN_NAME);
 }
 
 int flash_splashscreen_image2(void *data, unsigned sz)
