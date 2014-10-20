@@ -604,6 +604,13 @@ static void dump_system_versions()
 	}
 }
 
+#ifdef TEE_FRAMEWORK
+static int aboot_write_token(void *data, unsigned size)
+{
+	return write_token(data, (size_t)size);
+}
+#endif
+
 void libintel_droidboot_init(void)
 {
 	int ret = 0;
@@ -669,7 +676,7 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("cancel-update", cancel_update);
 	ret |= aboot_register_oem_cmd("finalize-update", finalize_update);
 	ret |= aboot_register_oem_cmd("remove-token", remove_token);
-	ret |= aboot_register_flash_cmd("token", write_token);
+	ret |= aboot_register_flash_cmd("token", aboot_write_token);
 #endif
 
 #ifndef EXTERNAL
