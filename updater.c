@@ -69,7 +69,7 @@ Value *ExtractImageFn(const char *name, State * state, int argc, Expr * argv[])
 		goto done;
 	}
 
-	ret = StringValue(strdup(""));
+	ret = StringValue(strdup("t"));
 done:
 	if (source)
 		free(source);
@@ -100,7 +100,7 @@ Value *ExecuteOsipFunction(const char *name, State * state, int argc, Expr * arg
 		goto done;
 	}
 
-	ret = StringValue(strdup(""));
+	ret = StringValue(strdup("t"));
 
 done:
 	if (destination)
@@ -262,7 +262,7 @@ Value *FlashIfwiOrBomFn(enum flash_option_type flash_option, const char *name, S
 		free(buffer);
 	}
 
-	ret = StringValue(strdup(""));
+	ret = StringValue(strdup("t"));
 
 error:
 	mzCloseZipArchive(&ifwi_za);
@@ -385,7 +385,7 @@ Value *FlashIfwiFn(const char *name, State * state, int argc, Expr * argv[])
 		update_ifwi_file_scu_ipc(DNX_BIN_PATH, IFWI_BIN_PATH);
 	}
 
-	ret = StringValue(strdup(""));
+	ret = StringValue(strdup("t"));
 
 error:
 	mzCloseZipArchive(&ifwi_za);
@@ -427,7 +427,7 @@ Value *FlashCapsuleFn(const char *name, State * state, int argc, Expr * argv[])
 	}
 
 	/* no error */
-	ret = StringValue(strdup(""));
+	ret = StringValue(strdup("t"));
 done:
 	if (filename)
 		free(filename);
@@ -465,7 +465,7 @@ Value *FlashEspUpdateFn(const char *name, State * state, int argc, Expr * argv[]
 	}
 
 	/* no error */
-	ret = StringValue(strdup(""));
+	ret = StringValue(strdup("t"));
 done:
 	if (filename)
 		free(filename);
@@ -503,7 +503,7 @@ Value *FlashUlpmcFn(const char *name, State * state, int argc, Expr * argv[])
 	}
 
 	/* no error */
-	ret = StringValue(strdup(""));
+	ret = StringValue(strdup("t"));
 done:
 	if (filename)
 		free(filename);
@@ -531,7 +531,7 @@ Value *FlashCallFunction(int (*fun) (char *), const char *name, State * state, i
 		goto done;
 	}
 
-	ret = StringValue(strdup(""));
+	ret = StringValue(strdup("t"));
 
 done:
 	if (filename)
@@ -564,7 +564,7 @@ Value *CommandFunction(int (*fun) (int, char **), const char *name, State * stat
 		free(argv_read[i]);
 	free(argv_read);
 
-	ret = StringValue(strdup(""));
+	ret = StringValue(strdup("t"));
 
 done:
 	return ret;
@@ -610,7 +610,7 @@ Value *FlashOSImage(const char *name, State * state, int argc, Expr * argv[])
 		goto free;
 	}
 
-	funret = StringValue(strdup(""));
+	funret = StringValue(strdup("t"));
 
 free:
 	free(image_type);
@@ -684,7 +684,7 @@ Value *FlashImageAtOffset(const char *name, State * state, int argc, Expr * argv
 		goto close;
 	}
 
-	funret = StringValue(strdup(""));
+	funret = StringValue(strdup("t"));
 
 close:
 	close(fd);
