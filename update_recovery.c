@@ -150,15 +150,6 @@ static int patch_recovery(const char *src_sha1, const char *tgt_sha1,
 		return -1;
 	}
 
-   FILE * fp;
-
-   fp = fopen ("/data/boot.img", "w");
-   fwrite(src_data, 1, src_size, fp);
-   fclose(fp);
-   fp = fopen ("/data/recovery.img", "w");
-   fwrite(recovery_data, 1, recovery_size, fp);
-   fclose(fp);
-   
 	SHA_hash(src_data, src_size, src_digest);
         printf("digests : %x vs %x\n",src_digest,expected_src_digest);
 	if (memcmp(src_digest, expected_src_digest, SHA_DIGEST_SIZE)) {

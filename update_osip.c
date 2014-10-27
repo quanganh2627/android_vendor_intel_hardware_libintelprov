@@ -669,10 +669,15 @@ int get_named_osii_index(const char *destination, enum osip_operation_type opera
 	int attr;
 	int instance = 1;
 
-	attr=get_named_osii_attr(destination,&instance);
-
 	if (destination == NULL) {
 		fprintf(stderr, "destination is a NULL pointer\n");
+		return -1;
+	}
+
+	attr = get_named_osii_attr(destination,&instance);
+
+	if (attr < 0) {
+		fprintf(stderr, "Bad OS attribute\n");
 		return -1;
 	}
 
