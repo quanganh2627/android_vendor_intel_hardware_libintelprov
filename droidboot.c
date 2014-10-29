@@ -362,7 +362,7 @@ static int oem_fastboot2adb(int argc, char **argv)
 	len = property_get("ro.debuggable", value, NULL);
 	if ((len != 0) && (strcmp(value, "1") == 0)) {
 		fastboot_okay("");
-		ret = property_set("sys.adb.config", "adb");
+		ret = property_set("sys.adb.config", "fastboot2adb");
 	} else {
 		fastboot_fail("property ro.debuggable must be set to activate adb.");
 	}
