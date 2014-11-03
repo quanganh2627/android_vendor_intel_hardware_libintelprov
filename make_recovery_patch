@@ -44,12 +44,18 @@ def Run(args, **kwargs):
 
 def FixOsipHeader(osfile, ostype):
   data = bytearray(osfile.data)
+  print "FixOsipHeader : Previous ostype  ", data[OSIP_ATTRIBUTE_OFFSET]
+
+  sign_attr = data[OSIP_ATTRIBUTE_OFFSET] & 0x01
+  print "FixOsipHeader : sign_attr ",sign_attr
 
   # set attribute to ostype parameter
   if ostype == "boot":
-    data[OSIP_ATTRIBUTE_OFFSET]=0x1
+    data[OSIP_ATTRIBUTE_OFFSET]=0x0 + sign_attr
   if ostype == "recovery":
-    data[OSIP_ATTRIBUTE_OFFSET]=0xd
+    data[OSIP_ATTRIBUTE_OFFSET]=0xc + sign_attr
+
+  print "FixOsipHeader : New ostype  ", data[OSIP_ATTRIBUTE_OFFSET]
 
   # set crc to zero
   data[OSIP_CRC_OFFSET]=0
