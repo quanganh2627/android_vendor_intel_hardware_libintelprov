@@ -12,7 +12,7 @@ BACK_FOLDER=".." # must contain as many "../" than FOLDER has depth
 if [ -f ${GOOGLE_DIFFS}/${FOLDER}/${PATCH} ]
 then
   echo "Applying patch ${PATCH} from ${GOOGLE_DIFFS}/${FOLDER}"
-  echo "$FOLDER && git am ${BACK_FOLDER}/${GOOGLE_DIFFS}/${FOLDER}/${PATCH} && cd -"
+  cd $FOLDER && git am ${BACK_FOLDER}/${GOOGLE_DIFFS}/${FOLDER}/${PATCH} && cd -
 else
   echo "Could not find patch ${PATCH} from ${GOOGLE_DIFFS}/${FOLDER} : skipping"
 fi
