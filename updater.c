@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <inttypes.h>
 #include <sys/stat.h>
 #include <stdarg.h>
 #include <libgen.h>
@@ -816,7 +817,7 @@ Value *FlashOsipToGPTPartition(const char *name, State * state, int argc, Expr *
 							ret = StringValue(strdup(""));
 							goto error;
 						}
-						printf("Found %s partition at osii_lba %llu\n", gpt_argv[i], osii_lba);
+						printf("Found %s partition at osii_lba %"PRId64"\n", gpt_argv[i], osii_lba);
 						update_need = true;
 						break;
 					}
@@ -835,7 +836,7 @@ Value *FlashOsipToGPTPartition(const char *name, State * state, int argc, Expr *
 							ret = StringValue(strdup(""));
 							goto error;
 						}
-						printf("Size was %llu new is %u \n", size, OS_MAX_LBA);
+						printf("Size was %"PRIu64" new is %u \n", size, OS_MAX_LBA);
 						sprintf(gpt_argv[i+1],"%d", OS_MAX_LBA);
 					}
 					if (0 == strncmp("-b", gpt_argv[i], strlen(gpt_argv[i]))) {
@@ -845,8 +846,8 @@ Value *FlashOsipToGPTPartition(const char *name, State * state, int argc, Expr *
 							ret = StringValue(strdup(""));
 							goto error;
 						}
-						printf("LBA was %llu new is %llu \n", lba_start, osii_lba);
-						sprintf(gpt_argv[i+1],"%llu", osii_lba);
+						printf("LBA was %"PRIu64" new is %"PRId64" \n", lba_start, osii_lba);
+						sprintf(gpt_argv[i+1],"%"PRId64"", osii_lba);
 					}
 				}
 			}
