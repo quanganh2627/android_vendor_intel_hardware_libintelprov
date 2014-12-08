@@ -237,14 +237,16 @@ Value *FlashIfwiOrBomFn(enum flash_option_type flash_option, const char *name, S
 					free(buffer);
 					goto error;
 				}
+				start_update(0, NULL);
 				if (write_token(bom_token_buffer, bom_token_buffsize) == 0) {
 					printf("BOM token written\n");
+					finalize_update(0, NULL);
 				} else {
 					printf("Unable to write BOM token.\n");
 					cancel_update(0, NULL);
 					free(bom_token_buffer);
 					free(buffer);
-					ret = StringValue(strdup("fail"));
+					ret = StringValue(strdup(""));
 					goto error;
 				}
 				free(bom_token_buffer);
