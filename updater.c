@@ -610,13 +610,11 @@ Value *FlashOSImage(const char *name, State * state, int argc, Expr * argv[])
 	if (ret != 0) {
 		ErrorAbort(state, "%s: Failed to flash image %s, %s.",
 			   name, image_type, strerror(errno));
-		goto free;
+		goto exit;
 	}
 
 	funret = StringValue(strdup("t"));
 
-free:
-	free(image_type);
 exit:
 	return funret;
 }
