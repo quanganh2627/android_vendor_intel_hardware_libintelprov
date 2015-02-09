@@ -581,8 +581,8 @@ Value *FlashOSImage(const char *name, State * state, int argc, Expr * argv[])
 	char *image_type;
 	int ret;
 
-	Value* partition_value;
-	Value* contents;
+	Value* partition_value = NULL;
+	Value* contents = NULL;
 	if (ReadValueArgs(state, argv, 2, &contents, &partition_value) < 0) {
 		return NULL;
 	}
@@ -616,6 +616,8 @@ Value *FlashOSImage(const char *name, State * state, int argc, Expr * argv[])
 	funret = StringValue(strdup("t"));
 
 exit:
+	FreeValue(contents);
+	FreeValue(partition_value);
 	return funret;
 }
 
