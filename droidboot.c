@@ -59,6 +59,20 @@ enum {
 	TIMEOUT_ZERO = 0X00
 };
 
+#define PARTITION_FILENAME "/tmp/partition.tbl"
+
+static int flash_gpt_partition_file(void *data, unsigned sz)
+{
+	if (named_file_write(PARTITION_FILENAME, data, sz)) {
+		fastboot_fail("Could not flash partition file");
+	}
+
+	char *path[] = {0,PARTITION_FILENAME};
+	oem_partition_cmd_handler(2,(char **)path);
+
+	return 0;
+}
+
 static int oem_custom_boot(int argc, char **argv)
 {
 	int retval = -1;
@@ -321,6 +335,9 @@ out:
 #endif	/* EXTERNAL */
 
 #define CONFIG_FILE "/mnt/config/local_config"
+#define MOUNT_POINT "/mnt/config/"
+#define CONFIG_FSTYPE "ext4"
+#define CONFIG_DEVICE "/dev/block/by-name/config"
 
 /* argv[1] : config name */
 static int oem_config(int argc, char **argv)
@@ -334,6 +351,22 @@ static int oem_config(int argc, char **argv)
 		fastboot_fail("oem config must be called with 1 parameter\n");
 		return -1;
 	}
+
+        ret = mkdir(MOUNT_POINT, S_IRWXU | S_IRWXG | S_IRWXO);
+        if (ret == -1 && errno != EEXIST) {
+                fastboot_fail("mkdir failed");
+                LOGE("mkdir failed : %s\n", strerror(errno));
+                ret = -errno;
+                goto end;
+        }
+
+        ret = mount(CONFIG_DEVICE, MOUNT_POINT, CONFIG_FSTYPE, MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
+        if (ret == -1) {
+                fastboot_fail("mount failed");
+                LOGE("mount failed : %s\n", strerror(errno));
+                ret = -errno;
+                goto end;
+        }
 
 	if ((f = fopen(CONFIG_FILE, "w")) == NULL) {
 		LOGE("open %s error!\n", CONFIG_FILE);
@@ -349,6 +382,7 @@ static int oem_config(int argc, char **argv)
 
 	fclose(f);
 
+end:
 	return ret;
 }
 
@@ -393,56 +427,6 @@ static int oem_reboot(int argc, char **argv)
 	ui_print("REBOOT in %s...\n", target_os);
 	pr_info("Rebooting in %s !\n", target_os);
 	return android_reboot(ANDROID_RB_RESTART2, 0, target_os);
-}
-
-static int oem_mount(int argc, char **argv)
-{
-	int ret = 0;
-	char *dev_path = NULL;
-	char *mountpoint = NULL;
-
-	/* Check parameters */
-	if (argc != 3) {
-		LOGE("fastboot mount command takes two parameters\n");
-		fastboot_fail("Usage: mount <partition_name> <fs_type>");
-		return -EINVAL;
-	}
-
-	ret = get_device_path(&dev_path, argv[1]);
-	if (ret) {
-		fastboot_fail("Unable to find the appropriate device path\n");
-		goto end;
-	}
-
-	/* mount in a sub-folder of /mnt */
-	ret = asprintf(&mountpoint, "/mnt/%s", argv[1]);
-	if (ret < 0) {
-		fastboot_fail("asprintf mountpoint failed");
-		goto end;
-	}
-	LOGI("Mounting partition %s in %s (type %s)\n", dev_path, mountpoint, argv[2]);
-
-	ret = mkdir(mountpoint, S_IRWXU | S_IRWXG | S_IRWXO);
-	if (ret == -1 && errno != EEXIST) {
-		fastboot_fail("mkdir failed");
-		LOGE("mkdir failed : %s\n", strerror(errno));
-		ret = -errno;
-		goto end;
-	}
-
-	ret = mount(dev_path, mountpoint, argv[2], MS_NOATIME | MS_NODEV | MS_NODIRATIME, "");
-	if (ret == -1) {
-		fastboot_fail("mount failed");
-		LOGE("mount failed : %s\n", strerror(errno));
-		ret = -errno;
-		goto end;
-	}
-
-end:
-	free(dev_path);
-	free(mountpoint);
-
-	return ret;
 }
 
 #ifdef USE_GUI
@@ -626,6 +610,7 @@ void libintel_droidboot_init(void)
 
 	oem_partition_init(&ufdisk);
 	util_init(fastboot_fail, fastboot_info);
+	ret |= aboot_register_flash_cmd("gpt", flash_gpt_partition_file);
 	ret |= aboot_register_flash_cmd(TEST_OS_NAME, flash_testos);
 	ret |= aboot_register_flash_cmd(ANDROID_OS_NAME, flash_android_kernel);
 	ret |= aboot_register_flash_cmd(RECOVERY_OS_NAME, flash_recovery_kernel);
@@ -656,14 +641,12 @@ void libintel_droidboot_init(void)
 	ret |= aboot_register_oem_cmd("write_osip_header", oem_write_osip_header);
 	ret |= aboot_register_oem_cmd("erase_osip_header", oem_erase_osip_header);
 	ret |= aboot_register_oem_cmd("start_partitioning", oem_partition_start_handler);
-	ret |= aboot_register_oem_cmd("partition", oem_partition_cmd_handler);
 	ret |= aboot_register_oem_cmd("retrieve_partitions", oem_retrieve_partitions);
 	ret |= aboot_register_oem_cmd("stop_partitioning", oem_partition_stop_handler);
 	ret |= aboot_register_oem_cmd("get_batt_info", oem_get_batt_info_handler);
 	ret |= aboot_register_oem_cmd("reboot", oem_reboot);
 	ret |= aboot_register_oem_cmd("wipe", oem_wipe_partition);
 	ret |= aboot_register_oem_cmd("config", oem_config);
-	ret |= aboot_register_oem_cmd("mount", oem_mount);
 
 #ifdef TEE_FRAMEWORK
 	print_fun = fastboot_info;
