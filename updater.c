@@ -237,10 +237,8 @@ Value *FlashIfwiOrBomFn(enum flash_option_type flash_option, const char *name, S
 					free(buffer);
 					goto error;
 				}
-				start_update(0, NULL);
 				if (write_token(bom_token_buffer, bom_token_buffsize) == 0) {
 					printf("BOM token written\n");
-					finalize_update(0, NULL);
 				} else {
 					printf("Unable to write BOM token.\n");
 					cancel_update(0, NULL);
@@ -291,6 +289,37 @@ Value *FlashIfwiFn(const char *name, State * state, int argc, Expr * argv[])
 Value *FlashBomFn(const char *name, State * state, int argc, Expr * argv[])
 {
 	return FlashIfwiOrBomFn(FLASH_BOM_TOKEN_BINARY, name, state, argc, argv);
+}
+Value *UpdateStart(const char *name, State * state, int argc, Expr * argv[])
+{
+	Value *ret = NULL;
+
+	/* For fault tolerancy, cancel is systematically done to be sure in which state we  */
+	/* are before start. This wil generate an error in most cases that must be ignored. */
+	cancel_update(0, NULL);
+	if (start_update(0, NULL) == 0) {
+		printf("Update start.\n");
+	} else {
+		ErrorAbort(state, "Unable to start update.\n");
+		goto done;
+	}
+	ret = StringValue(strdup("t"));
+done:
+	return ret;
+}
+Value *UpdateEnd(const char *name, State * state, int argc, Expr * argv[])
+{
+	Value *ret = NULL;
+
+	if (finalize_update(0, NULL) == 0) {
+		printf("Update end.\n");
+	} else {
+		ErrorAbort(state, "Unable to end update.\n");
+		goto done;
+	}
+	ret = StringValue(strdup("t"));
+done:
+	return ret;
 }
 #endif
 
@@ -1071,6 +1100,8 @@ void Register_libintel_updater(void)
 	RegisterFunction("flash_ifwi", FlashIfwiFn);
 #ifdef TEE_FRAMEWORK
 	RegisterFunction("flash_bom_token", FlashBomFn);
+	RegisterFunction("update_start", UpdateStart);
+	RegisterFunction("update_end", UpdateEnd);
 #endif	/* TEE_FRAMEWORK */
 
 	RegisterFunction("extract_image", ExtractImageFn);
