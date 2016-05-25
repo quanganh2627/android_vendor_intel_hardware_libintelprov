@@ -53,24 +53,24 @@ chaabi_dir := $(TOP)/vendor/intel/hardware/PRIVATE/chaabi
 sep_lib_includes := $(chaabi_dir)/SepMW/VOS6/External/Linux/inc/
 
 # Provisionning CC54 tool
-ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
-include $(CLEAR_VARS)
-LOCAL_MODULE := teeprov
-LOCAL_SRC_FILES := teeprov.c tee_connector.c util.c
-LOCAL_MODULE_TAGS := optional
-LOCAL_C_INCLUDES := $(common_libintelprov_includes) bootable/recovery
-LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-LOCAL_STATIC_LIBRARIES := libdx_cc7_static
-LOCAL_SHARED_LIBRARIES := libc liblog libifp libkeymaster
-include $(BUILD_EXECUTABLE)
-endif
+#ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
+#include $(CLEAR_VARS)
+#LOCAL_MODULE := teeprov
+#LOCAL_SRC_FILES := teeprov.c tee_connector.c util.c
+#LOCAL_MODULE_TAGS := optional
+#LOCAL_C_INCLUDES := $(common_libintelprov_includes) bootable/recovery
+#LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
+#LOCAL_STATIC_LIBRARIES := libdx_cc7_static
+#LOCAL_SHARED_LIBRARIES := libc liblog libifp libkeymaster
+#include $(BUILD_EXECUTABLE)
+#endif
 
 # Partitionning library
 include $(CLEAR_VARS)
 LOCAL_MODULE := liboempartitioning_static
 LOCAL_SRC_FILES := oem_partition.c
 LOCAL_MODULE_TAGS := optional
-LOCAL_C_INCLUDES := bootable/droidboot/volumeutils $(LOCAL_PATH)/gpt/lib/include
+LOCAL_C_INCLUDES := bootable/droidboot/volumeutils system/core/fs_mgr/include $(LOCAL_PATH)/gpt/lib/include
 LOCAL_WHOLE_STATIC_LIBRARIES := libcgpt_static
 include $(BUILD_STATIC_LIBRARY)
 
@@ -80,32 +80,32 @@ LOCAL_MODULE := libintel_updater
 LOCAL_SRC_FILES := updater.c $(common_libintelprov_files)
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-LOCAL_C_INCLUDES := $(call include-path-for, recovery) $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
+LOCAL_C_INCLUDES := bootable/recovery $(common_libintelprov_includes) $(LOCAL_PATH)/gpt/lib/include
 LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
+#LOCAL_WHOLE_STATIC_LIBRARIES := liboempartitioning_static
 ifeq ($(TARGET_BOARD_PLATFORM),clovertrail)
   LOCAL_CFLAGS += -DCLVT
 endif
-ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
-LOCAL_SRC_FILES += tee_connector.c
-LOCAL_WHOLE_STATIC_LIBRARIES += libdx_cc7_static
-LOCAL_SHARED_LIBRARIES += libifp libkeymaster
-LOCAL_CFLAGS += -DTEE_FRAMEWORK
-endif
+#ifeq ($(BUILD_WITH_SECURITY_FRAMEWORK),chaabi_token)
+#LOCAL_SRC_FILES += tee_connector.c
+#LOCAL_WHOLE_STATIC_LIBRARIES += libdx_cc7_static
+#LOCAL_SHARED_LIBRARIES += libifp libkeymaster
+#LOCAL_CFLAGS += -DTEE_FRAMEWORK
+#endif
 LOCAL_CFLAGS += $(INTELPROV_DEFINES)
 include $(BUILD_STATIC_LIBRARY)
 
 # plugin for recovery_ui
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES := recovery_ui.cpp
-LOCAL_MODULE_TAGS := optional
-LOCAL_C_INCLUDES := $(call include-path-for, recovery) $(call include-path-for, libc-private)
-LOCAL_MODULE := libintel_recovery_ui
-LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
-ifeq ($(REF_DEVICE_NAME), mfld_pr2)
-LOCAL_CFLAGS += -DMFLD_PRX_KEY_LAYOUT
-endif
-include $(BUILD_STATIC_LIBRARY)
+#include $(CLEAR_VARS)
+#LOCAL_SRC_FILES := recovery_ui.cpp
+#LOCAL_MODULE_TAGS := optional
+#LOCAL_C_INCLUDES := bootable/recovery $(call include-path-for, libc-private)
+#LOCAL_MODULE := libintel_recovery_ui
+#LOCAL_CFLAGS := -Wall -Werror -Wno-unused-parameter
+#ifeq ($(REF_DEVICE_NAME), mfld_pr2)
+#LOCAL_CFLAGS += -DMFLD_PRX_KEY_LAYOUT
+#endif
+#include $(BUILD_STATIC_LIBRARY)
 
 # if DROIDBOOT is not used, we dont want this...
 # allow to transition smoothly

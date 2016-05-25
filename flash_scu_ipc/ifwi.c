@@ -5,7 +5,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <cutils/properties.h>
-
+#include <unistd.h>
+#include <string.h>
 #include "util.h"
 #include "fw_version_check.h"
 

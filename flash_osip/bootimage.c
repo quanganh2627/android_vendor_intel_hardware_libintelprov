@@ -21,6 +21,10 @@
 #include "util.h"
 #include "update_osip.h"
 #include "flash.h"
+#include <sys/types.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
 
 #define OSIP_SIG_SIZE		480
 

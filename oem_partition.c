@@ -22,10 +22,10 @@
 #include <cgpt.h>
 #include <cutils/properties.h>
 #include <roots.h>
-
+#include <string.h>
 #include "util.h"
-
-
+#include "update_osip.h"
+#include <getopt.h>
 
 static void fake_umount_all(void)
 {

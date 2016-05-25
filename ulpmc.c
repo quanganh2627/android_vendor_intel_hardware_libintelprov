@@ -16,7 +16,7 @@
 
 #include <errno.h>
 #include "util.h"
-
+#include <string.h>
 #define ULPMC_PATH "/dev/ulpmc-fwupdate"
 int flash_ulpmc(void *data, unsigned sz)
 {

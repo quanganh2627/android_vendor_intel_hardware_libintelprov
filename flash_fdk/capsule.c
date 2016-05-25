@@ -24,6 +24,7 @@
 #include "util.h"
 #include "capsule.h"
 #include "flash.h"
+#include <string.h>
 
 #define CAPSULE_PARTITION_LABEL "FWUP"
 #define CAPSULE_UPDATE_FLAG_PATH "/sys/firmware/osnib/fw_update"

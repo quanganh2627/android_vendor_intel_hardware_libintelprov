@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include <string.h>
 
 #define K_MAX_LINE_LEN 8192
 #define K_MAX_ARGS 256

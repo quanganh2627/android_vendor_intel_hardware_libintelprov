@@ -23,8 +23,9 @@
 #include <cutils/properties.h>
 #include <sys/mman.h>
 #include "fw_version_check.h"
-
-
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
 #define FORCE_RW_OPT "0"
 #define BOOT_IFWI_SIZE 0x400000
 #define BOOT_UMIP_SIZE 0x10000

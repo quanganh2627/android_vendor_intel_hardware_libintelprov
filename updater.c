@@ -27,7 +27,7 @@
 #include <common.h>
 #include <cutils/properties.h>
 #include <sys/mman.h>
-
+#include <errno.h>
 #include "update_osip.h"
 #include "util.h"
 #include "fw_version_check.h"

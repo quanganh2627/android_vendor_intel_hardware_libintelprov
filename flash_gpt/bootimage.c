@@ -23,6 +23,8 @@
 #include <fcntl.h>
 #include "util.h"
 #include "flash.h"
+#include <errno.h>
+#include <string.h>
 
 #define DISK_BY_LABEL_DIR		"/dev/disk/by-label"
 #define BASE_PLATFORM_INTEL_LABEL	"/dev/block/platform/intel/by-label"
