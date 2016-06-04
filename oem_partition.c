@@ -132,7 +132,7 @@ static int oem_partition_gpt_handler(FILE *fp)
 		return -1;
 	}
 
-	uuid_generator = uuid_generate;
+	uuid_generator = uuid_generate_cgpt;
 	while (fgets(buffer, sizeof(buffer), fp)) {
 		if (buffer[strlen(buffer) - 1] == '\n')
 			buffer[strlen(buffer) - 1] = '\0';

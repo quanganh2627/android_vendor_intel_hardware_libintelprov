@@ -30,7 +30,7 @@ const char* progname = "cgpt";
 const char* command = "cgpt";
 
 
-void uuid_generate(uint8_t* buffer) {
+void uuid_generate_cgpt(uint8_t* buffer) {
   int fd;
 
   memset(buffer, 0, 16);

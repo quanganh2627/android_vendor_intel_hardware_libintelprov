@@ -145,7 +145,7 @@ void Error(const char *format, ...);
 // set to uuid_generate in case of the cgpt binary and can be null or some
 // no-op method in case of ilbcgpt-cc.a.
 void (*uuid_generator)(uint8_t* buffer) ;
-void uuid_generate(uint8_t* buffer);
+void uuid_generate_cgpt(uint8_t* buffer);
 
 // Command functions.
 int cmd_show(int argc, char *argv[]);
