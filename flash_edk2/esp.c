@@ -112,7 +112,7 @@ int flash_esp_update(void *data, unsigned sz)
 		return ret;
 	}
 
-	success = mzExtractRecursive(&za, "", ESP_MOUNT_POINT, 0, NULL, NULL, NULL, NULL);
+	success = mzExtractRecursive(&za, "", ESP_MOUNT_POINT, NULL, NULL, NULL, NULL);
 	if (success != true)  {
 		error("%s: failed to Extract zip archive to %s\n", __func__, ESP_MOUNT_POINT);
 		return EXIT_FAILURE;
